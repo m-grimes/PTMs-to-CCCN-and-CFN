@@ -8,15 +8,53 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+```{r load packages}
+#  use install.packages("package_name") to download the package
+#  or, for bioconductor packages:
+#  To install core packages, type the following in an R command window:
+  if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()
+#Install specific packages, e.g., “GenomicFeatures” and “AnnotationDbi”, with
+# BiocManager::install(c("Hmisc", "RCy3", "impute", "PMA", "GO.db", "Category", "GOstats"))
+# library ("tidyverse")	has the following packages embedded	
+	#•	ggplot2, for data visualisation.
+	#•	dplyr, for data manipulation.
+	#•	tidyr, for data tidying.
+	#•	readr, for data import.
+	#•	purrr, for functional programming.
+	#•	tibble, for tibbles, a modern re-imagining of data frames.
+	#•	stringr, for strings.
+	#•	forcats, for factors.	
+library(plyr)
+library(tidyverse)
+```
 
 ## R Markdown
 
 This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+```{r utility functions}
 
-```{r cars}
-summary(cars)
+```
+
+```{r functions to import data and generate "Peptide.Name"}
+# A general version of get.gene.name; 
+# use with sapply	
+# Fixes some common misnamed genes and the problem that Excel turns some gene names into dates.
+get.gene <- function(cell) {  
+		fixgenes = c("CDC2", "2-Sep", "3-Sep", "4-Sep", "5-Sep", "7-Sep", "8-Sep", "9-Sep", "10-Sep", "11-Sep", "15-Sep", "6-Sep", "1-Oct", "2-Oct", "3-Oct", "4-Oct", "6-Oct", "7-Oct", "11-Oct", "1-Mar", "2-Mar", "3-Mar", "4-Mar", "5-Mar", "6-Mar", "7-Mar", "8-Mar", "9-Mar", "10-Mar", "11-Mar", "C11orf58", 'C17orf57', 'C3orf10',  'C7orf51', "C11orf59", "C4orf16")
+		corrects = c("CDK1", "SEPT2", "SEPT3", "SEPT4", "SEPT5", "SEPT7", "SEPT8", "SEPT9", "SEPT10", "SEPT11", "SEPT15", "SEPT6", "POU2F1", "POU2F2", "POU5F1", "POU5F1", "POU3F1", "POU3F2", "POU2F3", "MARCH1", "MARCH2", "MARCH3", "MARCH4", "MARCH5", "MARCH6", "MARCH7", "MARCH8", "MARCH9", "MARCH10", "MARCH11", "SMAP", "EFCAB13", "BRK1", "NYAP1", "LAMTOR1", 'AP1AR')
+		x<-unlist(strsplit(as.character(cell), ";"))	
+		for (i in 1:length(fixgenes)) {
+			if (x[1] == fixgenes[i]) {
+			x[1] <- corrects[i] 
+			return (x[1])
+			} 
+		}
+	 return(x[1]) }
+
 ```
 
 ## Including Plots
