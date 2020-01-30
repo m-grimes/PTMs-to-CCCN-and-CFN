@@ -11,20 +11,646 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r packages}
+# New versions of MGRCyFunctions.R linking RCy3 to Cytoscape
+# author: Mark Grimes
+# This is the best place to report issues:
+# https://github.com/cytoscape/RCy3/issues
+# Thanks!    - Alex
+# Swagger: http://localhost:1234/v1/swaggerUI/swagger-ui/index.html?url=http://localhost:1234/v1/swagger.json#/
+# ------------------------------------------------------------------------
+# To UpDATE
+# source("http://www.bioconductor.org/biocLite.R")
+# biocLite("RCy3")
+# biocLite("BiocStyle")
+# Try the latest version of RCy3 by running:
+    # install.packages("BiocManager")
+    #   BiocManager::install("RCy3")
+library(devtools)
+library(RCy3)
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(gplots)
+library(igraph)
+library(knitr)
+library("BiocStyle")
+options(stringsAsFactors=FALSE)
+#
+# There are several resources available:
+browseVignettes('RCy3')
+# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
+# 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+# Note: Start Cytoscape
+# ------------------------------------------------------------------------
+cytoscapePing ()
+cytoscapeVersionInfo ()
 ```
 
-## Including Plots
+## Functions for creating and manipulating networks using igraph and RCy3
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r RCy3, echo=FALSE}
+# Note: For  For createNetworkFromDataFrames {RCy3}, in the node file, the first column must be named "id". 
+# In edge files, the first two columns must be named "source" and "target"; and "edgeType" is no longer used, replaced with "interaction". For converting files we may wish to use this function:
+
+edgeType.to.interaction <- function(net.edges) {
+    names(net.edges)[1:2] <- c("source", "target")
+    if (any(grepl("edgeType", names(net.edges)))) {
+    names(net.edges)[grep("edgeType", names(net.edges))] <- "interaction"}
+    return(net.edges) }
+# 
+# ✓
+# funcion to filter networks to include only selected nodes and those with edges to them
+filter.edges.0 <- function(nodenames, edge.file) {
+			nodenames <-as.character(nodenames)
+			 a = as.character(edge.file[,1])
+			 b = as.character(edge.file[,2])
+			edgefile.nodes <- unique(c(a,b))
+			# show pruned nodes (turned off)
+			# flub <- setdiff(edgefile.nodes, nodenames) 
+			 # if (length(flub) >= 1) { 
+				# cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }	
+			sel.edges <- edge.file[edge.file[,1] %in% nodenames & edge.file[,2] %in% nodenames,]
+	if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
+	}
+#	
+#funcion to filter networks and to get first order connected nodes								
+filter.edges.1 <- function(nodenames, edge.file) {
+			nodenames <-as.character(nodenames)
+			a = as.character(edge.file[,1])
+			b = as.character(edge.file[,2])
+			edgefile.nodes <- unique(c(a,b))
+			# show pruned nodes (turned off)
+			# flub <- setdiff(edgefile.nodes, nodenames) 
+			# if (length(flub) >= 1) { 
+			#	cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }
+		sel.edges.1 <- edge.file[edge.file[,1] %in% nodenames,]
+		sel.edges.2 <- edge.file[edge.file[,2] %in% nodenames,]
+		sel.edges <- rbind(sel.edges.1, sel.edges.2)
+	if(dim(sel.edges)[1] == 0) {return(NA)} else {
+		return(unique(sel.edges)) }
+	}
+#
+# Function to collapse multiple edges into directed and undirected merged edges. 
+# New version to use the updated RCy3 2.x.x names
+mergeEdges.RCy32 <- function(edgefile) {
+    # define directional and non-directional edges
+    directed <- c("pp", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "PHOSPHORYLATION", "METHYLATION", "ACETYLATION", "catalysis-precedes")
+    undirected <- c("Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "interacts-with")
+    # check for nodes in reversed orientation for undirected edges
+    undir.edges <- edgefile[-(edgefile$interaction %in% directed),]
+    # NEW: simply sort/order the nodes
+    # this works:
+    # for(i in 1:dim(undir.edges)[1])	{
+    #	undir.edges[i, 1:2] <- sort(as.vector(undir.edges[i,1:2]))
+    #	}
+    # Better: Working non-loop:
+    undir.edges[, 1:2] <- t(apply(undir.edges[,1:2], 1, function (x) sort(x)))
+    # merge undirected edges
+    undir.merged <- ddply(undir.edges, .(source, target), numcolwise(sum), na.rm=TRUE)	
+    undir.merged$interaction <- dlply(undir.edges, .(source, target), function(x) paste0(x[, "interaction"]))	
+    undir.merged$interaction <- sapply(undir.merged$interaction, function(x) paste(unique(c(x)), collapse=", "))
+    # undir.merged$Directed <- FALSE	
+    # merge directed edges
+    dir.edges <- edgefile[edgefile$interaction %in% directed,]
+    dir.merged <- ddply(dir.edges, .(source, target), numcolwise(sum), na.rm=TRUE)
+    dir.merged$interaction <- dlply(dir.edges, .(source, target), function(x) paste0(x[, "interaction"]))	
+    dir.merged$interaction <- sapply(dir.merged$interaction, function(x) paste(unique(c(x)), collapse=", "))
+    # dir.merged$Directed <- TRUE
+    edgefile.merged <- rbind(dir.merged, undir.merged)
+    # Remove auto-phosphorylation loops
+    edgefile.merged <- remove.autophos(edgefile.merged)
+    return(edgefile.merged)
+} 
+# ✓
+
+# "Visual style setting methods have been updated to more consistently match Cytoscape's terminology."
+# This function sets edge default settings. Use: edgeDprops.RCy32()
+edgeDprops.RCy32 <- function() {
+    setEdgeLineWidthDefault (3)
+    setEdgeColorDefault ( "#FFFFFF")  # white
+    setEdgeSelectionColorDefault (col2hex("chartreuse"))
+    edgecolors <- col2hex(c("red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "darkorange1"))
+    edgecolorsplus <- col2hex(c("deeppink", "red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2", "darkorange1"))
+    #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+    edgeTypes <- c("pp", "PHOSPHORYLATION", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "ACETYLATION")
+    # 22 edgeTypes            
+    myarrows <- c ('Arrow', 'Arrow', 'Arrow','Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', "Arrow")
+    setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+    matchArrowColorToEdge('TRUE')
+    setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")
+    # A grey background helps highlight some of the edges
+    setBackgroundColorDefault("#949494") # grey 58
+    edgevalues <- getTableColumns('edge')
+    if (length(edgevalues[grep("pp", edgevalues$interaction), 1])>0) {
+        setEdgeColorBypass(edgevalues[grep("pp", edgevalues$interaction), 1], col2hex("red"))}
+    if (length(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1])>0) {
+        setEdgeColorBypass(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1], col2hex("red"))}
+    if (length(edgevalues[grep("phosphorylation", edgevalues$interaction), 1])>0) {
+        setEdgeColorBypass(edgevalues[grep("phosphorylation", edgevalues$interaction), 1], col2hex("red"))}
+    if (length(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1])>0) {
+        setEdgeColorBypass(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1], col2hex("darkorange1"))}
+    
+}
+# ✓
+# The following function is now working properly, though it is not clear why the Mapping fuction doesn't work. 
+# log version looks good
+setEdgeWidths.RCy32 <- function (edgefile, factor=1.2, log=TRUE)	{
+    if (log==FALSE) {
+        line.widths <- factor*abs(as.numeric(edgefile$Weight))
+        }
+    if (log==TRUE) {
+        line.widths <- log(abs(edgefile$Weight)) + factor - min(log(abs(edgefile$Weight)))  
+        }
+    edgevalues <- getTableColumns('edge',c('name','Weight'))
+    edgevalues['Weight'] <- line.widths
+    setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+    # Not working:
+    # setEdgeLineWidthMapping("Weight", table.column.values=edgefile$Weight, mapping.type = "d", widths=line.widths, default.width=1.2) 
+    # for testing:
+    # return(data.frame(edgefile$Weight, line.widths))
+}
+# ✓
+# test to see why the Mapping fuction doesn't work. 
+# log version looks good
+setEdgeWidthsMapping <- function (table.column="Weight", factor=1.2, log=TRUE)	{
+    loadTableData(edgevalues, table = 'edge', table.key.column = 'SUID')
+    edgevalues <- getTableColumns('edge',c('name','Weight'))
+    edgevalues['Weight']<-abs(edgevalues['Weight'])
+    edgevalues['Weight']<-lapply(edgevalues['Weight'], function(x) x * 5)
+    #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+    if (log==FALSE) {
+        line.widths <- factor*abs(as.numeric(edgevalues$Weight))
+    }
+    if (log==TRUE) {
+        line.widths <- log(abs(edgevalues$Weight)) + factor - min(log(abs(edgevalues$Weight)))
+    }
+    edgevalues['Weight'] <- line.widths
+    names(edgevalues)<-c('Width')
+    setEdgeLineWidthMapping('Width', mapping.type = 'passthrough', style.name = 'default')
+    #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+    # Not working:?
+    setEdgeLineWidthMapping("Weight", table.column.values=edgevalues$Weight, mapping.type = "p", widths=line.widths, default.width=1.2) 
+    # for testing:
+    # return(data.frame(edgevalues$Weight, line.widths))
+}
+# 
+# This function sets node default settings
+nodeDprops.RCy32 <- function() {
+    #setBackgroundColorDefault("#949494") # grey 58
+    setNodeShapeDefault( "ELLIPSE")
+    setNodeColorDefault( '#F0FFFF') # azure1
+    setNodeSizeDefault( 100) # for grey non-data nodes
+    setNodeFontSizeDefault( 22)
+    setNodeLabelColorDefault( '#000000')  # black
+    setNodeBorderWidthDefault( 1.8)
+    setNodeBorderColorDefault( '#888888')  # gray 
+    molclasses <- c("unknown", "receptor tyrosine kinase",  "SH2 protein", "SH2-SH3 protein", "SH3 protein", "tyrosine kinase",  "SRC-family kinase",   "kinase", "phosphatase", "transcription factor", "RNA binding protein")
+    #  NOTE getNodeShapes(cy) returns node shapes in random order!  Define manually 
+    #	*12 for RCy2; 9 for RCy3
+    # there are now 24 nodeType classes
+    nodeshapes <- c("ELLIPSE","ROUND_RECTANGLE", "VEE", "VEE", "TRIANGLE", "HEXAGON", "DIAMOND", "OCTAGON", "OCTAGON", "PARALLELOGRAM", "RECTANGLE")
+    setNodeSelectionColorDefault(  "#CC00FF") 
+    setNodeShapeMapping ("nodeType", molclasses, nodeshapes, default.shape="ELLIPSE")
+    setNodeBorderWidthMapping("nodeType", c("deacetylase","acetyltransferase","demethylase","methyltransferase","membrane protein", "receptor tyrosine kinase", "G protein-coupled receptor", "SRC-family kinase", "tyrosine kinase", "kinase", "phosphatase"), widths=c(4,12,4,12,8,16,16,12,12,12,14), 'd',default.width=4)
+    cf <- getTableColumns('node')
+    if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
+        setNodeShapeBypass(cf[grep("SH2", cf$Domains) %w/o% which(cf$nodeType %in% molclasses), 1], nodeshapes[3])} 
+    if (length(cf[grep("RNA", cf$nodeType), 1])>0) {
+        setNodeShapeBypass(cf[grep("RNA", cf$nodeType), 1], nodeshapes[11])}
+    if (length(cf[grep("transcription", cf$nodeType), 1])>0) {
+        setNodeShapeBypass(cf[grep("transcription", cf$nodeType), 1], nodeshapes[10])}
+    if (length(cf[grep("acetyl", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("acetyl", cf$nodeType), 1], "#FF8C00")} # darkorange
+    if (length(cf[grep("methyl", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("methyl", cf$nodeType), 1], "#005CE6")} # blue
+    if (length(cf[grep("membrane", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("membrane", cf$nodeType), 1], "#6600CC") # purple
+        setNodeShapeBypass(cf[grep("membrane", cf$nodeType), 1], nodeshapes[2])} 
+    if (length(cf[grep("kinase", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("kinase", cf$nodeType), 1], "#EE0000")} # red2
+    if (length(cf[grep("phosphatase", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("phosphatase", cf$nodeType), 1], "#FFEC8B")} # lightgoldenrod1
+    if (length(cf[grep("receptor", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("receptor", cf$nodeType), 1], "#BF3EFF") # darkorchid1
+        setNodeShapeBypass(cf[grep("receptor", cf$nodeType), 1], nodeshapes[2])} 
+    if (length(cf[grep("TM", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("TM", cf$Domains), 1], "#6600CC") # purple
+        setNodeShapeBypass(cf[grep("TM", cf$Domains), 1], nodeshapes[2])}   
+}
+# ✓
+
+# Ratio props
+ratioProps.RCy32 <- function (nodefile, plotcol="Total") {
+    if(!(plotcol %in% getTableColumnNames('node'))){
+        print (getTableColumnNames('node'))
+        cat("\n","\n","\t", "Which attribute will set node size and color?")
+        plotcol <- as.character(readLines(con = stdin(), n = 1))
+    }
+    limits <- range(nodefile[, plotcol])
+    node.sizes     = c (135, 130, 108, 75, 35, 75, 108, 130, 135)
+    #	RATIO is plotted
+    #	Blue is negative: Yellow positive, Green in middle
+    #		
+    size.control.points = c (-100.0, -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+    color.control.points = c (-100.0, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+    if(limits[1] < min(size.control.points)) {
+        size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+        color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+    }
+    if(limits[2] > max(size.control.points)) {
+        size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, limits[2])
+        color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, limits[2]+1)
+    }
+    ratio.colors = c ('#0099FF', '#007FFF','#00BFFF', '#00CCFF', '#00FFFF', '#00EE00', '#FFFF7E', '#FFFF00', '#FFE600', '#FFD700', '#FFCC00')
+    setNodeColorMapping (names(nodefile[plotcol]), color.control.points, ratio.colors, 'c')
+    lockNodeDimensions('TRUE')
+    setNodeSizeMapping (names(nodefile[plotcol]), size.control.points, node.sizes, 'c')
+    setNodeSelectionColorDefault ( "#CC00FF") 
+}
+# ✓
+# Another function to sent node size and color to match ratio data. Main difference between this and above is that this one uses the Cytoscape table. 
+setNodeColorToRatios <- function(plotcol){
+    cf <- getTableColumns('node')
+    if(!(plotcol %in% getTableColumnNames('node'))){
+        print (getTableColumnNames('node'))
+        cat("\n","\n","\t", "Which attribute will set node size and color?")
+        plotcol <- as.character(readLines(con = stdin(), n = 1))
+    }
+    limits <- range(cf[, plotcol])
+    node.sizes     = c (135, 130, 108, 75, 35, 75, 108, 130, 135)
+    #	RATIO is plotted
+    #	Blue is negative: Yellow positive, Green in middle
+    #		
+    size.control.points = c (-100.0, -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+    color.control.points = c (-100.0, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+    if(limits[1] < min(size.control.points)) {
+        size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+        color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+    }
+    if(limits[2] > max(size.control.points)) {
+        size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, limits[2])
+        color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, limits[2]+1)
+    }
+    ratio.colors = c ('#0099FF', '#007FFF','#00BFFF', '#00CCFF', '#00FFFF', '#00EE00', '#FFFF7E', '#FFFF00', '#FFE600', '#FFD700', '#FFCC00')
+    setNodeColorMapping (names(cf[plotcol]), color.control.points, ratio.colors, 'c')
+    lockNodeDimensions('TRUE')
+    setNodeSizeMapping (names(cf[plotcol]), size.control.points, node.sizes, 'c')
+    setNodeSelectionColorDefault ( "#CC00FF") 
+}
+# Intensity props
+intensityprops.RCy32 <- function (nodefile, plotcol="Total.Phosphorylation") {
+    if(!(plotcol %in% getTableColumnNames('node'))){
+        print (getTableColumnNames('node'))
+        cat("\n","\n","\t", "Which attribute will set node size and color?")
+        plotcol <- as.character(readLines(con = stdin(), n = 1))
+    }
+    setVisualStyle ("default")
+    # print (getTableColumnNames ())
+    node.sizes     = c (135, 130, 108, 75, 35, 75, 108, 130, 135)
+    Intensity.Values <- nodefile[, plotcol]  # set to intensity or normalized intensity
+    maxint <- max(Intensity.Values, na.rm=TRUE) 
+    minint <- min(Intensity.Values, na.rm=TRUE)
+    icolors <- c('#0099FF', '#007FFF','#00BFFF', '#00CCFF', '#00FFFF', '#FFFFFF', '#FFFF7E', '#FFFF00', '#FFE600', '#FFD700', '#FFCC00')
+    #  Some Mappings to set the color and size depending on the values of intensity
+    if (maxint>=abs(minint)) {
+        color.control.points <- c(-(maxint+1), -(maxint/5), -(maxint/10), -(maxint*0.045), 0.0, (maxint*0.045), (maxint/10), (maxint/5), (maxint+1))
+        setNodeColorMapping (names(nodefile[plotcol]),  color.control.points, icolors) 
+        size.control.points = c (-(maxint+1), -(maxint*0.3), -(maxint/10), 0.0, (maxint/10), (maxint*0.3), (maxint+1))
+    }
+    if (maxint<abs(minint)) {
+        color.control.points <- c((minint-1), (minint/5), (minint/10), (minint*0.045), 0.0, -(minint*0.045), -(minint/10), -(minint/5), -(minint-1))
+        setNodeColorMapping (names(nodefile[plotcol]), color.control.points, icolors) 
+        size.control.points = c ((minint-1), (minint*0.3), (minint/10), 0.0, -(minint/10), -(minint*0.3), abs(minint-1))
+    }
+    setNodeSizeMapping (names(nodefile[plotcol]), size.control.points, node.sizes)
+}
+# ✓
+# Function to retrive edge names in Cytoscape style from the edge data file. 
+getCyEdgeNames.RCy32 <- function(edgefile) {
+     	cyedges <- mapply(paste, edgefile $source, " (", edgefile $interaction, ") ", edgefile $target, sep="")
+     	return(cyedges)
+     }
+# ✓
+
+# Functions to extract peptide (PTM) names from edge file, and gene names from peptide (PTM) edgefile
+extract.peptides.RCy32 <- function(nodename, edgefile=pepnet.edges) {
+    peps.1 <- edgefile$source[grep(nodename, edgefile$source, fixed=TRUE)]
+    peps.2 <- edgefile$target[grep(nodename, edgefile$target, fixed=TRUE)]
+    return(as.character(unique(c(peps.1, peps.2))))
+}
+extract.gene.names.RCy3 <- function (peptide.edgefile)	{
+    peps <- c(peptide.edgefile[,1], peptide.edgefile[,2])
+    genes <- unique(sapply(peps,  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
+    return(genes) }
+#  
+
+remove.autophos.RCy3 <-    function(edgefile)	{
+        auto <- which (as.character(edgefile$source) == as.character(edgefile$target))
+        if (length(auto) > 0) {
+            newedgefile <- edgefile[-auto,] } else newedgefile <- edgefile
+            return (newedgefile)	
+}
+# Function to find all shortest paths in the network between two nodes where
+#   nodepair = c("node1", "node2")
+connectNodes.all.RCy3 <- function(nodepair, ig.graph=NULL, edgefile, newgraph=FALSE)	{
+    if (newgraph==TRUE) {
+        ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
+    sp <- all_shortest_paths(graph=ig.graph, from=nodepair[1], to=nodepair[2], mode="all")
+    path.nodeslist <-  unique(lapply(sp[[1]], names))
+    edges.list <- lapply(path.nodeslist, filter.edges.0.RCy3, edge.file=edgefile)
+    path.edges <- unique(remove.autophos(ldply(edges.list)))
+    return(path.edges)
+}
+# ✓
+connectNodes.all.RCy3.exclude <- function(nodepair, ig.graph=NULL, edgefile, newgraph=FALSE, exclude=NULL)	{
+    if (newgraph==TRUE) {
+        ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
+    if(length(exclude) > 0) {
+        for(i in 1:length(exclude)) {
+            if(exclude[i] %in% edgefile$source) {
+                edgefile <- edgefile[-which(edgefile$source==exclude[i]),]}
+            if(exclude[i] %in% edgefile$target) {
+                edgefile <- edgefile[-which(edgefile$target==exclude[i]),] }
+        }
+        ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
+    sp <- all_shortest_paths(graph=ig.graph, from=nodepair[1], to=nodepair[2], mode="all")
+    path.nodeslist <-  unique(lapply(sp[[1]], names))
+    edges.list <- lapply(path.nodeslist, filter.edges.0.RCy3, edge.file=edgefile)
+    path.edges <- unique(remove.autophos(ldply(edges.list)))
+    return(path.edges)
+}
+# ✓
+
+# From Alex Pico
+createGroupByColumn <- function(group.name, column=NULL, value=NULL, 
+                    network=NULL, base.url=.defaultBaseUrl) {
+    net.suid <- getNetworkSuid(network,base.url)
+    commandsPOST(paste0('group create groupName="',group.name,'"',
+                        ' nodeList="',column,'":"',value,'"',
+                        ' network="SUID:',net.suid,'"'),
+                 base.url = base.url)
+}
+# From Alex Pico
+# Alt function to just create the list of nodenames
+collect.nodenames <- function() {
+    nodedata <- getTableColumns("node", columns = c("id", "Gene.Name", "parent", "Node.ID"))
+    nodedata[grep("gene", nodedata$Node.ID), "id"]
+}
+# Use: nodenames<-collect.nodenames()
+# Alex's revised function to collapse all or selective nodes
+collapse.CCCN.nodes <- function(nodenames=NULL) {
+    nodedata <- getTableColumns("node", columns = c("id", "Gene.Name", "parent", "Node.ID"))
+    genes <- nodedata[grep("gene", nodedata$Node.ID), "id"]
+    if (length(nodenames) > 0) {
+        genes <- nodenames
+    } 
+    sapply(genes, function(x) createGroupByColumn(x, column="Gene.Name", value=x))
+    collapseGroup(genes)
+}
+#------------------------------------------------------------
+# Alex Pico writes: Try to avoid using Bypasses whenever possible. They are slow; they are not saved with a style; they stick to a particular network view. I only recommend them for a handful of things that you really must override. But you can almost always simply create a new column and make a mapping instead. 
+setNodeMapping <- function(cf) {
+    setBackgroundColorDefault("#949494") # grey 58
+    setNodeShapeDefault("ELLIPSE")
+    setNodeColorDefault("#F0FFFF") # azure1
+    setNodeSizeDefault(100) # for grey non-data nodes
+    setNodeFontSizeDefault( 22)
+    setNodeLabelColorDefault("#000000")  # black
+    setNodeBorderWidthDefault( 1.8)
+    setNodeBorderColorDefault("#888888")  # gray 
+    molclasses <- c("unknown", "receptor tyrosine kinase",  "SH2 protein", "SH2-SH3 protein", "SH3 protein", "tyrosine kinase",  "SRC-family kinase",   "kinase", "phosphatase", "transcription factor", "RNA binding protein")
+    #  NOTE getNodeShapes(cy) returns node shapes in random order!  Define manually 
+    #	*12 for RCy2; 9 for RCy3
+    # there are now 24 nodeType classes
+    nodeshapes <- c("ELLIPSE","ROUND_RECTANGLE", "VEE", "VEE", "TRIANGLE", "HEXAGON", "DIAMOND", "OCTAGON", "OCTAGON", "PARALLELOGRAM", "RECTANGLE")
+    setNodeSelectionColorDefault(  "#CC00FF") 
+    setNodeShapeMapping ("nodeType", molclasses, nodeshapes, default.shape="ELLIPSE")
+    setNodeBorderWidthMapping("nodeType", c("deacetylase","acetyltransferase","demethylase","methyltransferase","membrane protein", "receptor tyrosine kinase", "G protein-coupled receptor", "SRC-family kinase", "tyrosine kinase", "kinase", "phosphatase"), widths=c(4,12,4,12,8,16,16,12,12,12,14), 'd',default.width=4)
+    if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
+        setNodeShapeBypass(cf[grep("SH2", cf$Domains) %w/o% which(cf$nodeType %in% molclasses), 1], nodeshapes[3])} 
+    if (length(cf[grep("RNA", cf$nodeType), 1])>0) {
+        setNodeShapeBypass(cf[grep("RNA", cf$nodeType), 1], nodeshapes[11])}
+    if (length(cf[grep("transcription", cf$nodeType), 1])>0) {
+        setNodeShapeBypass(cf[grep("transcription", cf$nodeType), 1], nodeshapes[10])}
+    if (length(cf[grep("acetyl", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("acetyl", cf$nodeType), 1], "#FF8C00")} # darkorange
+    if (length(cf[grep("methyl", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("methyl", cf$nodeType), 1], "#005CE6")} # blue
+    if (length(cf[grep("membrane", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("membrane", cf$nodeType), 1], "#6600CC") # purple
+        setNodeShapeBypass(cf[grep("membrane", cf$nodeType), 1], nodeshapes[2])} 
+    if (length(cf[grep("kinase", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("kinase", cf$nodeType), 1], "#EE0000")} # red2
+    if (length(cf[grep("phosphatase", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("phosphatase", cf$nodeType), 1], "#FFEC8B")} # lightgoldenrod1
+    if (length(cf[grep("receptor", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("receptor", cf$nodeType), 1], "#BF3EFF") # darkorchid1
+        setNodeShapeBypass(cf[grep("receptor", cf$nodeType), 1], nodeshapes[2])} 
+    if (length(cf[grep("TM", cf$nodeType), 1])>0) {
+        setNodeBorderColorBypass(cf[grep("TM", cf$Domains), 1], "#6600CC") # purple
+        setNodeShapeBypass(cf[grep("TM", cf$Domains), 1], nodeshapes[2])} 
+}
+# Use: setNodeMapping(gz.cf)
+# Function to set edge appearance
+setCorrEdgeAppearance <- function(edgefile) {
+    setEdgeLineWidthDefault (3)
+    setEdgeColorDefault ( "#FFFFFF")  # white
+    edgevalues <- getTableColumns('edge',c('Weight'))
+    edgevalues['Weight']<-abs(edgevalues['Weight'])
+    edgevalues['Weight']<-lapply(edgevalues['Weight'], function(x) log2(x * 10) + 2)
+    #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+    names(edgevalues)<-c('Width')
+    loadTableData(edgevalues, table = 'edge', table.key.column = 'SUID')
+    setEdgeLineWidthMapping('Width', mapping.type = 'passthrough', style.name = 'default')
+    setEdgeSelectionColorDefault ( "#FF69B4")  # hotpink
+    edgecolors <- col2hex(c("red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2"))
+    edgecolorsplus <- col2hex(c("deeppink", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2"))
+    #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+    edgeTypes <- c("pp", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains") 
+    # 22 edgeTypes            
+    myarrows <- c ('Arrow', 'Arrow', 'Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None')
+    setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+    matchArrowColorToEdge('TRUE')
+    setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")  
+    edgeDprops.RCy32()
+}   
+# Use:  setCorrEdgeAppearance(gzallt.network)     
+#       Note: for merged edges, need a scheme to color edges based on phosphorylation, physical interactions, etc. with merged names...
+# Function to make a file for nodes
+make.anynetcf <- function(edge.df, data.file, geneatts, ptmcccnatts, func.key=func.key, use=c("total", "mean", "median", "max")) {
+    cf.nodes <- unique(c(as.character(edge.df[,1]), as.character(edge.df[,2])))
+    cf.data <- data.frame(data.file[rownames(data.file) %in% cf.nodes,])
+    if (any(grepl("Total", names(cf.data)))) {
+        cf.data <- cf.data[, -grep("Total",names(cf.data))] }	
+    cf <- data.frame(Peptide.Name=rownames(cf.data))
+    cf$Peptide.Name <- as.character(cf$Peptide.Name)
+    cf$Gene.Name <- sapply(cf$Peptide.Name,  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1])
+    if(identical(cf$Peptide.Name, cf$Gene.Name)) {genenodes=TRUE} else {genenodes=FALSE}
+    # node classification: 
+    cf.functions <- func.key[func.key$Gene.Name %in% cf$Gene.Name,]
+    cf <- plyr::join(cf, cf.functions, by="Gene.Name", type="left")
+    # Fix any genes not in func.key
+    if(any(is.na(cf))) {cf[is.na(cf)] <- "undefined"}
+    # cfheadcols <- dim(cf)[2]
+    # quantitiative data:
+    data.class <- sapply (cf.data, class)
+    #	
+    if (any(use=="total")) {
+        cf.Total <- rowSums(cf.data[,data.class=="numeric"], na.rm=TRUE)
+        cf.Total[is.na(cf.Total)] <- 0 
+        cf$Total <- as.numeric(cf.Total)	}
+    if (any(use=="mean")) {
+        cf.Mean <- rowMeans(cf.data[,data.class=="numeric"], na.rm=TRUE)
+        cf.Mean[is.na(cf.Mean)] <- 0 
+        cf$Mean <- as.numeric(cf.Mean)	}
+    if (any(use=="median"))	{
+        cf.Median	<- apply(cf.data[,data.class=="numeric"], 1, median, na.rm=TRUE)
+        cf.Median[is.na(cf.Median)] <- 0 
+        cf$Median <- as.numeric(cf.Median)	}
+    if (any(use=="max"))	{
+        cf.Max	<- apply(cf.data[,data.class=="numeric"], 1, function(x) {
+            if (all(is.na(x))) return (NA) else {return (unique(as.numeric((x[which(abs(x)==max.na(abs(x)))]))))}				})
+        if(class(cf.Max)=="list") {
+            cf.Mean <- rowMeans(cf.data[,data.class=="numeric"], na.rm=TRUE)
+            dupmeans <- cf.Mean[which(sapply(cf.Max, length)==2)]
+            dupmax <- cf.Max[which(sapply(cf.Max, length)==2)]
+            for (i in 1:length(dupmax))		{
+                if(dupmeans[[i]]>=0) dupmax[[i]] <- max.na(dupmax[[i]])
+                if(dupmeans[[i]]<0) dupmax[[i]] <- min.na(dupmax[[i]])
+            } 
+            cf.Max[which(sapply(cf.Max, length)==2)] <- dupmax
+            cf.Max <- unlist(cf.Max)
+        }	
+        cf.Max[is.na(cf.Max)] <- 0 
+        cf$Max <- as.numeric(cf.Max)	}
+    if (genenodes==TRUE)  {
+        cf=cf[,names(cf) %w/o% "Peptide.Name"]
+        cf$No.Samples <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "No.Samples"]
+        cf$No.Modifications <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "No.Modifications"]
+        cf$ppidegree <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "ppidegree"]
+        cf$ppibetween <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "ppibetween"]
+        cf$norm.ppibetween <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "norm.ppibetween"]
+    }
+    if (genenodes==FALSE) {
+        cf$Node.ID <- "gene" 
+        # split between gene and peptide nodes
+        cf[which(cf$Peptide.Name!=cf$Gene.Name), "Node.ID"] <- "peptide"	
+        cf.list <- dlply(cf, .(Node.ID))
+        cf.genes <- cf.list$gene
+        cf.genes$parent <- ""
+        if(length(cf.genes)>0){
+            cf.genes$No.Samples <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "No.Samples"]
+            cf.genes$No.Modifications <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "No.Modifications"]
+            cf.genes$ppidegree <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "ppidegree"]
+            cf.genes$ppibetween <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "ppibetween"]
+            cf.genes$norm.ppibetween <- geneatts[geneatts $Gene.Name %in% cf$Gene.Name, "norm.ppibetween"]}
+        cf.peptide <- cf.list$peptide
+        cf.peptide$parent <- cf.peptide$Gene.Name
+        cf.peptide$No.Samples <- ptmcccnatts[ptmcccnatts $Peptide.Name %in% cf.peptide$Peptide.Name, "No.Samples"]
+        cf.peptide$No.Modifications <- 1		
+        cf.peptide$ppidegree <- 0
+        cf.peptide$ppibetween <- 0
+        cf.peptide$pepdegree <- ptmcccnatts[ptmcccnatts $Peptide.Name %in% cf.peptide$Peptide.Name, "cccndegree"]
+        cf.peptide$pepbetween <- ptmcccnatts[ptmcccnatts $Peptide.Name %in% cf.peptide$Peptide.Name, "cccnbetween"]
+        # Node names need to be in first column
+        # This is Peptide.Name for peptide-containing cfs
+        if(length(dim(cf.genes[[1]])[1])==0) {cf.genes <- NULL}
+        cf <-  rbind(cf.genes, cf.peptide) }
+    if(any(is.na(cf))) {cf[is.na(cf)] <- 0}
+    return(cf)
+}
+# Function to harmonize gene and peptide data for networks
+harmonize_cfs3 <- function(pepcf, genecf) {
+    genecf.new <- data.frame(Peptide.Name= genecf$Gene.Name, genecf)
+    genecf.new$parent <- ""
+    genecf.new$Node.ID <- "gene"
+    pepcf.new <- pepcf
+    pepcf.new$parent <- pepcf.new$Gene.Name
+    cf <- merge(genecf.new, pepcf.new, all=TRUE)
+    names(cf)[1] <- "Node"
+    if(any(is.na(cf))) {cf[is.na(cf)] <- 0}
+    return(cf)
+}
+# Use function to calculate betweenness, degree
+make.netatts <- function(ig.network, ig.unfiltered, keyfile, ppinet=FALSE){
+    cccndegree  <- igraph::degree(ig.network, mode="all", loops=F, normalized=F)
+    cccnbetween <- igraph::betweenness(ig.network)
+    net.df <- data.frame(cccndegree, cccnbetween)            
+    net.df$Peptide.Name <- rownames(net.df) 
+    net.df <- net.df[,c(3,1,2)]
+    if(ppinet==TRUE){
+        names(net.df) <- c("Gene.Name", "ppidegree", "ppibetween")
+        allppibetween <- betweenness(ig.unfiltered)
+        allppibetween <- allppibetween[sort(names(allppibetween))]
+        allbetween.df <- data.frame(allppibetween)
+        allbetween.df$Gene.Name <- rownames(allbetween.df)
+        net.df <- merge(net.df, allbetween.df, all=TRUE)
+        net.df$norm.ppibetween <- net.df$ppibetween/net.df$allppibetween}
+    netatts.df <- merge(keyfile, net.df, all=TRUE)
+    netatts.df[is.na(netatts.df)] <- 0
+    return(netatts.df)
+}
+#
+graph.cfn.cccn <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE) {
+    genenames <- extract.gene.names(edgefile)
+    if(pruned==TRUE) {gz.cf <- gz.cf.pruned}
+    if (gz==TRUE) {
+        cccn <- gzallt.cccnplus
+        cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+    }
+    if (ld==TRUE) {
+        cccn <- ld.cccnplus
+        cccn.cf <- ld.cf[ld.cf$Gene.Name %in% genenames,]
+    }
+    if (only.cfn==TRUE) {
+        cfn.cf <- cccn.cf[which(cccn.cf$Node.ID=="gene"),]
+        gene.suid <- createNetworkFromDataFrames(cfn.cf, edgefile, title=paste("CFN", (getNetworkCount()+1)), collection = "Interactions")
+        setNodeMapping(cfn.cf)
+        setCorrEdgeAppearance(edgefile)     
+    }
+    if (only.cfn==FALSE) {
+        netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+        # make gene-peptide edges
+        net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+        # remove gene-gene interactions
+        net.gpe <- remove.autophos.RCy3(net.gpe)
+        ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+        cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+        if (gz==TRUE) {all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+        if (ld==TRUE) {all.cf <- ld.cf[ld.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+        cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title=paste("CFN plus CCCN", (getNetworkCount()+1)), collection = "Interactions") 
+        setNodeMapping(cccn.cf)
+        setCorrEdgeAppearance(cfn.cccn.edges) 
+    }
+    layoutNetwork("genemania-force-directed") 
+    if (only.cfn==FALSE) return(cfn.cccn.edges)
+}
+all.ratio.styles <- function(ratiocols=NULL) {
+    nodevalues <- getTableColumns('node')
+    if(length(ratiocols)==0) {
+        ratiocolnames <- names(nodevalues)[grep("atio", names(nodevalues))] %w/o% "No.Modifications"} else {ratiocolnames <- names(nodevalues)[ratiocols]}
+    for (i in 1:length(ratiocolnames)){ 
+        plotcol <- ratiocolnames[i]
+        style.name = paste(ratiocolnames[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+    }
+}  
+
+#--------\
+# - - - - - - - - - - - - 
+Test.RCy32 <- function(){
+    print("RCy3 2.N.N Functions Loaded!")
+}
+# - - - - - - - - - - - - 
+Test.RCy32()
+
 ```
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -71,9 +71,63 @@ library(tidyverse)
     ## x dplyr::summarise() masks plyr::summarise()
     ## x dplyr::summarize() masks plyr::summarize()
 
-## Including Plots
+``` r
+# Focus on intersect of all clusters from Euclid, Spearman, and SED
+list.common <- function (list1, list2, keeplength=3) {
+  parse <- lapply(list1, function (y) sapply(list2,  function(x) intersect(x, y)))
+  dims <- lapply(parse, function (x) sapply(x, length))
+  keep <- which(sapply(dims, sum) > keeplength)
+  pare <- parse[keep]
+  prune <- lapply(pare, function (y) return (y[which(sapply(y, function (x) which(length(x) > keeplength )) > 0)]))
+  newlist <- unlist(prune, recursive=FALSE)
+  return(newlist)
+}
 
-This is Katia’s version
+# Define clusters from t-SNE embeddings
+make.clusterlist <- function(tsnedata, toolong, tbl.sc, title = "") {
+  tsne.span2 <- spantree(dist(tsnedata), toolong=toolong)
+  tsnedata.disc2 <-  distconnected(dist(tsnedata), toolong = toolong, trace = FALSE)  # test
+  cat ("threshold dissimilarity", toolong, "\n", max(tsnedata.disc2), " groups","\n")
+  p1.pryr %<a-% {
+    par(mar=c(1,1,1,1))
+    ordiplot(tsnedata, main = title)
+    ordihull(tsnedata, tsnedata.disc2, col="red", lwd=2)
+  }
+  # Find groups
+  tsnedata.span2.df <- data.frame(rownames(tbl.sc))
+  names(tsnedata.span2.df) <- "Peptide.Name"
+  tsnedata.span2.df$group <- tsnedata.disc2
+  tsnedata.span2.list <- dlply(tsnedata.span2.df, .(group))  # GROUP LIST  !
+  return(list(tsnedata.list = tsnedata.span2.list, p1.pryr))    
+}
+
+make.adj.mat <- function(list.element)      {
+  list.el.mat <- matrix(1, nrow=length(list.element), ncol=length(list.element))
+  rownames(list.el.mat) <- list.element
+  colnames(list.el.mat) <- list.element
+  return(list.el.mat)
+}
+extract.genes.from.clist <- function (clusterlist.element) {
+  element <- clusterlist.element[1]
+  genes <- unique(sapply(as.character(element$Peptide.Name),  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
+  return(genes)
+}
+extract.peps.from.clist <- function (clusterlist.element) {
+  element <- clusterlist.element[1]
+  return(as.character(element$Peptide.Name))
+}
+zero.to.NA <- function(df) {
+  zer0 <- which(df==0, arr.ind = TRUE)
+  cfNA <- as.matrix(df)
+  cfNA[zer0] <- NA
+  cfNA <- data.frame(cfNA)
+  return(cfNA)
+}
+```
+
+## Dissimilarity and distance calculations
+
+This is Katia’s version:
 
 Katia’s experimental functions to generate embeddings
 
@@ -326,5 +380,5 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
   
   return(gzgenecccn.edges = gzgenecccn.edges)
   
-}#end of function that creates adjecency matrix
+}#end of function that creates adjacency matrix
 ```

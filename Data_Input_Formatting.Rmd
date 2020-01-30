@@ -50,8 +50,15 @@ When you click the **Knit** button a document will be generated that includes bo
 	max.na <- function(x) max(x, na.rm=TRUE)
 	min.na <- function(x) min(x, na.rm=TRUE)
 	 sd.na <- function(x) sd(x, na.rm=TRUE)
-outersect <- function(x,y){sort(c(setdiff(x,y), setdiff(y,x)))}
-
+  outersect <- function(x,y){sort(c(setdiff(x,y), setdiff(y,x)))}
+  
+zero.to.NA <- function(df) {
+  zer0 <- which(df==0, arr.ind = TRUE)
+  cfNA <- as.matrix(df)
+  cfNA[zer0] <- NA
+  cfNA <- data.frame(cfNA)
+  return(cfNA)
+}
 ```
 
 ```{r functions to import data and generate "Peptide.Name"}

@@ -31,8 +31,6 @@ list.common <- function (list1, list2, keeplength=3) {
   return(newlist)
 }
 
-outersect <- function(x,y){sort(c(setdiff(x,y), setdiff(y,x)))}
-
 # Define clusters from t-SNE embeddings
 make.clusterlist <- function(tsnedata, toolong, tbl.sc, title = "")	{
   tsne.span2 <- spantree(dist(tsnedata), toolong=toolong)
@@ -377,7 +375,7 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
   
   return(gzgenecccn.edges = gzgenecccn.edges)
   
-}#end of function that creates adjecency matrix
+}#end of function that creates adjacency matrix
 
 
 ```
