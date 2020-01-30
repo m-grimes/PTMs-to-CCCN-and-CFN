@@ -27,6 +27,7 @@ BiocManager::install()
 	#•	stringr, for strings.
 	#•	forcats, for factors.	
 library(plyr)
+require(gplots)
 library(tidyverse)
 ```
 
@@ -37,9 +38,39 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 ```{r utility functions}
 
+	"%w/o%" <- function(x, y) x[!x %in% y] #--  x without y
+	without <- function(x, y) x[!x %in% y] #--  x without y
+	nmissing <- function(x) sum(is.na(x))
+	filled <- function (x) {length(x) - nmissing(x)}
+	fractNA <- function(df) {
+	     result <- nmissing(df)/(dim(df)[1]*dim(df)[2])
+	     return(result)
+	}
+	mean.na <- function(x) mean(x, na.rm=TRUE)
+	max.na <- function(x) max(x, na.rm=TRUE)
+	min.na <- function(x) min(x, na.rm=TRUE)
+	 sd.na <- function(x) sd(x, na.rm=TRUE)
+outersect <- function(x,y){sort(c(setdiff(x,y), setdiff(y,x)))}
+
 ```
 
 ```{r functions to import data and generate "Peptide.Name"}
+# requires data table with rownames 
+clust.data.from.vec <- function(vec, tbl) {
+	if(class(vec)=="list") {vec <- unlist(vec)}
+	at <- tbl[vec,]
+		acol <- names(at[,which(numcolwise(filled)(at) != 0)])
+		if(length(acol)  == 1) {
+			ats <- data.frame(cbind (rownames(at), as.numeric(at[, acol])))
+			names(ats) <- c("Gene.Name", acol)
+			}
+		if(length(acol) >= 2) {
+			ats <- cbind(rownames(at), at[, acol])
+			names(ats)[1] <- "Gene.Name" }
+		clust.data <- ats
+		return (clust.data)	}
+	# end clust.data.from.vec
+#+
 # A general version of get.gene.name; 
 # use with sapply	
 # Fixes some common misnamed genes and the problem that Excel turns some gene names into dates.
@@ -54,15 +85,109 @@ get.gene <- function(cell) {
 			} 
 		}
 	 return(x[1]) }
+# Make peptide names using this function (revised to Karen's reformatting). 
+# Example :
+# tencellack.head$Peptide.Name <- mapply(name.peptide, genes=tencellack.head$LeadingGeneSymbols, sites= tencellack.head$Positions, modification="ack", aa=tencellack.head$Amino.acid)
+name.peptide <- function (genes, modification="p", sites, aa)	{
+  genes.v <- unlist(strsplit(genes, ";", fixed = TRUE))
+  sites.v <- unlist(strsplit(sites, ";", fixed = TRUE))
+  sites.v <- sapply(sites.v, function (x) paste (aa, x, sep=""))
+  Peptide.v <- as.character(noquote(paste(genes.v[1:length(genes.v)], modification, sites.v[1:length(sites.v)], sep=" ")))
+  Peptide <- paste(unique(Peptide.v), collapse="; ")
+  return(Peptide)
+}
 
 ```
 
-## Including Plots
+## Heatmap graphing functions
 
-You can also embed plots, for example:
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+
+```{r heatmap functions, echo=FALSE}
+#
+hclust2 <- function(z) hclust(z, method="single")
+#
+dist2 <- function(m) {
+	dm <- dist(m, method = "euclidean", diag = FALSE, upper = FALSE)
+		dm[is.na(dm)] <- 2*max(abs(dm), na.rm=TRUE)
+	return(dm)
+	}	
+		#
+deblandify <- function(data.file, limit) {
+	bigneg <- which(data.file<=-limit, arr.ind = TRUE)
+	bigpos <- which(data.file>=limit, arr.ind = TRUE)
+	data.file[bigneg] <-  -limit
+	data.file[bigpos] <-  limit
+	return(data.file)
+}
+
+graph.clust6d.l <- function(cluster.data.index) {
+	cluster.df <- data.frame(cluster.data.index)
+	if (any(grepl("Gene.Name", colnames(cluster.df)))) {
+		cluster.df	<- cluster.df[, -grep("Gene.Name", colnames(cluster.df))] }
+	if (ncol(cluster.df) < 2) {
+		cat ("\n","This is a single sample cluster!", "\n") 
+		return (cluster.df) } else {
+	cluster.m <- data.matrix(cluster.df)
+	#cluster.m[ is.nan (cluster.m) ] <- 0	
+	#cluster.m[ is.na (cluster.m) ] <- 0
+	rownames(cluster.m) <- rownames(cluster.df)
+	# take out order
+	cluster.mo <- cluster.m
+	# cluster.mo <- cluster.m[order(-as.vector(colwise(sum.na)(data.frame(t(cluster.m))))), order(-as.vector(numcolwise(sum.na)(data.frame(cluster.m))))]
+	 #rbyheatcolors <- colorRampPalette(colors=c('#0000FF',  '#FFFF00'), bias=0.25, space="rgb", interpolate = "spline")
+	 rbyheatcolors <- colorRampPalette(colors=c('#3333FF', '#FFFF00'), bias=0.25, space="rgb", interpolate = "linear")
+		# royal blue to yellow
+		palette(c(rbyheatcolors(500)))
+	dev.new()  # can resize manually
+ 	heatmap.2(cluster.mo, dendrogram="row", trace="none", symbreaks=TRUE, na.color="black", labRow=rownames(cluster.mo), labCol=colnames(cluster.mo), Rowv=TRUE, Colv=NA, distfun=dist2, hclustfun=hclust, scale="none", col=palette(), colsep=NULL, rowsep=NULL, sepwidth=c(0,0), revC=FALSE, keysize=0.85, density.info='histogram', cexRow = 1, cexCol = 1, denscol="green", main=names(cluster.data.index)[1], margins=c(14, 10)) 
+	return (cluster.mo) }
+	}
+# version without dendogram and no sorting
+graph.clust6nodnosort.l <- function(cluster.data.index) {
+     cluster.df <- data.frame(cluster.data.index[])
+     if (any(grepl("Gene.Name", colnames(cluster.df)))) {
+          cluster.df <- cluster.df[, -grep("Gene.Name", colnames(cluster.df))] }
+     if (ncol(cluster.df) < 2) {
+          cat ("\\n","This is a single sample cluster!", "\\n") 
+          return (cluster.df) } else {
+               cluster.m <- data.matrix(cluster.df)
+               #cluster.m[ is.nan (cluster.m) ] <- 0 
+               #cluster.m[ is.na (cluster.m) ] <- 0
+               rownames(cluster.m) <- rownames(cluster.df)
+               #  order alphabetically
+               cluster.mo <- cluster.m
+               # cluster.mo <- cluster.m[order(-as.vector(colwise(sum.na)(data.frame(t(cluster.m))))), order(-as.vector(numcolwise(sum.na)(data.frame(cluster.m))))]
+               #rbyheatcolors <- colorRampPalette(colors=c('#0000FF',  '#FFFF00'), bias=0.25, space="rgb", interpolate = "spline")
+               rbyheatcolors <- colorRampPalette(colors=c('#3333FF', '#FFFF00'), bias=0.25, space="rgb", interpolate = "linear")
+               # royal blue to yellow
+               palette(c(rbyheatcolors(500)))
+               dev.new()  # can resize manually
+               heatmap.2(cluster.mo, dendrogram="none", trace="none", symbreaks=TRUE, na.color="black", labRow=rownames(cluster.mo), labCol=colnames(cluster.mo), Rowv=FALSE, Colv=NA, distfun=dist2, hclustfun=hclust, scale="none", col=palette(), colsep=NULL, rowsep=NULL, sepwidth=c(0,0), revC=FALSE, keysize=0.85, density.info='histogram', cexRow = 1, cexCol = 1, denscol="green", main=names(cluster.data.index)[1], margins=c(14, 10)) 
+               return (cluster.mo) }
+}
+# Smaller font for tall graphs
+graph.clust6d.la <- function(cluster.data.index) {
+	cluster.df <- data.frame(cluster.data.index)
+	if (any(grepl("Gene.Name", colnames(cluster.df)))) {
+		cluster.df	<- cluster.df[, -grep("Gene.Name", colnames(cluster.df))] }
+	if (ncol(cluster.df) < 2) {
+		cat ("\n","This is a single sample cluster!", "\n") 
+		return (cluster.df) } else {
+	cluster.m <- data.matrix(cluster.df)
+	#cluster.m[ is.nan (cluster.m) ] <- 0	
+	#cluster.m[ is.na (cluster.m) ] <- 0
+	rownames(cluster.m) <- rownames(cluster.df)
+	# take out order
+	cluster.mo <- cluster.m
+	# cluster.mo <- cluster.m[order(-as.vector(colwise(sum.na)(data.frame(t(cluster.m))))), order(-as.vector(numcolwise(sum.na)(data.frame(cluster.m))))]
+	 #rbyheatcolors <- colorRampPalette(colors=c('#0000FF',  '#FFFF00'), bias=0.25, space="rgb", interpolate = "spline")
+	 rbyheatcolors <- colorRampPalette(colors=c('#3333FF', '#FFFF00'), bias=0.25, space="rgb", interpolate = "linear")
+		# royal blue to yellow
+		palette(c(rbyheatcolors(500)))
+	dev.new()  # can resize manually
+ 	heatmap.2(cluster.mo, dendrogram="row", trace="none", symbreaks=TRUE, na.color="black", labRow=rownames(cluster.mo), labCol=colnames(cluster.mo), Rowv=TRUE, Colv=NA, distfun=dist2, hclustfun=hclust, scale="none", col=palette(), colsep=NULL, rowsep=NULL, sepwidth=c(0,0), revC=FALSE, keysize=0.5, density.info='histogram', cexRow = 0.8, cexCol = 1, denscol="green", main=names(cluster.data.index)[1], margins=c(14, 10)) 
+	return (cluster.mo) }
+}
+
 ```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
