@@ -1,134 +1,83 @@
----
-title: "Dissimilarity Representation Calculations"
-author: "Mark Grimes, Ekaterina Smirnova"
-date: "1/30/2020"
-output: github_document
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
+Dissimilarity Representation Calculations
+================
+Mark Grimes, Ekaterina Smirnova
+1/30/2020
 
 ## R Markdown
 
-```{r packages}
+``` r
 require(rgl)
+```
+
+    ## Loading required package: rgl
+
+``` r
 require(Rtsne)
+```
+
+    ## Loading required package: Rtsne
+
+``` r
 require(vegan)
+```
+
+    ## Loading required package: vegan
+
+    ## Loading required package: permute
+
+    ## Loading required package: lattice
+
+    ## This is vegan 2.5-6
+
+``` r
 require(pryr)
+```
+
+    ## Loading required package: pryr
+
+    ## Registered S3 method overwritten by 'pryr':
+    ##   method      from
+    ##   print.bytes Rcpp
+
+``` r
 require(plyr)
+```
+
+    ## Loading required package: plyr
+
+``` r
 library(tidyverse)
 ```
-```{r utility functions}
-# Focus on intersect of all clusters from Euclid, Spearman, and SED
-list.common <- function (list1, list2, keeplength=3) {
-  parse <- lapply(list1, function (y) sapply(list2,  function(x) intersect(x, y)))
-  dims <- lapply(parse, function (x) sapply(x, length))
-  keep <- which(sapply(dims, sum) > keeplength)
-  pare <- parse[keep]
-  prune <- lapply(pare, function (y) return (y[which(sapply(y, function (x) which(length(x) > keeplength )) > 0)]))
-  newlist <- unlist(prune, recursive=FALSE)
-  return(newlist)
-}
 
-outersect <- function(x,y){sort(c(setdiff(x,y), setdiff(y,x)))}
+    ## ── Attaching packages ──────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
 
-# Define clusters from t-SNE embeddings
-make.clusterlist <- function(tsnedata, toolong, tbl.sc, title = "")	{
-  tsne.span2 <- spantree(dist(tsnedata), toolong=toolong)
-  tsnedata.disc2 <-  distconnected(dist(tsnedata), toolong = toolong, trace = FALSE)  # test
-  cat ("threshold dissimilarity", toolong, "\n", max(tsnedata.disc2), " groups","\n")
-  p1.pryr %<a-% {
-    par(mar=c(1,1,1,1))
-    ordiplot(tsnedata, main = title)
-    ordihull(tsnedata, tsnedata.disc2, col="red", lwd=2)
-  }
-  # Find groups
-  tsnedata.span2.df <- data.frame(rownames(tbl.sc))
-  names(tsnedata.span2.df) <- "Peptide.Name"
-  tsnedata.span2.df$group <- tsnedata.disc2
-  tsnedata.span2.list <- dlply(tsnedata.span2.df, .(group))  # GROUP LIST  !
-  return(list(tsnedata.list = tsnedata.span2.list, p1.pryr))	
-}
+    ## ✓ ggplot2 3.2.1     ✓ purrr   0.3.3
+    ## ✓ tibble  2.1.3     ✓ dplyr   0.8.3
+    ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
+    ## ✓ readr   1.3.1     ✓ forcats 0.4.0
 
-make.adj.mat <- function(list.element)		{
-  list.el.mat <- matrix(1, nrow=length(list.element), ncol=length(list.element))
-  rownames(list.el.mat) <- list.element
-  colnames(list.el.mat) <- list.element
-  return(list.el.mat)
-}
-extract.genes.from.clist <- function (clusterlist.element) {
-  element <- clusterlist.element[1]
-  genes <- unique(sapply(as.character(element$Peptide.Name),  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
-  return(genes)
-}
-extract.peps.from.clist <- function (clusterlist.element) {
-  element <- clusterlist.element[1]
-  return(as.character(element$Peptide.Name))
-}
-zero.to.NA <- function(df) {
-  zer0 <- which(df==0, arr.ind = TRUE)
-  cfNA <- as.matrix(df)
-  cfNA[zer0] <- NA
-  cfNA <- data.frame(cfNA)
-  return(cfNA)
-}
+    ## ── Conflicts ─────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## x dplyr::arrange()   masks plyr::arrange()
+    ## x purrr::compact()   masks plyr::compact()
+    ## x purrr::compose()   masks pryr::compose()
+    ## x dplyr::count()     masks plyr::count()
+    ## x dplyr::failwith()  masks plyr::failwith()
+    ## x dplyr::filter()    masks stats::filter()
+    ## x dplyr::id()        masks plyr::id()
+    ## x dplyr::lag()       masks stats::lag()
+    ## x dplyr::mutate()    masks plyr::mutate()
+    ## x purrr::partial()   masks pryr::partial()
+    ## x dplyr::rename()    masks plyr::rename()
+    ## x dplyr::summarise() masks plyr::summarise()
+    ## x dplyr::summarize() masks plyr::summarize()
 
-```
+## Including Plots
 
-## Dissimilarity and distance calculations
+This is Katia’s version
 
-This is Katia's version:
+Katia’s experimental functions to generate embeddings
 
-```{r correlation and dissimilarity, echo=FALSE}
-#function to 
-#(1) calculate correlation matrix on PTMs
-#(2) use  correlation matrix to construct tsne embeddings
-
-#input: ptm.data = gzdata - a data frame with PTMs in rows and samples in columns
-#dist.type: c("euclidean", "spearman.dissim", "sed")
-#cor.mat: - if method = "dissimilarity" user can provide spearman correlation matrix 
-#to avoid computing spearman correlation matrix twice
-
-calc.dist <- function(ptm.data, dist.type, cor.mat = list(spearman.mat = NULL, eucl.mat = NULL)){
-  
-  # set NA to two orders of magnitude higher than max distance
-  if(dist.type == "euclidean"){
-    eucl.mat = as.matrix (dist (ptm.data), method = "euclidean")
-    dist.mat = eucl.mat
-    dist.mat[is.na(dist.mat)] <- 100*max(dist.mat, na.rm=T)
-    cor.mat$eucl.mat = eucl.mat}
-  else if(dist.type == "spearman.dissim"){
-    spearman.mat <- cor(t(ptm.data), use = "pairwise.complete.obs", method = "spearman")
-    dist.mat <- 1 - abs(spearman.mat)
-    # set NA to two orders of magnitude higher than max distance
-    dist.mat[is.na(dist.mat)] <- 100*max(dist.mat, na.rm=T)
-    cor.mat$spearman.mat = spearman.mat
-  }
-  else if(dist.type == "sed"){
-    #combine Euclid and Spearman w/o taking absolute value.	
-    spearman.mat <- cor.mat$spearman.mat
-    eucl.mat <- cor.mat$eucl.mat
-    if(is.null(spearman.mat)){spearman.mat <- cor(t(ptm.data), use = "pairwise.complete.obs", method = "spearman")}
-    diss.noabs <- 1 - spearman.mat  
-    diss.noabs[is.na(diss.noabs)] <- 50*max(diss.noabs, na.rm=T) 
-    
-    if(is.null(eucl.mat)){eucl.mat = as.matrix (dist (ptm.data), method = "euclidean") }
-    
-    eucl.mat[is.na(eucl.mat)] <- 100*max(eucl.mat, na.rm=T)
-    eucl.mat.1 <- 100*eucl.mat/max(eucl.mat, na.rm=T)  # now max=100
-    # SED: combine Euclid and Spearman w/o taking absolute value.
-    dist.mat <- (eucl.mat.1 + diss.noabs)/2
-  }
-  
-  return(list(dist.mat = as.matrix(dist.mat), cor.mat =cor.mat))
-}
-
-```
-
-Katia's experimental functions to generate embeddings
-
-```{r clustering and creation of adjecency matrix}
+``` r
 #Utilize calc.dist function to perform tsne clustering
 calc.tsne <- function(ptm.data, plots_path_dir, dims = 3, perplexity = 15, theta = 0.25, 
                       check_duplicates = FALSE, pca=FALSE, toolong = 3.5, radius=0.76,
@@ -208,11 +157,11 @@ calc.tsne <- function(ptm.data, plots_path_dir, dims = 3, perplexity = 15, theta
   #and identify whether they should be broken further
   # note two large clusters that should be broken up
   #  Concatenate group list files
-  #		make group names unique
+  #     make group names unique
   #
   eucl.cluster <- ldply(eucl.cluster.list)[,2:3]
   spearman.cluster <- ldply(spearman.cluster.list)[,2:3]
-  sed.cluster <- ldply(sed.cluster.list)[,2:3]	# Further partition large groups
+  sed.cluster <- ldply(sed.cluster.list)[,2:3]  # Further partition large groups
   eucl.cluster$group <- paste(noquote(eucl.cluster$group), noquote("e"), sep="", collapse=NULL)
   spearman.cluster$group <- paste(noquote(spearman.cluster$group), noquote("s"), sep="", collapse=NULL)
   sed.cluster$group <- paste(noquote(sed.cluster$group), noquote("sed"), sep="", collapse=NULL)
@@ -305,7 +254,7 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
   #this is smaller than in the KarenGuolinData3.R file
   length(unique(gz.gene.cccn$Gene.Name))   # 1346 for first test
   # Use only upper triangle so correlations are not duplicated during the next step
-  gz.gene.cccn[lower.tri(gz.gene.cccn)] <- NA	
+  gz.gene.cccn[lower.tri(gz.gene.cccn)] <- NA   
   # ________________________________
   # Sum correlations in one dimension, then the other dimension
   #what is this doing??? why you need it?
@@ -314,7 +263,7 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
   #in the columns of gz.gene.cccn2  -- don't understand why sum correlations? 
   #what if correlations sum > 1?
   gz.gene.cccn2 <- ddply(gz.gene.cccn, .(Gene.Name), numcolwise(function(x) sum(abs(x), na.rm=T)), .progress = "tk")
-  dim(gz.gene.cccn2)	#	1429 2765 -- mine are smaller (2764 1347), gene names changed???
+  dim(gz.gene.cccn2)    #   1429 2765 -- mine are smaller (2764 1347), gene names changed???
   rownames(gz.gene.cccn2) <- gz.gene.cccn2$Gene.Name
   gz.gene.cccn2 <- gz.gene.cccn2[, 2:ncol(gz.gene.cccn2)]
   gz.gene.cccn2 <- data.frame(t(gz.gene.cccn2))
@@ -340,11 +289,11 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
     goodhyphen <-  c("HLA-A","HLA-B","HLA-C","HLA-F","HLA-H","NKX2-1","NME1-NME2")
     cellv <- unlist(strsplit(as.character(cell), "; "))
     if (any(baddot %in% cellv)) {
-      cellv.new <- gsub(baddot[baddot %in% cellv], goodhyphen[baddot %in% cellv], cellv)	
+      cellv.new <- gsub(baddot[baddot %in% cellv], goodhyphen[baddot %in% cellv], cellv)    
       return (paste(cellv.new, collapse="; "))
-    } else return(cell)		}
+    } else return(cell)     }
   #
-  fixednames <- sapply(names(gz.gene.cccn3), fix.baddot)	
+  fixednames <- sapply(names(gz.gene.cccn3), fix.baddot)    
   fixednames[grep("HLA", fixednames)]
   # Also if necessary
   fixednames <- sapply(fixednames, function (x) gsub("\\.", ";", x))
@@ -372,12 +321,10 @@ gene.adj.mat <- function(cluster.network,  cor.threshold =0.5){
   frnegs <- exp (negs*20)
   
   gzgenecccn.edges$Alt.Weight <- gzgenecccn.edges $Weight
-  gzgenecccn.edges[gzgenecccn.edges$Weight<0,'Alt.Weight'] <- frnegs	
+  gzgenecccn.edges[gzgenecccn.edges$Weight<0,'Alt.Weight'] <- frnegs    
   gzgenecccn.edges[grep("SRC", gzgenecccn.edges$source),]
   
   return(gzgenecccn.edges = gzgenecccn.edges)
   
 }#end of function that creates adjecency matrix
-
-
 ```
