@@ -49,17 +49,20 @@ cytoscapeVersionInfo ()
 ---
 ```{r load data objects and functions}
  options(stringsAsFactors=FALSE)
-load(file="KGFunDataObjects.RData")
-load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_Export_for_Paper/LC_TMT_Nets.RData", sep=""))
-load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
-load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
-load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "LD_NewCFNCCCN_Networks.RData", sep=""))
-load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "drug_effects.RData", sep=""))
-	source(paste(comp_path, "Dropbox/_Work/R_/MGFunctions.R", sep=""))
-	source(paste(comp_path, "Dropbox/_Work/R_/MGRCyFunctions.R", sep=""))
-	source(paste(comp_path, "Dropbox/_Work/R_/pepnetfunctions.R", sep=""))
-if (cytoscapePing()=="You are connected to Cytoscape!") {
-     source(paste(comp_path, "Dropbox/_Work/R_/_RCy3\ future\ discussion/RCy3-Functions-Revision/New_RCy3_Functions.R", sep=""))} else {print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+options(stringsAsFactors=FALSE)
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+load(file=paste(data_path, "TenCell.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+load(file=paste(data_path,"drug_effects.RData", sep=""))
+	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+if (!cytoscapePing()=="You are connected to Cytoscape!") {
+     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
 
 ```
 
@@ -91,6 +94,7 @@ for (i in 1:length(ratiocols)){
 ```
 
 Now look at shortest paths in the network from one protein to another.
+
 
 ```{r Graph Networks}
 # Use one of two functions to find all shortest paths between two nodes.
@@ -143,8 +147,9 @@ for (i in 1:length(ratiocols)){
         setVisualStyle(style.name)
 }
 
-
 ```  
+
+
 # Another example from the overlap CFN
 ```{r EGFR to FASN in Overlap Network}
 egfrfasn <- connectNodes.all.RCy3.exclude(c("EGFR", "FASN"), ig.graph=overlap.cfn2.g, edgefile=overlap.cfn2.rcy3, exclude="ACTB")
@@ -173,7 +178,7 @@ setEdgeLineWidthMapping("Weight")
 setEdgeWidths.RCy32(egfrfasn.edges, factor=1.2, log=TRUE)
      # not working
     edgevalues <- getTableColumns('edge',c('name','Weight'))
-    setEdgeLineWidthBypass(edgevalues[['name']], log(10*edgevalues[['Weight']]))
+    #setEdgeLineWidthBypass(edgevalues[['name']], log(10*edgevalues[['Weight']]))
   
 ```
 
@@ -189,9 +194,9 @@ overlap.gene.cf <-  overlap.cf[which(overlap.cf$Node.ID=="gene"),]
 overlap.suid <- createNetworkFromDataFrames(overlap.gene.cf, overlap.cfn2.merged, title="Overlap Network", collection = "Interactions")
 layoutNetwork("force-directed")
 # Set vizual properties
-setNodeMapping(overlap.cf)
+#setNodeMapping(overlap.cf)
 edgeDprops.RCy32()
-          setEdgeWidths.log(net.w, factor=1.2)
+          #setEdgeWidths.log(net.w, factor=1.2)
 # Make ratio styles for all ratios  
 ratiocols <- names(overlap.cf)[grep("atio", names(overlap.cf))] %w/o% "No.Modifications"
 for (i in 1:length(ratiocols)){
@@ -242,8 +247,8 @@ Pathway analysis
 # Pathways
         # 
  #       KEGG_2019_Human.txt, WikiPathways_2019_Human.txt
-keggname <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/",  "KEGG_2019_Human.txt", sep="")
-wikiname <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/",  "WikiPathways_2019_Human.txt", sep="")
+keggname <- paste(data_path,  "KEGG_2019_Human.txt", sep="")
+wikiname <- paste(data_path, "WikiPathways_2019_Human.txt", sep="")
 # keggpath <- read.table(keggname, header=TRUE, sep = "\t", comment.char = "#", na.strings='', stringsAsFactors=FALSE, fill=TRUE)#  
 # Read table doesn work try another method to 
 # Read in the data
@@ -264,7 +269,7 @@ w <- strsplit(wikipath, "\t")
 names(w) <- sapply(w, `[[`, 1)
 wikipath <- lapply(w, `[`, -c(1:2))
 # New: bioplanet_pathway.csv
-bioplanetname <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/",  "bioplanet_pathway.csv", sep="")
+bioplanetname <- paste(data_path, "bioplanet_pathway.csv", sep="")
 bioplanet <- read.csv(bioplanetname, stringsAsFactors = F)
 dim(bioplanet)
 # 74148     4
@@ -315,7 +320,7 @@ net.gpe <- remove.autophos.RCy3(net.gpe)
 ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
 test.3.edges <- rbind(net.gpe, ptm.cccn, test.3)
 test.3.suid <- createNetworkFromDataFrames(test.3.cf, test.3.edges, title="EGFR to and Focal Adhesion CFN plus CCCN", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
+layoutNetwork("force-directed")
 
 # Set vizual properties as above. Note if this was done in a session containing the entire network, this does not need to be done again. 
 setNodeMapping(test.3.cf)
@@ -362,7 +367,7 @@ net.gpe <- remove.autophos.RCy3(net.gpe)
 ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
 look2.edges <- rbind(net.gpe, ptm.cccn, look2)
 look2.suid <- createNetworkFromDataFrames(look2.cf, look2.edges, title="EGFR to and Focal Adhesion Interpathway Interactions", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
+layoutNetwork("force-directed")
 setNodeMapping(look2.cf)
 edgeDprops.RCy32()
 setCorrEdgeAppearance(look2.edges)     
@@ -379,6 +384,7 @@ The following is an attempt to simplyfy the code for graphing networks from an e
 will look up the peptides and incorporate the CCCN edges by default unless only.cfn is set to TRUE. We can also look up peptides and CCCN edges from the original lung/drug data by setting ld to TRUE. The function all.ratio.styles does the loop above to set node color based on drug treatments. 
 
 ```{r Test new functions to graph CFN or CFN/CCCN networks}
+
 # Try with a different pair of pathways
 keggpath[grep("ROS1", keggpath)]
 wikipath[grep("ROS1", wikipath)]
@@ -452,7 +458,7 @@ nodes.cf <- gz.cf[gz.cf$id %in% unique(c(fasnep300.cccn1$source, fasnep300.cccn1
 fasnep300.cccn1.suid <- createNetworkFromDataFrames(nodes=nodes.cf, edges=fasnep300.cccn1, title=paste("FASN, EP300 CCCN", (getNetworkCount()+1)), collection = "Interactions") 
         setNodeMapping(nodes.cf)
         setCorrEdgeAppearance(fasnep300.cccn1) 
-       layoutNetwork("genemania-force-directed")
+       layoutNetwork("force-directed")
 # Examine all PTMs     
 fasnep300.cccn2 <- graph.cfn.cccn (filter.edges.1(c("FASN", "EP300"), gzallt.network), ld=FALSE, gz=TRUE, only.cfn=FALSE)
 all.ratio.styles()
@@ -483,7 +489,7 @@ test.gz <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physi
 # 1447 merged edges
 test.ld <- composite.shortest.paths(genes1=a, genes2=b, network=ldgene.physical.cfn.merged, exclude="")
 # 1050 edges
-com <- dplyr::intersect(test.ld, test.gz) 76 edges in common
+com <- dplyr::intersect(test.ld, test.gz) #76 edges in common
 # new graphs
 cccn1 <- graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 all.ratio.styles()
@@ -493,13 +499,15 @@ toggleGraphicsDetails()
 	
 Follow up on Guolin's analysis of PTMs affected by drugs. Which clusters contain PTMs that change in response to which drugs?
 
-```{r: Examine drug-induced changes in PTMs in each cluster}
+```{r Examine drug-induced changes in PTMs in each cluster}
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
 # eu.sp.sed.gzallt is the cluster list
 # eu.sp.sed.gzallt.data is the cluster list with data. Prune to look at ratios. 
 test <- eu.sp.sed.gzallt.data[[2]]
 test.mat <- as.matrix(test[, names(test)[grep("Ratio", names(test))]])
 # Examine clusters' ratio data: tencellratios.lim.log2.trimmed
 esp.gz.ratios <- lapply (eu.sp.sed.gzallt, function (x) tencellratios.lim.log2.trimmed[rownames(tencellratios.lim.log2.trimmed) %in% x,])
+esp.gz.ratios <- Filter(function(x) {nrow(x) > 0}, esp.gz.ratios)
 whichclusters <- lapply(esp.gz.ratios, function (x) any(x>=log2(2.25)))
 drugchangedratios <- esp.gz.ratios[whichclusters==TRUE]
 # 685/839
@@ -528,13 +536,14 @@ goodbad <- lapply(drugaffected, function (x) !all(is.na(x)))
 drugaffected <- drugaffected[goodbad==TRUE]
 #
 # save this to a text file
-cat(capture.output(print(drugaffected), file="/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/drugaffectedPTMs.txt"))
+cat(capture.output(print(drugaffected), file="drugaffectedPTMs.txt"))
 # 
 # Which genes are in these clusters?
 drugaffectedgenes <- lapply(drugaffected, function (x) get.gene.names.from.peps(rownames(x)))
 drugsthataffectgenes <- lapply(drugaffected, names)
-cat(capture.output(print(drugaffectedgenes), file="/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/drugaffectedgemnes.txt"))
-cat(capture.output(print(drugsthataffectgenes), file="/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/drugsthataffectPTMs.txt"))
+cat(capture.output(print(drugaffectedgenes), file="drugaffectedgemnes.txt"))
+cat(capture.output(print(drugsthataffectgenes), file="drugsthataffectPTMs.txt"))
+
 
 ```
 
