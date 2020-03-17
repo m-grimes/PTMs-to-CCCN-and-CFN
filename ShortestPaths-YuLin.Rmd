@@ -1,0 +1,181 @@
+---
+title: "RCy3 Plotting of CCCN and CFN "
+output: github_document
+Author: "Mark Grimes
+        University of Montana"
+---
+Note: 'biocLite' is deprecated.
+Use 'BiocManager::install' instead.
+---
+# Lung cancer plus ten cell line data
+# August 12, 2019
+# Mark Grimes
+---
+# Note: Cytoscape 3.7.1 or greater is required. Start Cytoscape and make sure cyREST is activated before running this script.
+# This loads MGs packages and functions and lists the data objects from the new data:
+```{r}
+# # ------------------------------------------------------------------------
+# To UpDATE
+# source("http://www.bioconductor.org/biocLite.R")
+# biocLite("RCy3")
+# biocLite("BiocStyle")
+# Try the latest version of RCy3 by running:
+    # install.packages("BiocManager")
+    #   BiocManager::install("RCy3")
+library(devtools)
+library(RCy3)
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(gplots)
+library(igraph)
+library(knitr)
+library("BiocStyle")
+options(stringsAsFactors=FALSE)
+#
+# There are several resources available:
+browseVignettes('RCy3')
+# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
+# 
+
+# Note: Start Cytoscape
+# ------------------------------------------------------------------------
+cytoscapePing ()
+cytoscapeVersionInfo ()
+
+```
+---
+
+---
+```{r load data objects and functions}
+ options(stringsAsFactors=FALSE)
+options(stringsAsFactors=FALSE)
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+load(file=paste(data_path, "TenCell.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+load(file=paste(data_path,"drug_effects.RData", sep=""))
+	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+if (!cytoscapePing()=="You are connected to Cytoscape!") {
+     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+
+```
+
+# This script selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
+
+```{r shortest paths to target for PC9/erlotinib}
+#There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Select sites with CV<=1.
+
+all_cols <- colnames(gz.cf)
+all_cols
+
+#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 PC9/Erlotinib data columns
+desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
+
+#Select the rows that have at least 2 (non-NA) observations
+gz_pc9_erl.cf <- gz.cf[desired_cols]
+gz_pc9_erl_keep.cf <- select.sites.w.enough.obs(gz_pc9_erl_keep.cf, num_rep = 5, min_obs = 2)
+nrow(gz_pc9_erl_keep.cf)
+
+#Calculate the mean and keep only those rows with abs(mean) > log2(2.25)
+gz_pc9_erl_keep2.cf <- select.sites.w.min.mean(gz_pc9_erl_keep.cf, first_rep = 3, num_rep = 5, min_mean = 2.25)
+nrow(gz_pc9_erl_keep2.cf)
+
+#Calculate the log-transformed coefficient of variation for each row and keep only rows with CV <=1
+gz_pc9_erl_keep2.cf <- select.sites.w.max.cv(gz_pc9_erl_keep2.cf, first_rep = 3, num_rep =5, max_cv = 1)
+nrow(gz_pc9_erl_keep2.cf)
+
+#Now compute the shortest paths network for this set of sites and make Cytoscape graph.
+gz_pc9_erl_keep2_paths <- shortest.paths.to.target(gz_pc9_erl_keep2.cf, target = "EGFR")
+nrow(gz_pc9_erl_keep2_paths)
+changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+
+```  
+
+
+```{r select PC9/erlotinib sites using mean and stdev}
+#There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Look at the distribution and decide what is "small".
+
+#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 PC9/Erlotinib data columns
+desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
+gz_pc9_erl.cf <- gz.cf[desired_cols]
+
+#Select sites that have at least two observations. To do this, replace 0's with NA and find rows where sum of NAs is less than 4.
+gz_pc9_erl.cf[gz_pc9_erl.cf == 0] <- NA
+gz_pc9_erl.cf$sumNA <- apply(is.na(gz_pc9_erl.cf), 1, sum)
+gz_pc9_erl_keep.cf <- gz_pc9_erl.cf[ which(gz_pc9_erl.cf$sumNA < 4), ]
+
+#Calculate the mean and keep only those rows with abs(mean) > log2(2.25); calculate the coefficient of variation for each row and the percentile of the coefficient of variation
+gz_pc9_erl_keep.cf$mean <- rowMeans(gz_pc9_erl_keep.cf[3:7], na.rm = TRUE)
+gz_pc9_erl_keep2.cf <- gz_pc9_erl_keep.cf[ which(abs(gz_pc9_erl_keep.cf$mean) > log2(2.25)), ]
+gz_pc9_erl_keep2.cf$sd_base2 <- apply(gz_pc9_erl_keep2.cf[3:7],1, sd, na.rm = TRUE)
+gz_pc9_erl_keep2.cf$sd_ln <- gz_pc9_erl_keep2.cf$sd_base2 * log(2)
+gz_pc9_erl_keep2.cf$cv <- sqrt(exp(gz_pc9_erl_keep2.cf$sd_ln^2) -1)
+gz_pc9_erl_keep2.cf$cv_percentile <- rank(gz_pc9_erl_keep2.cf$cv)/length(gz_pc9_erl_keep2.cf$cv)
+
+#Trying to decide how to filter for those rows with "reasonable" level of inter-replicate variation. 
+#Calculate CV for the whole dataset with >2 observations (regardless of the mean)
+
+gz_pc9_erl_keep.cf$sd_base2 <- apply(gz_pc9_erl_keep.cf[3:7],1, sd, na.rm = TRUE)
+gz_pc9_erl_keep.cf$sd_ln <- gz_pc9_erl_keep.cf$sd_base2 * log(2)
+gz_pc9_erl_keep.cf$cv <- sqrt(exp(gz_pc9_erl_keep.cf$sd_ln^2) -1)
+gz_pc9_erl_keep.cf$cv_percentile <- rank(gz_pc9_erl_keep.cf$cv)/length(gz_pc9_erl_keep.cf$cv)
+
+#Is the coefficient of variation a good statistic to use? If it is, there should not be a significant correlation between the mean and the CV
+cor_all <- cor(abs(gz_pc9_erl_keep.cf$mean), gz_pc9_erl_keep.cf$cv)
+cor_high_mean <- cor(abs(gz_pc9_erl_keep2.cf$mean), gz_pc9_erl_keep2.cf$cv)
+
+#How do the quantiles of the whole dataset and the >2.25-fold set compare?
+quantile(gz_pc9_erl_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
+quantile(gz_pc9_erl_keep2.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
+
+#What if we compare to a different dataset (H3122 Criz)
+desired_cols2 <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio")
+desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
+gz_h3122_criz.cf <- gz.cf[desired_cols]
+
+gz_h3122_criz.cf[gz_h3122_criz.cf == 0] <- NA
+gz_h3122_criz.cf$sumNA <- apply(is.na(gz_h3122_criz.cf), 1, sum)
+gz_h3122_criz_keep.cf <- gz_h3122_criz.cf[ which(gz_h3122_criz.cf$sumNA < 2), ]
+
+gz_h3122_criz_keep.cf$sd_base2 <- apply(gz_h3122_criz_keep.cf[3:5],1, sd, na.rm = TRUE)
+gz_h3122_criz_keep.cf$sd_ln <- gz_h3122_criz_keep.cf$sd_base2 * log(2)
+gz_h3122_criz_keep.cf$cv <- sqrt(exp(gz_h3122_criz_keep.cf$sd_ln^2) -1)
+gz_h3122_criz_keep.cf$cv_percentile <- rank(gz_h3122_criz_keep.cf$cv)/length(gz_h3122_criz_keep.cf$cv)
+quantile(gz_h3122_criz_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
+
+#Given that different datasets have different distributions of CV (indicating that noise levels vary), it would be better to use a numerical cutoff for CV--try 2.
+gz_pc9_erl_keep2_CV2.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 2)
+nrow(gz_pc9_erl_keep2.cf)
+nrow(gz_pc9_erl_keep2_CV2.cf)
+
+#Try CV cutoff of 1
+gz_pc9_erl_keep2_CV1.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 1)
+nrow(gz_pc9_erl_keep2.cf)
+nrow(gz_pc9_erl_keep2_CV1.cf)
+
+#Now compute the shortest paths network for this set of sites and make Cytoscape graph.
+gz_pc9_erl_keep2_CV1_changed_genes <- unique(gz_pc9_erl_keep2_CV1.cf$Gene.Name)
+gz_pc9_erl_keep2_CV1_changed_genes2 <- gz_pc9_erl_keep2_CV1_changed_genes[gz_pc9_erl_keep2_CV1_changed_genes %in% gzallt.gene.key$Gene.Name]
+gz_pc9_erl_keep2_CV1_paths <- composite.shortest.paths(genes1=c("EGFR"), gz_pc9_erl_keep2_CV1_changed_genes2, exclude="", network=gzalltgene.physical.cfn.merged)
+nrow(gz_pc9_erl_keep2_CV1_paths)
+
+
+changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_CV1_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+#all.ratio.styles()
+
+
+```  
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

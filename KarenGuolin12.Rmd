@@ -71,6 +71,7 @@ if (!cytoscapePing()=="You are connected to Cytoscape!") {
 
 NOTE: the following chunk plots the entire CFN, CCCN network and creates node styles for all ratio data. It takes a VERY LONG time! Skip this unless you are ready to wait. 
 
+
 ```{r  Plot Entire CFN with CCCN!}
 gznetwork.suid <- createNetworkFromDataFrames(gz.cf, gzallt.physical.network, title="CFN plus CCCN, Physical Interactions", collection = "Interactions")
 layoutNetwork("force-directed")
