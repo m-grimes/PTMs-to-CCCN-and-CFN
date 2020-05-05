@@ -1,7 +1,7 @@
 
 workingDir = getwd()
 #Pathway file comes from BioPlanet
-pathwayFile =paste(workingDir,"/dataset/bioplanet_pathway.csv",sep="");
+pathwayFile = paste(workingDir,"/dataset/bioplanet_pathway.csv",sep="");
 
 #Clusters come from Mark's experiments
 clusterFile = paste(workingDir,"/dataset/sites_by_cluster.txt",sep="");
