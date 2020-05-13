@@ -96,20 +96,18 @@ geneSim<-function(simFile,testing=FALSE){
   return(unique(simDat)) 
 }
 
-addEdges<-function(df,testing=F){
+addEdges<-function(B,dic,df,testing=F){
   pathways = sort(unique(as.character(df$PATHWAY_ID)))
-  A = data.frame(from=character(),to=character(),weight=numeric(),stringsAsFactors=FALSE)
-  ind = 1
   len <- length(pathways)
   for (i in 1:(len-1)){
     for( j in (i+1):len){
-      A[ind,"from"] = pathways[i]
-      A[ind,"to"] = pathways[j]
-      A[ind,"weight"] = 1
-      ind=ind+1
+      res=0
+      if(is.na(B[dic[pathways[i]], dic[pathways[j]]])) res=0
+      else res = B[dic[pathways[i]], dic[pathways[j]]]
+      B[dic[pathways[i]], dic[pathways[j]]] =1+res
     }
   }
-  return(A)
+  return(B)
 }
 
 
@@ -157,6 +155,12 @@ clusterPathways$Cluster<-as.character(clusterPathways$Cluster)
 invPtmCounts = data.frame(table(clusters$Cluster))
 colnames(invPtmCounts)=c("Cluster","ptmCount")
 
+#how many total pathways
+pNames <- unique(clusterPathways$PATHWAY_ID)
+pwCount = length(pNames)
+dic<-1:pwCount
+names(dic) <- pNames
+
 #how many pathways are in each cluster
 invPwCounts = data.frame(table(clusterPathways$Cluster))
 colnames(invPwCounts)=c("Cluster","pathwayCount")
@@ -172,7 +176,7 @@ for (minPtmClusters in seq.int(50, 200, 10)){
     graph = graph.empty( )
     # create a frame to hold edges
     A = data.frame( from=character(), to=character(),weight=numeric(), stringsAsFactors=FALSE)
-    
+    B= matrix(0L,nrow=pwCount,ncol=pwCount)
     for(clID in unique(clusters$Cluster)){
       message(clID)
       #message(proc.time()[1])
@@ -198,17 +202,15 @@ for (minPtmClusters in seq.int(50, 200, 10)){
       # each cluster adds new edges between pathways.
       df=clusterPathways[clusterPathways$Cluster==clID,]
       if(!empty(df)){
-        A = bind_rows(A,addEdges(df))
-        colnames(A)<-c("from","to","w")
-        A = ddply(A,.(from,to),summarize,weight=sum(w))
-      }
+        B = addEdges(B,dic,df)
+        }
     }
     # rule 3: filtering pathway pairs by the number of common clusters
-    AFiltered<-A[A$weight>minPtmClusters,]
+    B[B<minPtmClusters] = 0
     if(nrow(AFiltered)>0){
-      gr = graph_from_data_frame(AFiltered,directed=F)
+      gr = graph_from_adjacency_matrix(B)
       # graph is here. Now what to do with this?
-      
+      gr = simplify(gr)
       plot(gr)
     }
   }         
