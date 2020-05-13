@@ -168,6 +168,7 @@ colnames(invPwCounts)=c("Cluster","pathwayCount")
 #finally, we are ready for computations
 maxStep = 10
 percOfPathways = 2;
+maxClusterSize = 30
 #dim = length(unique(clusterPathways$PATHWAY_ID))
 
 for (step in seq.int(6,maxStep,1)){
@@ -179,16 +180,23 @@ for (step in seq.int(6,maxStep,1)){
   B= matrix(0L,nrow=pwCount,ncol=pwCount)
   s=0
   for(clID in unique(clusters$Cluster)){
+    
     s=s+1
     if(s%%100==0){
       message(clID)
     }
     #message(proc.time()[1])
     ptmCount = allPtmCounts[allPtmCounts$Cluster==clID,]$ptmCount
+    # rule 0
+    if(ptmCount>=maxClusterSize){
+      next;
+    }
     involvedPtmCount = invPtmCounts[invPtmCounts$Cluster==clID,]$ptmCount
     involvedPathwayCount = 0;
-    if(nrow(invPwCounts[invPwCounts$Cluster==clID,])>0){
-      involvedPathwayCount=invPwCounts[invPwCounts$Cluster==clID,]$pathwayCount
+    
+    p <- invPwCounts[invPwCounts$Cluster==clID,]
+    if(nrow(p)>0){
+      involvedPathwayCount=p$pathwayCount
     }
     #rule 1: how much percent of the cluster ptms are found in the pathway file
     if (ptmCount==0||
@@ -213,12 +221,14 @@ for (step in seq.int(6,maxStep,1)){
   for (minPtmClusters in seq.int(50, 200, 10)){
     B2=B
     B2[B2<minPtmClusters] = 0
+    B2[B2>=minPtmClusters] = 1
+    
     if(sum(B2)>0){
-      gr = graph_from_adjacency_matrix(B2)
+      gr = graph_from_adjacency_matrix(B2,mode="undirected")
       # graph is here. Now what to do with this?
       gr = simplify(gr,remove.multiple = T)
       gr= delete.vertices(simplify(gr), degree(gr)==0)
-      #tkplot(gr)
+      plot(gr,main=paste(minPtmClusters))
     }
   }         
 }
