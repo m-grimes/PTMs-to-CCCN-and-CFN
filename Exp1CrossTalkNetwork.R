@@ -169,49 +169,56 @@ colnames(invPwCounts)=c("Cluster","pathwayCount")
 maxStep = 10
 percOfPathways = 2;
 #dim = length(unique(clusterPathways$PATHWAY_ID))
-for (minPtmClusters in seq.int(50, 200, 10)){
-  for (step in seq.int(6,maxStep,1)){
-    
-    percOfPtms = step / maxStep;
-    graph = graph.empty( )
-    # create a frame to hold edges
-    A = data.frame( from=character(), to=character(),weight=numeric(), stringsAsFactors=FALSE)
-    B= matrix(0L,nrow=pwCount,ncol=pwCount)
-    for(clID in unique(clusters$Cluster)){
+
+for (step in seq.int(6,maxStep,1)){
+  
+  percOfPtms = step / maxStep;
+ 
+  # create a frame to hold edges
+  A = data.frame( from=character(), to=character(),weight=numeric(), stringsAsFactors=FALSE)
+  B= matrix(0L,nrow=pwCount,ncol=pwCount)
+  s=0
+  for(clID in unique(clusters$Cluster)){
+    s=s+1
+    if(s%%100==0){
       message(clID)
-      #message(proc.time()[1])
-      ptmCount = allPtmCounts[allPtmCounts$Cluster==clID,]$ptmCount
-      involvedPtmCount = invPtmCounts[invPtmCounts$Cluster==clID,]$ptmCount
-      involvedPathwayCount = 0;
-      if(nrow(invPwCounts[invPwCounts$Cluster==clID,])>0){
-        involvedPathwayCount=invPwCounts[invPwCounts$Cluster==clID,]$pathwayCount
-      }
-      #rule 1: how much percent of the cluster ptms are found in the pathway file
-      if (ptmCount==0||
-          involvedPtmCount / (1.0 * ptmCount) < percOfPtms) {
-        next;
-      }
-      #rule 2: how many pathways are included per involved ptm, higher the better?
-      if (involvedPathwayCount==0||
-          (involvedPathwayCount / involvedPtmCount) < percOfPathways) {
-        next;
-      }
-      # So this cluster survives the rules 1 and 2
-      # we will take its ptms, find their pathways and
-      # add an edge between two pathways because of this cluster.
-      # each cluster adds new edges between pathways.
-      df=clusterPathways[clusterPathways$Cluster==clID,]
-      if(!empty(df)){
-        B = addEdges(B,dic,df)
-        }
     }
-    # rule 3: filtering pathway pairs by the number of common clusters
-    B[B<minPtmClusters] = 0
-    if(nrow(AFiltered)>0){
-      gr = graph_from_adjacency_matrix(B)
+    #message(proc.time()[1])
+    ptmCount = allPtmCounts[allPtmCounts$Cluster==clID,]$ptmCount
+    involvedPtmCount = invPtmCounts[invPtmCounts$Cluster==clID,]$ptmCount
+    involvedPathwayCount = 0;
+    if(nrow(invPwCounts[invPwCounts$Cluster==clID,])>0){
+      involvedPathwayCount=invPwCounts[invPwCounts$Cluster==clID,]$pathwayCount
+    }
+    #rule 1: how much percent of the cluster ptms are found in the pathway file
+    if (ptmCount==0||
+        involvedPtmCount / (1.0 * ptmCount) < percOfPtms) {
+      next;
+    }
+    #rule 2: how many pathways are included per involved ptm, higher the better?
+    if (involvedPathwayCount==0||
+        (involvedPathwayCount / involvedPtmCount) < percOfPathways) {
+      next;
+    }
+    # So this cluster survives the rules 1 and 2
+    # we will take its ptms, find their pathways and
+    # add an edge between two pathways because of this cluster.
+    # each cluster adds new edges between pathways.
+    df=clusterPathways[clusterPathways$Cluster==clID,]
+    if(!empty(df)){
+      B = addEdges(B,dic,df)
+    }
+  }
+  # rule 3: filtering pathway pairs by the number of common clusters
+  for (minPtmClusters in seq.int(50, 200, 10)){
+    B2=B
+    B2[B2<minPtmClusters] = 0
+    if(sum(B2)>0){
+      gr = graph_from_adjacency_matrix(B2)
       # graph is here. Now what to do with this?
-      gr = simplify(gr)
-      plot(gr)
+      gr = simplify(gr,remove.multiple = T)
+      gr= delete.vertices(simplify(gr), degree(gr)==0)
+      #tkplot(gr)
     }
   }         
 }
