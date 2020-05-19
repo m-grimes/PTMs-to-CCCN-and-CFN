@@ -37,7 +37,7 @@ options(stringsAsFactors=FALSE)
 browseVignettes('RCy3')
 # https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
 # 
-
+#MAY 19th make a change
 # Note: Start Cytoscape
 # ------------------------------------------------------------------------
 cytoscapePing ()
