@@ -244,7 +244,7 @@ percOfPathways = 2
 
 maxInvolvedPTMs = 30000
 
-for (step in seq.int(6, maxStep, 1)) {
+for (step in seq.int(1, maxStep, 1)) {
    percOfPtms = step / maxStep
    
    # create a frame to hold edges
@@ -261,7 +261,7 @@ for (step in seq.int(6, maxStep, 1)) {
       s = s + 1
       # Just for seeing the progress
       if (s %% 100 == 0) {
-         message(s,"th cluster was processed.")
+        # message(s,"th cluster was processed.")
       }
       # find PTMs of the cluster
       ptmCount = allPtmCounts[allPtmCounts$Cluster == clID,]$ptmCount
@@ -305,7 +305,7 @@ for (step in seq.int(6, maxStep, 1)) {
    # At this point, certain pathways have edges between them.
    # Each edge indicates that two pathways are connected through PTMs in a cluster.
    # rule 3: filtering pathway pairs by the number of common clusters
-   for (minPtmClusters in seq.int(50, 200, 10)) {
+   for (minPtmClusters in seq.int(10, 200, 10)) {
       # create a copy of the data frame
       B2 = B
       # if the rule is not satisfied, remove the edge between pathways
@@ -319,7 +319,6 @@ for (step in seq.int(6, maxStep, 1)) {
          # graph is here. Now what to do with this?
          gr = simplify(gr, remove.multiple = T)
          gr = delete.vertices(simplify(gr), degree(gr) == 0)
-         show(gsize(gr))
          #plot(gr, main = paste(minPtmClusters))
          
          # How do we know that this specific crosstalk pathway network is any good?
