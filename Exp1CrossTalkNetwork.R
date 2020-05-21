@@ -223,7 +223,8 @@ clusterPathways <-
          sort = TRUE)
 clusterPathways$Cluster <- as.character(clusterPathways$Cluster)
 # how many ptms there are in each cluster
-invPtmCounts = data.frame(table(clusters$Cluster))
+
+invPtmCounts = data.frame(table(unique(clusterPathways[,c("Site","Cluster")])$Cluster))
 colnames(invPtmCounts) = c("Cluster", "ptmCount")
 
 # how many total pathways
@@ -240,10 +241,10 @@ colnames(invPwCounts) = c("Cluster", "pathwayCount")
 maxStep = 10
 
 
-percOfPathways = 2
+percOfPathways = 3
 
 maxInvolvedPTMs = 30000
-
+results<-data.frame()
 for (step in seq.int(1, maxStep, 1)) {
    percOfPtms = step / maxStep
    
@@ -255,23 +256,26 @@ for (step in seq.int(1, maxStep, 1)) {
       stringsAsFactors = FALSE
    )
    B = matrix(0L, nrow = pwCount, ncol = pwCount)
-   s = 0
+   is = 0
    # We will take each cluster, find its PTMs
    for (clID in unique(clusters$Cluster)) {
-      s = s + 1
+      is = is + 1
       # Just for seeing the progress
-      if (s %% 100 == 0) {
+      if (is %% 100 == 0) {
         # message(s,"th cluster was processed.")
       }
       # find PTMs of the cluster
-      ptmCount = allPtmCounts[allPtmCounts$Cluster == clID,]$ptmCount
+      ptmCount = nrow(clusters[clusters$Cluster == clID,])
       
       # rule 0: we will ignore very large clusters
       if (ptmCount >= maxInvolvedPTMs) {
          next
       }
       # Involved clusters PTMs are those who are connected to a pathway
-      involvedPtmCount = invPtmCounts[invPtmCounts$Cluster == clID,]$ptmCount
+      involvedPtmCount = 0
+      
+      s= invPtmCounts[invPtmCounts$Cluster == clID,]
+      if(nrow(s)>0) involvedPtmCount=s$ptmCount
       
       # how many pathways are connected to this cluster?
       involvedPathwayCount = 0
@@ -279,7 +283,7 @@ for (step in seq.int(1, maxStep, 1)) {
       if (nrow(p) > 0) {
          involvedPathwayCount = p$pathwayCount
       }
-      
+      #message(involvedPtmCount/(1.0 * ptmCount))
       # rule 1: how much percent of the cluster ptms are found in the pathway file
       if (ptmCount == 0 ||
           involvedPtmCount / (1.0 * ptmCount) < percOfPtms) {
@@ -336,7 +340,10 @@ for (step in seq.int(1, maxStep, 1)) {
                #avgEdgeSim = sim+pathwaySim(pathway1,pathway2,geneSimMap,(pathways))
             }
          }
-         message(step,",",maxInvolvedPTMs,",",percOfPathways,",",minPtmClusters,",",avgEdgeSim,",",gorder(gr),",",gsize(gr))
+         
+         x=c(step=step,maxInvolvedPTMs=maxInvolvedPTMs,percOfPathways=percOfPathways,minPtmClusters=minPtmClusters,
+             avgEdgeSim=avgEdgeSim,gorder=gorder(gr),gsize=gsize(gr))
+        results= bind_rows(results,x)
       }
    }
 }
