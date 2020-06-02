@@ -412,7 +412,8 @@ cell_line <- gz_experiments_df$Column.6
 # Heatmap comparison of shortest paths network
 # Assumptions: In SPN, each nodes is a representative maker for the impact of drug (if no change, then no drug effect)
 # Based on this assumpation, a target-based comparison would make more biological sense and give more clue about the overlapping pahtways
-```{r target = MET/HGFR}
+# target = MET/HGFR
+```{r}
 MET_paths_1 <- shortest.paths.to.target(ss1, target = "MET")
 MET_paths_2 <- shortest.paths.to.target(ss2, target = "MET")
 MET_paths_3 <- shortest.paths.to.target(ss3, target = "MET")
@@ -524,14 +525,16 @@ MET_dataframe <- data.frame(MET_ratios)
 MET_dataframe <- t(MET_dataframe)
 colnames(MET_dataframe) <- cell_line
 write.table(MET_dataframe,"MET.txt")
-rownames(MET) <- MET$X
+MET <-read.csv("MET.csv")
+rownames(MET) <- cell_line
+colnames(MET) <- cell_line
 MET <- MET[2:26]
 pheatmap::pheatmap(MET)
 
 
 ```
-
-```{r target = EGFR}
+# target = EGFR
+```{r}
 EGFR_paths_1 <- shortest.paths.to.target(ss1, target = "EGFR")
 EGFR_paths_2 <- shortest.paths.to.target(ss2, target = "EGFR")
 EGFR_paths_3 <- shortest.paths.to.target(ss3, target = "EGFR")
@@ -557,6 +560,7 @@ EGFR_paths_22 <- shortest.paths.to.target(ss22, target = "EGFR")
 EGFR_paths_23 <- shortest.paths.to.target(ss23, target = "EGFR")
 EGFR_paths_24 <- shortest.paths.to.target(ss24, target = "EGFR")
 EGFR_paths_25 <- shortest.paths.to.target(ss25, target = "EGFR")
+
 EGFR_intercet <- my.intersect(EGFR_paths_1,
 EGFR_paths_2,
 EGFR_paths_3,
@@ -643,7 +647,8 @@ EGFR_dataframe <- t(EGFR_dataframe)
 colnames(EGFR_dataframe) <- cell_line
 write.table(EGFR_dataframe,"EGFR.txt")
 EGFR <-read.csv("EGFR.csv")
-rownames(EGFR) <- EGFR$X
+rownames(EGFR) <- cell_line
+colnames(EGFR) <- cell_line
 EGFR <- EGFR[2:26]
 pheatmap::pheatmap(EGFR)
 
@@ -762,7 +767,9 @@ ALK_dataframe <- t(ALK_dataframe)
 colnames(ALK_dataframe) <- cell_line
 write.table(ALK_dataframe,"ALK.txt")
 ALK <-read.csv("ALK.csv")
-rownames(ALK) <- ALK$X
+rownames(ALK) <- cell_line
+colnames(ALK) <- cell_line
+
 ALK <- ALK[2:26]
 pheatmap::pheatmap(ALK)
 
@@ -886,6 +893,17 @@ write.table(ROS1_dataframe,"ROS1.txt")
 
 
 
+```
+
+# Here matrix that composed of target(x) and cell line(y)
+
+```{r}
+General_matrix <- data.frame(met = c(MET_ratios)
+                             , egfr = c(EGFR_ratios)
+                             , alk = c(ALK_ratios))
+General_matrix <- t(General_matrix)
+colnames(General_matrix) <- cell_line
+heatmap(General_matrix)
 ```
 
 
