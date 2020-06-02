@@ -1,0 +1,557 @@
+---
+title: "RCy3 Plotting of CCCN and CFN "
+output: github_document
+Author: "Mark Grimes
+        University of Montana"
+---
+Note: 'biocLite' is deprecated.
+Use 'BiocManager::install' instead.
+---
+# Lung cancer plus ten cell line data
+# August 12, 2019
+# Mark Grimes
+---
+# Note: Cytoscape 3.7.1 or greater is required. Start Cytoscape and make sure cyREST is activated before running this script.
+# This loads MGs packages and functions and lists the data objects from the new data:
+```{r}
+# # ------------------------------------------------------------------------
+# To UpDATE
+# source("http://www.bioconductor.org/biocLite.R")
+# biocLite("RCy3")
+# biocLite("BiocStyle")
+# Try the latest version of RCy3 by running:
+    # install.packages("BiocManager")
+    #   BiocManager::install("RCy3")
+#Test
+library(devtools)
+library(RCy3)
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(gplots)
+library(igraph)
+library(knitr)
+library("BiocStyle")
+options(stringsAsFactors=FALSE)
+#
+# There are several resources available:
+browseVignettes('RCy3')
+# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
+# 
+
+# Note: Start Cytoscape
+# ------------------------------------------------------------------------
+cytoscapePing ()
+cytoscapeVersionInfo ()
+
+```
+---
+
+---
+```{r load data objects and functions}
+ options(stringsAsFactors=FALSE)
+options(stringsAsFactors=FALSE)
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+load(file=paste(data_path, "TenCell.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+load(file=paste(data_path,"drug_effects.RData", sep=""))
+	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+if (!cytoscapePing()=="You are connected to Cytoscape!") {
+     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+
+```
+
+# Networks
+# The network that contains everything is gzallt.physical.network, which is the CFN with physical interactions and the PTM CCCN linked to genes. The CFN by itself is gzalltgene.physical.cfn.rcy3 or gzalltgene.physical.cfn.merged; the latter has PPI edges merged, when there is more than one edge between two proteins, into a single edge for clarity. (See KGDataObjectKey for a list of all the relevant data objects.) The node attribute file with drug treatment ratios is gz.cf. 
+
+NOTE: the following chunk plots the entire CFN, CCCN network and creates node styles for all ratio data. It takes a VERY LONG time! Skip this unless you are ready to wait. 
+
+
+```{r  Plot Entire CFN with CCCN!}
+gznetwork.suid <- createNetworkFromDataFrames(gz.cf, gzallt.physical.network, title="CFN plus CCCN, Physical Interactions", collection = "Interactions")
+layoutNetwork("force-directed")
+# Set vizual properties
+setNodeMapping(gz.cf)
+edgeDprops.RCy32()
+setCorrEdgeAppearance(gzallt.physical.network)     
+# setEdgeLineWidthMapping("Weight")
+# Make ratio styles for all ratios  
+ratiocols <- names(gz.cf)[grep("atio", names(gz.cf))] %w/o% "No.Modifications"
+for (i in 1:length(ratiocols)){
+        plotcol <- ratiocols[i]
+        style.name = paste(ratiocols[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+}
+
+```
+
+Now look at shortest paths in the network from one protein to another.
+
+
+```{r Graph Networks}
+# Use one of two functions to find all shortest paths between two nodes.
+alkep300 <- connectNodes.all.RCy3(c("ALK", "EP300"), ig.graph=gzalltgene.physical.cfn.merged.g, edgefile=gzalltgene.physical.cfn.merged)
+
+# If every result goes through a highly connected protein, like MYH9, try excluding one or more proteins. For more than one, use exclude=c("PROTEIN1", "PROTEIN2",...).
+
+alkep300 <- connectNodes.all.RCy3.exclude(c("ALK", "EP300"), ig.graph=gzalltgene.physical.cfn.merged.g, edgefile=gzalltgene.physical.cfn.merged, exclude = "MYH9")
+
+
+```  
+# Plot the network
+#  
+
+```{r plot simpler sub-network}
+# The simplest way to get the node attributes is to select the genes in the entire network above and the node attribute file.
+genenames <- extract.gene.names.RCy3(alkep300)
+alkep300.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+# Note: this contains PTMs. If you want only the CFN (gene nodes) use:
+alkep300.gene.cf <- alkep300.cf[which(alkep300.cf$Node.ID=="gene"),]
+
+# But let's plot the CFN plus CCCN for a test. 
+# First get CCCN connections from the CCCN: gzallt.cccn.edges.plus, which has to be converted in format
+gzallt.cccn.RCy3 <- edgeType.to.interaction(gzallt.cccn.edges.plus)
+netpeps <- alkep300.cf[which(alkep300.cf$Node.ID=="peptide"), 'id']
+# make gene-peptide edges
+net.gpe <- data.frame(source=alkep300.cf$Gene.Name, target=alkep300.cf$id, Weight=7, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
+alkep300.edges <- rbind(net.gpe, ptm.cccn, alkep300)
+alkep300.suid <- createNetworkFromDataFrames(alkep300.cf, alkep300.edges, title="ALK, EP300 CFN plus CCCN", collection = "Interactions")
+layoutNetwork("force-directed")
+
+# Set vizual properties as above. Note if this was done in a session containing the entire network, this does not need to be done again. 
+setNodeMapping(alkep300.cf)
+edgeDprops.RCy32()
+setCorrEdgeAppearance(gzallt.physical.network)     
+setEdgeLineWidthMapping("Weight")
+# Make ratio styles for all ratios  
+# ---It's fun to watch this on Cytoscape!
+ratiocols <- names(alkep300.cf)[grep("atio", names(alkep300.cf))] %w/o% "No.Modifications"
+for (i in 1:length(ratiocols)){
+        plotcol <- ratiocols[i]
+        style.name = paste(ratiocols[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+}
+
+```  
+
+
+# Another example from the overlap CFN
+```{r EGFR to FASN in Overlap Network}
+egfrfasn <- connectNodes.all.RCy3.exclude(c("EGFR", "FASN"), ig.graph=overlap.cfn2.g, edgefile=overlap.cfn2.rcy3, exclude="ACTB")
+genenames <- extract.gene.names.RCy3(egfrfasn)
+egfrfasn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+# Note: this contains PTMs. If you want only the CFN (gene nodes) use:
+egfrfasn.gene.cf <- egfrfasn.cf[which(egfrfasn.cf$Node.ID=="gene"),]
+
+# But let's plot the CFN plus CCCN for a test. 
+# First get CCCN connections from the CCCN: gzallt.cccn.edges.plus, which has to be converted in format
+gzallt.cccn.RCy3 <- edgeType.to.interaction(gzallt.cccn.edges.plus)
+netpeps <- egfrfasn.cf[which(egfrfasn.cf$Node.ID=="peptide"), 'id']
+# make gene-peptide edges
+net.gpe <- data.frame(source=egfrfasn.cf$Gene.Name, target=egfrfasn.cf$id, Weight=1.5, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
+egfrfasn.edges <- rbind(net.gpe, ptm.cccn, egfrfasn)
+egfrfasn.suid <- createNetworkFromDataFrames(egfrfasn.cf, egfrfasn.edges, title="EGFR to FASN CFN plus CCCN", collection = "Interactions")
+layoutNetwork("force-directed")
+
+# Set vizual properties as above. Note if this was done in a session containing the entire network, this does not need to be done again. 
+setNodeMapping(egfrfasn.cf)
+edgeDprops.RCy32()
+setEdgeLineWidthMapping("Weight")
+setEdgeWidths.RCy32(egfrfasn.edges, factor=1.2, log=TRUE)
+     # not working
+    edgevalues <- getTableColumns('edge',c('name','Weight'))
+    #setEdgeLineWidthBypass(edgevalues[['name']], log(10*edgevalues[['Weight']]))
+  
+```
+
+
+# Examine Overlap between CST and KG data CFNs
+```{r Graph Overlap}
+# use overlap.cfn2.merged with merged edges for simplest view
+genenames <- extract.gene.names.RCy3(overlap.cfn2.merged)
+overlap.cf <-  gz.cf[gz.cf$Gene.Name %in% genenames,]
+# Note: this contains PTMs. If you want only the CFN (gene nodes) use:
+overlap.gene.cf <-  overlap.cf[which(overlap.cf$Node.ID=="gene"),]
+# Graph
+overlap.suid <- createNetworkFromDataFrames(overlap.gene.cf, overlap.cfn2.merged, title="Overlap Network", collection = "Interactions")
+layoutNetwork("force-directed")
+# Set vizual properties
+#setNodeMapping(overlap.cf)
+edgeDprops.RCy32()
+          #setEdgeWidths.log(net.w, factor=1.2)
+# Make ratio styles for all ratios  
+ratiocols <- names(overlap.cf)[grep("atio", names(overlap.cf))] %w/o% "No.Modifications"
+for (i in 1:length(ratiocols)){
+        plotcol <- ratiocols[i]
+        style.name = paste(ratiocols[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+}
+# Make CCCN as well
+# make gene-peptide edges
+# Use all PPI edges for this explanded graph
+genenames <- extract.gene.names.RCy3(overlap.cfn2.rcy3)
+overlap.cf <-  gz.cf[gz.cf$Gene.Name %in% genenames,]
+# First get CCCN connections from the CCCN: gzallt.cccn.edges.plus, which has to be converted in format
+gzallt.cccn.RCy3 <- edgeType.to.interaction(gzallt.cccn.edges.plus)
+netpeps <- overlap.cf[which(overlap.cf$Node.ID=="peptide"), 'id']
+overlap.pep.cf <-  overlap.cf[which(overlap.cf$Node.ID=="peptide"),]
+net.gpe <- data.frame(source=overlap.pep.cf$Gene.Name, target=overlap.pep.cf$id, Weight=7, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
+# Use all PPI edges for this explanded graph
+overlap.edges <- rbind(net.gpe, ptm.cccn, overlap.cfn2.rcy3)
+overlap.cccn.suid <- createNetworkFromDataFrames(overlap.cf, overlap.edges, title="Overlap CCCN Network", collection = "Interactions")
+# Set vizual properties
+setNodeMapping(overlap.cf)
+edgeDprops.RCy32()
+setCorrEdgeAppearance(overlap.edges)     
+setEdgeLineWidthMapping("Weight")
+# Make ratio styles for all ratios  
+ratiocols <- names(overlap.cf)[grep("atio", names(overlap.cf))] %w/o% "No.Modifications"
+for (i in 1:length(ratiocols)){
+        plotcol <- ratiocols[i]
+        style.name = paste(ratiocols[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+}
+
+```
+Pathway analysis
+```{r - test composite shortest paths on pathway genes}
+# Pathways
+        # 
+ #       KEGG_2019_Human.txt, WikiPathways_2019_Human.txt
+keggname <- paste(data_path,  "KEGG_2019_Human.txt", sep="")
+wikiname <- paste(data_path, "WikiPathways_2019_Human.txt", sep="")
+# keggpath <- read.table(keggname, header=TRUE, sep = "\t", comment.char = "#", na.strings='', stringsAsFactors=FALSE, fill=TRUE)#  
+# Read table doesn work try another method to 
+# Read in the data
+keggpath <- scan(keggname, what="", sep="\n")
+# Separate elements by one or more whitepace
+# y <- strsplit(keggpath, "[[:space:]]+")
+z <- strsplit(keggpath, "\t")
+# Extract the first vector element and set it as the list element name
+names(z) <- sapply(z, `[[`, 1)
+#names(y) <- sapply(y, function(x) x[[1]]) # same as above
+# Remove the first two vector elements from each list element (iteratively)
+y <- lapply(z, `[`, -c(1:2))
+#y <- lapply(y, function(x) x[-1]) # same as above for first one
+keggpath <- y
+wikipath <- scan(wikiname, what="", sep="\n")
+w <- strsplit(wikipath, "\t")
+# Extract the first vector element and set it as the list element name
+names(w) <- sapply(w, `[[`, 1)
+wikipath <- lapply(w, `[`, -c(1:2))
+# New: bioplanet_pathway.csv
+bioplanetname <- paste(data_path, "bioplanet_pathway.csv", sep="")
+bioplanet <- read.csv(bioplanetname, stringsAsFactors = F)
+dim(bioplanet)
+# 74148     4
+length(unique(bioplanet$PATHWAY_ID))
+# 1658
+# Separtate into a list as for kegg and wikipath
+bp <- dlply(bioplanet, .(PATHWAY_NAME))
+# Remove the first two vector elements from each list element (iteratively)
+bpy <- lapply(bp, `[`, -c(1:3))
+bpz <- lapply(bpy, unlist, use.names = FALSE)
+#y <- lapply(y, function(x) x[-1]) # same as above for first one
+bioplanet <- bpz 
+
+# See who is where
+keggpath[grep("ROS1", keggpath)] # Only one for "PROS1" not ROS1
+wikipath[grep("ROS1", wikipath)] # 2 each for PROS1, ROS1
+bioplanet[grep("ROS1", bioplanet)] # 19 pathways, mostly PROS1
+bioplanet[grep("FASN", bioplanet)] # 16 pathways
+#:# What is pathway intersection
+a <- wikipath[["Spinal Cord Injury WP2431"]]
+b <- wikipath[["VEGFA-VEGFR2 Signaling Pathway WP3888"]]
+ab <- intersect (a, b)
+abgz <- ab[ab %in% gzallt.gene.key$Gene.Name]
+filter.edges.0.RCy3(abgz, gzalltgene.physical.cfn) # NA ??
+filter.edges.0.RCy3(abgz, ldgene.physical.cfn) # NA ??
+filter.edges.0.RCy3(c(a,b), gzalltgene.physical.cfn) # NA ??
+test <- composite.shortest.paths(genes1=abgz, genes2=abgz, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+# 468 edges; 204 with merged
+test.2 <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+fa <- wikipath[["Focal Adhesion WP306"]]
+egfr <- wikipath[["EGF/EGFR Signaling Pathway WP437"]]
+egfr.fa <- intersect(fa, egfr)
+look <- filter.edges.0(c(fa,egfr),  gzalltgene.physical.cfn)
+egfr.fa.gz <- egfr.fa[egfr.fa %in% gzallt.gene.key$Gene.Name] 
+# Paths from our network
+test.3 <- composite.shortest.paths(genes1=c("EP300", "FASN", egfr.fa.gz), genes2=egfr.fa, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+gzallt.cccn.RCy3 <- edgeType.to.interaction(gzallt.cccn.edges.plus)
+
+genenames <- extract.gene.names.RCy3(test.3)
+test.3.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+# Note: this contains PTMs. If you want only the CFN (gene nodes) use:
+test3.gene.cf <- test.3.cf[which(test.3.cf$Node.ID=="gene"),]
+netpeps <- test.3.cf[which(test.3.cf$Node.ID=="peptide"), 'id']
+# make gene-peptide edges
+net.gpe <- data.frame(source=test.3.cf$Gene.Name, target=test.3.cf$id, Weight=0.2, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
+test.3.edges <- rbind(net.gpe, ptm.cccn, test.3)
+test.3.suid <- createNetworkFromDataFrames(test.3.cf, test.3.edges, title="EGFR to and Focal Adhesion CFN plus CCCN", collection = "Interactions")
+layoutNetwork("force-directed")
+
+# Set vizual properties as above. Note if this was done in a session containing the entire network, this does not need to be done again. 
+setNodeMapping(test.3.cf)
+edgeDprops.RCy32()
+setCorrEdgeAppearance(test.3.edges)     
+#setEdgeLineWidthMapping("Weight") - does not give good results
+# setEdgeWidthsMapping = function (table.column="Weight", factor=1.2, log=TRUE)
+# setEdgeWidthsMapping (table.column="Weight", factor=50, log=TRUE)
+# setEdgeWidthsMapping (table.column="Weight", factor=2, log=FALSE)
+# Make ratio styles for all ratios  
+ratiocols <- names(test.3.cf)[grep("atio", names(test.3.cf))] %w/o% "No.Modifications"
+for (i in 1:length(ratiocols)){
+        plotcol <- ratiocols[i]
+        style.name = paste(ratiocols[i], "Style")
+        print(style.name)
+        setVisualStyle("default")
+        setNodeColorToRatios(plotcol)    
+        copyVisualStyle('default', style.name)
+        setVisualStyle(style.name)
+}
+selectNodes(genenames, by="id", test.3.suid)
+#
+# One easy way to get the CFN in cytoscape is to search for 'gene' and create new network from selection. Alterantively this can be done like this:
+test.3.gene.suid <- createNetworkFromDataFrames(test3.gene.cf, test.3, title="EGFR to and Focal Adhesion CFN", collection = "Interactions")
+setNodeMapping(test3.gene.cf)
+###
+# Which genes are NOT in common?
+egfr.fa.outer <- outersect(fa, egfr)
+selectNodes(egfr.fa.outer, by="id", test.3.gene.suid, preserve.current.selection = F)
+selectNodes(egfr.fa, by="id", test.3.gene.suid, preserve.current.selection = F)
+# What edges are there between common and not common genes?
+look1 <- filter.edges.between(egfr.fa, egfr.fa.outer, edge.file=gzalltgene.physical.cfn.merged)
+# OR another way to look at it, what are the edges between uniuqe pathway genes?
+egfr.nofa <- egfr %w/o% fa
+fa.noegfr <- fa %w/o% egfr
+look2 <- filter.edges.between(egfr.nofa, fa.noegfr, edge.file=gzalltgene.physical.cfn.merged)
+look2nodes <- extract.gene.names(look2)
+look2.cf <- gz.cf[gz.cf$Gene.Name %in% look2nodes,]
+netpeps <- look2.cf[which(look2.cf$Node.ID=="peptide"), 'id']
+# make gene-peptide edges
+net.gpe <- data.frame(source=look2.cf$Gene.Name, target=look2.cf$id, Weight=0.2, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, gzallt.cccn.RCy3) 
+look2.edges <- rbind(net.gpe, ptm.cccn, look2)
+look2.suid <- createNetworkFromDataFrames(look2.cf, look2.edges, title="EGFR to and Focal Adhesion Interpathway Interactions", collection = "Interactions")
+layoutNetwork("force-directed")
+setNodeMapping(look2.cf)
+edgeDprops.RCy32()
+setCorrEdgeAppearance(look2.edges)     
+# ****
+# Note clusters of correlated and anit-correlated PTMs!
+# Also merged edges that represent phosphoyrlation are now painted red. 
+```
+
+
+# NEW -----------------------------------------------------------------------------------
+# Note
+The following is an attempt to simplyfy the code for graphing networks from an edge file with genes. The function
+  graph.cfn.cccn (edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+will look up the peptides and incorporate the CCCN edges by default unless only.cfn is set to TRUE. We can also look up peptides and CCCN edges from the original lung/drug data by setting ld to TRUE. The function all.ratio.styles does the loop above to set node color based on drug treatments. 
+
+```{r Test new functions to graph CFN or CFN/CCCN networks}
+
+# Try with a different pair of pathways
+keggpath[grep("ROS1", keggpath)]
+wikipath[grep("ROS1", wikipath)]
+#:# What is pathway intersection
+a <- wikipath[["Spinal Cord Injury WP2431"]]
+b <- wikipath[["VEGFA-VEGFR2 Signaling Pathway WP3888"]]
+ab <- intersect (a, b)
+abgz <- ab[ab %in% gzallt.gene.key$Gene.Name]
+filter.edges.0.RCy3(abgz, gzalltgene.physical.cfn) # NA ??
+filter.edges.0.RCy3(abgz, ldgene.physical.cfn) # NA ??
+filter.edges.0.RCy3(c(a,b), gzalltgene.physical.cfn) # NA ??
+test.gz <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+# 1766 merged edges
+test.ld <- composite.shortest.paths(genes1=a, genes2=b, network=ldgene.physical.cfn.merged, exclude="")
+# 1031 edges
+# new graphs
+graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+cccn1 <- graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+toggleGraphicsDetails()
+# Similar to the above, what are the edges between uniuqe pathway genes?
+spinal.noveg <- a %w/o% b
+veg.nospinal <- b %w/o% a
+look3 <- filter.edges.between(spinal.noveg, veg.nospinal, edge.file=gzalltgene.physical.cfn.merged)
+# 53 edges, many EGFR
+cccn2 <- graph.cfn.cccn (look3, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(cccn2) not needed now
+# Note anticorrelations with STAT3 pY705 and PXN pY88 with the group contianing several phosphorylation sites on CTNND1, MAPK14, PTPN6. In another cluster EGFR ub K737 is correlated with activation of SFKs (FYN, YES, SRC) and CBL pY700, confirming a mechanism for SFK control of CBL and EGFR ubiquitination. There are also negative correlations among HSP90 and MYH9 PTMs that look very interesting because ub is negatively correlated with both phosphorylation and acetylation. 
+# ________________________
+# By request: Nuclear Receptors Meta-Pathway WP2882 and EGF/EGFR Signaling Pathway WP437
+a <- wikipath[["Nuclear Receptors Meta-Pathway WP2882"]]
+b <- wikipath[["EGF/EGFR Signaling Pathway WP437"]]
+ab <- intersect (a, b)
+# only "JUND"  "NCOA3" "JUN"   "STAT3" "EGFR"  "FOXO1" "SP1"   "SRC"  
+abgz <- ab[ab %in% gzallt.gene.key$Gene.Name]
+test.gz <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+# 2058 merged edges
+test.ld <- composite.shortest.paths(genes1=a, genes2=b, network=ldgene.physical.cfn.merged, exclude="")
+# 1150 edges
+# new graphs
+# graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+cccn1 <- graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+toggleGraphicsDetails()
+# This is useful to see which clusters are predominantly affected by particular drugs. 
+# Similar to the above, what are the edges between uniuqe pathway genes?
+nuclear.noegfr <- a %w/o% b
+egfr.nonuclear <- b %w/o% a
+look4 <- filter.edges.between(nuclear.noegfr, egfr.nonuclear, edge.file=gzalltgene.physical.cfn.merged)
+# 35 edges, including FASN, EP300
+cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# Note: run all.ratio.styles() if not run above.
+#--------------------------
+# Another example to test drug targets to affected proteins. From STITCH (http://stitch.embl.de/cgi/network.pl?taskId=yEuGydVlyirI) Dasatinib interacts with 
+dasatinibIPs <- c("SRC", "FGR", "HCK", "LCK", "FYN", "FRK", "YES1", "EPHA5", "EPHA4", "EPHA3")
+gz.das <- gz.cf[, c(1,2, grep("Dasatinib", names(gz.cf)))]
+gzmostdas1 <- gz.das[(abs(gz.das[,"H2286_DasatinibRatio"]))>=log2(2.5), "Gene.Name"] 
+gzmostdas2 <- gz.das[(abs(gz.das[,"H366_DasatinibRatio"]))>=log2(2.5), "Gene.Name"] 
+dasgenes <- unique(c(gzmostdas1, gzmostdas2))
+# 404 genes
+#___________________________
+# FASN, EP300: Identify Drug-affected peptides
+fasnep300 <- gz.cf[gz.cf$Gene.Name %in% c("FASN", "EP300"), c(1,2, grep("Ratio", names(gz.cf)))]
+rownames(fasnep300) <- fasnep300$id
+fasnep300.mat <- as.matrix(fasnep300[, grep("Ratio", names(fasnep300))])
+fasnep300.mat <- fasnep300.mat[apply(fasnep300.mat, 1, function (x) any(x>=log2(2.25))),] # 11 PTM peptides out of 57
+# What are these clustered and correlated with in the network? 
+fasnep300.cccn1 <- filter.edges.1(rownames(fasnep300.mat), gzallt.network)
+# Focus on these two genes and their associated PTMs in the following graph.
+nodes.cf <- gz.cf[gz.cf$id %in% unique(c(fasnep300.cccn1$source, fasnep300.cccn1$target)),]
+fasnep300.cccn1.suid <- createNetworkFromDataFrames(nodes=nodes.cf, edges=fasnep300.cccn1, title=paste("FASN, EP300 CCCN", (getNetworkCount()+1)), collection = "Interactions") 
+        setNodeMapping(nodes.cf)
+        setCorrEdgeAppearance(fasnep300.cccn1) 
+       layoutNetwork("force-directed")
+# Examine all PTMs     
+fasnep300.cccn2 <- graph.cfn.cccn (filter.edges.1(c("FASN", "EP300"), gzallt.network), ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+
+fasnep300.cccn3 <- graph.cfn.cccn (filter.edges.1(c("FASN", "EP300"), ld.network), ld=TRUE, gz=FALSE, only.cfn=FALSE)
+# For the ratio styles to work in this case (no "ratio" in column names), examine names:
+    nodevalues <- getTableColumns('node')
+print(names(nodevalues))
+all.ratio.styles( ratiocols=c(21:52))
+########################################_____________________________________________________
+# ________________________
+# New: Bioplanet
+fasnbp <- bioplanet[grep("FASN", bioplanet)]
+egfrbp <- bioplanet[grep("EGFR", bioplanet)]
+intersect(names(fasnbp), names(egfrbp))  # none
+#:# What is pathway intersection? Pick two (there are other possibilities)
+a <- bioplanet[["Signaling by EGFR in cancer"]]
+b <- bioplanet[["Fatty acid, triacylglycerol, and ketone body metabolism"]]
+ab <- intersect (a, b) # "TRIB3" ribbles pseudokinase 3 
+abgz <- ab[ab %in% gzallt.gene.key$Gene.Name] # 0
+# Similar to the above, what are the edges between uniuqe pathway genes?
+look <- filter.edges.between(a, b, edge.file=gzalltgene.physical.cfn.merged)
+# 6 edges, "CLTC"     "ACSL4"    "EP300"    "FASN"     "HSP90AA1" "PIK3R1"   "PTPN11"
+cccn <- graph.cfn.cccn (look3, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+# ***Interesting: FASN-CLTC connection
+test.gz <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
+# 1447 merged edges
+test.ld <- composite.shortest.paths(genes1=a, genes2=b, network=ldgene.physical.cfn.merged, exclude="")
+# 1050 edges
+com <- dplyr::intersect(test.ld, test.gz) #76 edges in common
+# new graphs
+cccn1 <- graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+toggleGraphicsDetails()
+
+```
+	
+Follow up on Guolin's analysis of PTMs affected by drugs. Which clusters contain PTMs that change in response to which drugs?
+
+```{r Examine drug-induced changes in PTMs in each cluster}
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+# eu.sp.sed.gzallt is the cluster list
+# eu.sp.sed.gzallt.data is the cluster list with data. Prune to look at ratios. 
+test <- eu.sp.sed.gzallt.data[[2]]
+test.mat <- as.matrix(test[, names(test)[grep("Ratio", names(test))]])
+# Examine clusters' ratio data: tencellratios.lim.log2.trimmed
+esp.gz.ratios <- lapply (eu.sp.sed.gzallt, function (x) tencellratios.lim.log2.trimmed[rownames(tencellratios.lim.log2.trimmed) %in% x,])
+esp.gz.ratios <- Filter(function(x) {nrow(x) > 0}, esp.gz.ratios)
+whichclusters <- lapply(esp.gz.ratios, function (x) any(x>=log2(2.25)))
+drugchangedratios <- esp.gz.ratios[whichclusters==TRUE]
+# 685/839
+whichdrugs <- lapply(drugchangedratios, function (df) Filter(function(x) !all(is.na(x)), df))
+# Now filter rows
+test=whichdrugs$`3.3.3`
+apply(test, 1, function (x) x>=log2(2.25))
+whichptms <- t(apply(test, 1, function (x) abs(x)>=log2(2.25)))
+getptms <- which(whichptms, arr.ind = TRUE)
+peps <- rownames(getptms)
+drugratios <- names(test)[unique(getptms[,2])]
+test[peps,drugratios]
+# Make this into a function to lapply to list
+pick.drug.affected <- function (df, changelimit=log2(2.25)) {
+  df <- Filter(function(x) !all(is.na(x)), df)
+  if (ncol(df)==0 | all(is.na(df))) {return(NA)} else {
+  whichptms <- t(apply(df, 1, function (x) abs(x)>=changelimit))
+  getptms <- which(whichptms, arr.ind = TRUE)
+  peps <- rownames(getptms)
+  if(length(peps)==0) {peps <- names(data.frame(whichptms))}
+  drugratios <- names(df)[unique(!is.na(getptms[,2]))]
+  return(df[peps,drugratios]) }
+}
+drugaffected <- lapply(esp.gz.ratios, pick.drug.affected)
+goodbad <- lapply(drugaffected, function (x) !all(is.na(x)))
+drugaffected <- drugaffected[goodbad==TRUE]
+#
+# save this to a text file
+cat(capture.output(print(drugaffected), file="drugaffectedPTMs.txt"))
+# 
+# Which genes are in these clusters?
+drugaffectedgenes <- lapply(drugaffected, function (x) get.gene.names.from.peps(rownames(x)))
+drugsthataffectgenes <- lapply(drugaffected, names)
+cat(capture.output(print(drugaffectedgenes), file="drugaffectedgemnes.txt"))
+cat(capture.output(print(drugsthataffectgenes), file="drugsthataffectPTMs.txt"))
+
+
+```
+
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
