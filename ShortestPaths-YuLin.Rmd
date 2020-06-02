@@ -37,7 +37,7 @@ options(stringsAsFactors=FALSE)
 browseVignettes('RCy3')
 # https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
 # 
-
+#MAY 19th make a change
 # Note: Start Cytoscape
 # ------------------------------------------------------------------------
 cytoscapePing ()
@@ -50,8 +50,8 @@ cytoscapeVersionInfo ()
 ```{r load data objects and functions}
  options(stringsAsFactors=FALSE)
 options(stringsAsFactors=FALSE)
-data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
-code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+data_path <- "C:/Users/yulin/Desktop/Multi-PTM Analysis-Summer Students/RDataFiles/"
+code_path <- "C:/Users/yulin/Documents/Bioinformatics/SUMMER_GIT/PTMs-to-CCCN-and-CFN5_19/"
 load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
 load(file=paste(data_path, "TenCell.RData", sep=""))
@@ -61,14 +61,291 @@ load(file=paste(data_path,"drug_effects.RData", sep=""))
 	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
 	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
 	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+    source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
 if (!cytoscapePing()=="You are connected to Cytoscape!") {
      print("Turn on Cytoscape to load New_RCy3_Functions.R")}
 
 ```
 
-# This script selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
+#This chunk selects sites from an experiment with absolute fold-change greater than a specified value. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target). Then it computes and draws the union and intersection of the shortest paths networks and draws the networks. PC9/erlotinib is used as an example.  
+```{r shortest paths to target for PC9/erlotinib-independent experiments method}
+#There are 5 PC9/erlotinib experiments ("PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio"). For each experiment select sites that have abs fold-change > 2.25-fold. Then find the shortest paths to EGFR.
 
-```{r shortest paths to target for PC9/erlotinib}
+selected_sites_S1 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
+paths_S1 <- shortest.paths.to.target(selected_sites_S1, target = "EGFR")
+
+selected_sites_S2 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+paths_S2 <- shortest.paths.to.target(selected_sites_S2, target = "EGFR")
+
+selected_sites_S3 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E3.ratio", min_value = 2.25)
+paths_S3 <- shortest.paths.to.target(selected_sites_S3, target = "EGFR")
+
+selected_sites_T1 <- select.sites.w.min.value(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+paths_T1 <- shortest.paths.to.target(selected_sites_T1, target = "EGFR")
+
+selected_sites_T2 <- select.sites.w.min.value(gz.cf, "PC9_ErlotinibRatio", min_value = 2.25)
+paths_T2 <- shortest.paths.to.target(selected_sites_T2, target = "EGFR")
+
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+S_union <- my.union(paths_S1, paths_S2, paths_S3)
+union_network <- graph.cfn.cccn (S_union, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+S_intersect <- my.intersect(paths_S1, paths_S2, paths_S3)
+intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+```  
+# An updated full version of all paths for each replicates
+# ss = selected sites
+
+```{r}
+##### Crizotinib
+# cell line = H3122, ExpSet = SEPTM, Drug = Crizotinib, rep = 3
+
+ss1 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C1.ratio", min_value = 2.25)
+paths_1 <- shortest.paths.to.target(ss1, target = "ALK")
+
+ss2 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C2.ratio", min_value = 2.25)
+paths_2 <- shortest.paths.to.target(ss2, target = "ALK")
+
+ss3 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C3.ratio", min_value = 2.25)
+paths_3 <- shortest.paths.to.target(ss3, target = "ALK")
+
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_1 <- my.union(paths_1, paths_2, paths_3)
+union_network <- graph.cfn.cccn (U_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_1 <- my.intersect(paths_1, paths_2, paths_3)
+intersect_network <- graph.cfn.cccn (I_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+###
+# cell line = H3122, ExpSet = TenCell, Drug = Crizotinib, rep = 2
+
+ss4 <- select.sites.w.min.value(gz.cf, "H3122_Crizotinib.1Ratio", min_value = 2.25)
+paths_4 <- shortest.paths.to.target(ss4, target = "ALK")
+
+ss5 <- select.sites.w.min.value(gz.cf, "H3122CrizotinibRatio", min_value = 2.25)
+paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
+
+
+###
+# cell line = HCC78, ExpSet = TenCell, Drug = Crizotinib, rep = 2
+
+ss6 <- select.sites.w.min.value(gz.cf, "HCC78_Crizotinib.1Ratio", min_value = 2.25)
+paths_HC_T_Cri_rep1 <- shortest.paths.to.target(ss6, target = "ALK")
+
+ss7 <- select.sites.w.min.value(gz.cf, "HCC78_CrizotinibRatio", min_value = 2.25)
+paths_7 <- shortest.paths.to.target(ss7, target = "ALK")
+
+###
+# cell line = STE.1, ExpSet = TenCell, Drug = Crizotinib, rep = 1
+
+ss8 <- select.sites.w.min.value(gz.cf, "STE.1_CrizotinibRatio", min_value = 2.25)
+paths_8 <- shortest.paths.to.target(ss8, target = "ALK")
+
+# cell line = H2228, ExpSet = TenCell, Drug = Crizotinib, rep = 1
+
+ss9 <- select.sites.w.min.value(gz.cf, "H2228CrizotinibRatio", min_value = 2.25)
+paths_9 <- shortest.paths.to.target(ss9, target = "ALK")
+
+
+##### Erlotinib
+# cell line = PC9, ExpSet = SEPTM, Drug = Erlotinib, rep = 3
+
+ss10 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
+paths_10 <- shortest.paths.to.target(ss10, target = "EGFR")
+
+ss11 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+paths_11 <- shortest.paths.to.target(ss11, target = "EGFR")
+
+ss12 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E3.ratio", min_value = 2.25)
+paths_12 <- shortest.paths.to.target(ss12, target = "EGFR")
+
+# cell line = PC9, ExpSet = TenCell, Drug = Erlotinib, rep = 2
+
+ss13 <- select.sites.w.min.value(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+paths_13 <- shortest.paths.to.target(ss13, target = "EGFR")
+
+ss14 <- select.sites.w.min.value(gz.cf, "PC9_ErlotinibRatio", min_value = 2.25)
+paths_14 <- shortest.paths.to.target(ss14, target = "EGFR")
+
+# cell line = HCC4006, ExpSet = TenCell, Drug = Erlotinib, rep = 1
+
+ss15 <- select.sites.w.min.value(gz.cf, "HCC4006_ErlotinibRatio", min_value = 2.25)
+paths_15 <- shortest.paths.to.target(ss15, target = "EGFR")
+
+# cell line = HCC827, ExpSet = TenCell, Drug = Erlotinib, rep = 1
+
+ss16 <- select.sites.w.min.value(gz.cf, "HCC827_ErlotinibRatio", min_value = 2.25)
+paths_16 <- shortest.paths.to.target(ss16, target = "EGFR")
+
+
+##### PR171
+# cell line = H3122, ExpSet = SEPTM, Drug = PR171， rep = 3
+
+ss17 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR1.ratio", min_value = 2.25)
+paths_17 <- shortest.paths.to.target(ss17, target = "")
+
+ss18 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR2.ratio", min_value = 2.25)
+paths_18 <- shortest.paths.to.target(ss18, target = "")
+
+ss19 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR3.ratio", min_value = 2.25)
+paths_19 <- shortest.paths.to.target(ss19, target = "")
+
+# cell line = PC9, ExpSet = SEPTM, Drug = PR171， rep = 3
+
+ss20 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+paths_20 <- shortest.paths.to.target(ss20, target = "")
+
+ss21 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR2.ratio", min_value = 2.25)
+paths_21 <- shortest.paths.to.target(ss21, target = "")
+
+ss22 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR3.ratio", min_value = 2.25)
+paths_22 <- shortest.paths.to.target(ss22, target = "")
+
+##### Dasatinib
+# cell line = H2286, ExpSet = TenCell, Drug = Dasatinib， rep = 1
+
+ss23 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+paths_23 <- shortest.paths.to.target(ss23, target = "DDR2")
+
+# cell line = H366, ExpSet = TenCell, Drug = Dasatinib， rep = 1
+
+ss24 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+paths_24 <- shortest.paths.to.target(ss24, target = "DDR2")
+
+##### Afatinib
+# cell line = H1781, ExpSet = TenCell, Drug = Afatinib， rep = 1
+
+ss25 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+paths_25 <- shortest.paths.to.target(ss25, target = "HER2")
+```
+# The union and intersection or single path network
+```{r}
+### 123
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_1 <- my.union(paths_1, paths_2, paths_3)
+UN_1 <- graph.cfn.cccn (U_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_1 <- my.intersect(paths_1, paths_2, paths_3)
+IN_1 <- graph.cfn.cccn (I_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+
+### 45
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_2 <- my.union(paths_4, paths_5)
+UN_2 <- graph.cfn.cccn (U_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_2 <- my.intersect(paths_4, paths_5)
+IN_2 <- graph.cfn.cccn (I_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+
+### 67
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_3 <- my.union(paths_6, paths_7)
+UN_3 <- graph.cfn.cccn (U_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_3 <- my.intersect(paths_6, paths_7)
+IN_3 <- graph.cfn.cccn (I_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 8
+SU_1 <- my.union(paths_8)
+N_1 <- graph.cfn.cccn (SU_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 9
+SU_2 <- my.union(paths_8)
+N_2 <- graph.cfn.cccn (SU_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 101112
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_4 <- my.union(paths_10, paths_11, paths_12)
+UN_4 <- graph.cfn.cccn (U_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_4 <- my.intersect(paths_10, paths_11, paths_12)
+IN_4 <- graph.cfn.cccn (I_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 1314
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_5 <- my.union(paths_13, paths_14)
+UN_5 <- graph.cfn.cccn (U_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_5 <- my.intersect(paths_13, paths_14)
+IN_5 <- graph.cfn.cccn (I_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 15
+SU_3 <- my.union(paths_15)
+N_3 <- graph.cfn.cccn (SU_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 16
+SU_4 <- my.union(paths_16)
+N_4 <- graph.cfn.cccn (SU_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 171819
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_6 <- my.union(paths_17, paths_18, paths_19)
+UN_6 <- graph.cfn.cccn (U_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_6 <- my.intersect(paths_17, paths_18, paths_19)
+IN_6 <- graph.cfn.cccn (I_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 202122
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+U_7 <- my.union(paths_20, paths_21, paths_22)
+UN_7 <- graph.cfn.cccn (U_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+I_7 <- my.intersect(paths_20, paths_21, paths_22)
+IN_7 <- graph.cfn.cccn (I_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 23
+SU_5 <- my.union(paths_23)
+N_5 <- graph.cfn.cccn (SU_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 24
+SU_6 <- my.union(paths_24)
+N_6 <- graph.cfn.cccn (SU_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+### 25
+SU_1 <- my.union(paths_25)
+N_7 <- graph.cfn.cccn (SU_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+```
+
+
+# This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
+
+```{r shortest paths to target for PC9/erlotinib-mean/CV method}
 #There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Select sites with CV<=1.
 
 all_cols <- colnames(gz.cf)
@@ -79,7 +356,7 @@ desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "
 
 #Select the rows that have at least 2 (non-NA) observations
 gz_pc9_erl.cf <- gz.cf[desired_cols]
-gz_pc9_erl_keep.cf <- select.sites.w.enough.obs(gz_pc9_erl_keep.cf, num_rep = 5, min_obs = 2)
+gz_pc9_erl_keep.cf <- select.sites.w.enough.obs(gz_pc9_erl.cf, num_rep = 5, min_obs = 2)
 nrow(gz_pc9_erl_keep.cf)
 
 #Calculate the mean and keep only those rows with abs(mean) > log2(2.25)
@@ -98,82 +375,537 @@ all.ratio.styles()
 
 
 ```  
+# use the identical method to measure the H3122 cell lines sets
+```{r}
+#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 H3122/Crizotinib data columns
+desired_cols2 <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio", "H3122_Crizotinib.1Ratio", "H3122CrizotinibRatio")
 
+#Select the rows that have at least 2 (non-NA) observations
+gz_H3_CRI.cf <- gz.cf[desired_cols2]
+gz_H3_CRI_keep.cf <- select.sites.w.enough.obs(gz_H3_CRI.cf, num_rep = 5, min_obs = 2)
+nrow(gz_H3_CRI_keep.cf)
 
-```{r select PC9/erlotinib sites using mean and stdev}
-#There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Look at the distribution and decide what is "small".
-
-#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 PC9/Erlotinib data columns
-desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
-gz_pc9_erl.cf <- gz.cf[desired_cols]
-
-#Select sites that have at least two observations. To do this, replace 0's with NA and find rows where sum of NAs is less than 4.
-gz_pc9_erl.cf[gz_pc9_erl.cf == 0] <- NA
-gz_pc9_erl.cf$sumNA <- apply(is.na(gz_pc9_erl.cf), 1, sum)
-gz_pc9_erl_keep.cf <- gz_pc9_erl.cf[ which(gz_pc9_erl.cf$sumNA < 4), ]
-
-#Calculate the mean and keep only those rows with abs(mean) > log2(2.25); calculate the coefficient of variation for each row and the percentile of the coefficient of variation
-gz_pc9_erl_keep.cf$mean <- rowMeans(gz_pc9_erl_keep.cf[3:7], na.rm = TRUE)
-gz_pc9_erl_keep2.cf <- gz_pc9_erl_keep.cf[ which(abs(gz_pc9_erl_keep.cf$mean) > log2(2.25)), ]
-gz_pc9_erl_keep2.cf$sd_base2 <- apply(gz_pc9_erl_keep2.cf[3:7],1, sd, na.rm = TRUE)
-gz_pc9_erl_keep2.cf$sd_ln <- gz_pc9_erl_keep2.cf$sd_base2 * log(2)
-gz_pc9_erl_keep2.cf$cv <- sqrt(exp(gz_pc9_erl_keep2.cf$sd_ln^2) -1)
-gz_pc9_erl_keep2.cf$cv_percentile <- rank(gz_pc9_erl_keep2.cf$cv)/length(gz_pc9_erl_keep2.cf$cv)
-
-#Trying to decide how to filter for those rows with "reasonable" level of inter-replicate variation. 
-#Calculate CV for the whole dataset with >2 observations (regardless of the mean)
-
-gz_pc9_erl_keep.cf$sd_base2 <- apply(gz_pc9_erl_keep.cf[3:7],1, sd, na.rm = TRUE)
-gz_pc9_erl_keep.cf$sd_ln <- gz_pc9_erl_keep.cf$sd_base2 * log(2)
-gz_pc9_erl_keep.cf$cv <- sqrt(exp(gz_pc9_erl_keep.cf$sd_ln^2) -1)
-gz_pc9_erl_keep.cf$cv_percentile <- rank(gz_pc9_erl_keep.cf$cv)/length(gz_pc9_erl_keep.cf$cv)
-
-#Is the coefficient of variation a good statistic to use? If it is, there should not be a significant correlation between the mean and the CV
-cor_all <- cor(abs(gz_pc9_erl_keep.cf$mean), gz_pc9_erl_keep.cf$cv)
-cor_high_mean <- cor(abs(gz_pc9_erl_keep2.cf$mean), gz_pc9_erl_keep2.cf$cv)
-
-#How do the quantiles of the whole dataset and the >2.25-fold set compare?
-quantile(gz_pc9_erl_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-quantile(gz_pc9_erl_keep2.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-
-#What if we compare to a different dataset (H3122 Criz)
-desired_cols2 <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio")
-desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
-gz_h3122_criz.cf <- gz.cf[desired_cols]
-
-gz_h3122_criz.cf[gz_h3122_criz.cf == 0] <- NA
-gz_h3122_criz.cf$sumNA <- apply(is.na(gz_h3122_criz.cf), 1, sum)
-gz_h3122_criz_keep.cf <- gz_h3122_criz.cf[ which(gz_h3122_criz.cf$sumNA < 2), ]
-
-gz_h3122_criz_keep.cf$sd_base2 <- apply(gz_h3122_criz_keep.cf[3:5],1, sd, na.rm = TRUE)
-gz_h3122_criz_keep.cf$sd_ln <- gz_h3122_criz_keep.cf$sd_base2 * log(2)
-gz_h3122_criz_keep.cf$cv <- sqrt(exp(gz_h3122_criz_keep.cf$sd_ln^2) -1)
-gz_h3122_criz_keep.cf$cv_percentile <- rank(gz_h3122_criz_keep.cf$cv)/length(gz_h3122_criz_keep.cf$cv)
-quantile(gz_h3122_criz_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-
-#Given that different datasets have different distributions of CV (indicating that noise levels vary), it would be better to use a numerical cutoff for CV--try 2.
-gz_pc9_erl_keep2_CV2.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 2)
+#Calculate the mean and keep only those rows with abs(mean) > log2(2.25)
+gz_pc9_erl_keep2.cf <- select.sites.w.min.mean(gz_pc9_erl_keep.cf, first_rep = 3, num_rep = 5, min_mean = 2.25)
 nrow(gz_pc9_erl_keep2.cf)
-nrow(gz_pc9_erl_keep2_CV2.cf)
 
-#Try CV cutoff of 1
-gz_pc9_erl_keep2_CV1.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 1)
-nrow(gz_pc9_erl_keep2.cf)
-nrow(gz_pc9_erl_keep2_CV1.cf)
+#Calculate the log-transformed coefficient of variation for each row and keep only rows with CV <=1
+gz_H3_CRI_keep2.cf <- select.sites.w.max.cv(gz_H3_CRI_keep2.cf, first_rep = 3, num_rep =5, max_cv = 1)
+nrow(gz_H3_CRI_keep2.cf)
 
 #Now compute the shortest paths network for this set of sites and make Cytoscape graph.
-gz_pc9_erl_keep2_CV1_changed_genes <- unique(gz_pc9_erl_keep2_CV1.cf$Gene.Name)
-gz_pc9_erl_keep2_CV1_changed_genes2 <- gz_pc9_erl_keep2_CV1_changed_genes[gz_pc9_erl_keep2_CV1_changed_genes %in% gzallt.gene.key$Gene.Name]
-gz_pc9_erl_keep2_CV1_paths <- composite.shortest.paths(genes1=c("EGFR"), gz_pc9_erl_keep2_CV1_changed_genes2, exclude="", network=gzalltgene.physical.cfn.merged)
-nrow(gz_pc9_erl_keep2_CV1_paths)
+gz_H3_CRI_keep2_paths <- shortest.paths.to.target(gz_H3_CRI_keep2.cf, target = "EGFR")
+nrow(gz_H3_CRI_keep2_paths)
+changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
 
 
-changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_CV1_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-#all.ratio.styles()
-
-
-```  
 ```
+
+```{r creating cell line name list}
+gz_experiments_df <- read.csv("gz_experiments.csv")
+cell_line <- gz_experiments_df$Column.6
+
+
+```
+
+# Heatmap comparison of shortest paths network
+# Assumptions: In SPN, each nodes is a representative maker for the impact of drug (if no change, then no drug effect)
+# Based on this assumpation, a target-based comparison would make more biological sense and give more clue about the overlapping pahtways
+# target = MET/HGFR
+```{r}
+MET_paths_1 <- shortest.paths.to.target(ss1, target = "MET")
+MET_paths_2 <- shortest.paths.to.target(ss2, target = "MET")
+MET_paths_3 <- shortest.paths.to.target(ss3, target = "MET")
+MET_paths_4 <- shortest.paths.to.target(ss4, target = "MET")
+MET_paths_5 <- shortest.paths.to.target(ss5, target = "MET")
+MET_paths_6 <- shortest.paths.to.target(ss6, target = "MET")
+MET_paths_7 <- shortest.paths.to.target(ss7, target = "MET")
+MET_paths_8 <- shortest.paths.to.target(ss8, target = "MET")
+MET_paths_9 <- shortest.paths.to.target(ss9, target = "MET")
+MET_paths_10 <- shortest.paths.to.target(ss10, target = "MET")
+MET_paths_11 <- shortest.paths.to.target(ss11, target = "MET")
+MET_paths_12 <- shortest.paths.to.target(ss12, target = "MET")
+MET_paths_13 <- shortest.paths.to.target(ss13, target = "MET")
+MET_paths_14 <- shortest.paths.to.target(ss14, target = "MET")
+MET_paths_15 <- shortest.paths.to.target(ss15, target = "MET")
+MET_paths_16 <- shortest.paths.to.target(ss16, target = "MET")
+MET_paths_17 <- shortest.paths.to.target(ss17, target = "MET")
+MET_paths_18 <- shortest.paths.to.target(ss18, target = "MET")
+MET_paths_19 <- shortest.paths.to.target(ss19, target = "MET")
+MET_paths_20 <- shortest.paths.to.target(ss20, target = "MET")
+MET_paths_21 <- shortest.paths.to.target(ss21, target = "MET")
+MET_paths_22 <- shortest.paths.to.target(ss22, target = "MET")
+MET_paths_23 <- shortest.paths.to.target(ss23, target = "MET")
+MET_paths_24 <- shortest.paths.to.target(ss24, target = "MET")
+MET_paths_25 <- shortest.paths.to.target(ss25, target = "MET")
+
+MET_intercet <- my.intersect(MET_paths_1,
+MET_paths_2,
+MET_paths_3,
+MET_paths_4,
+MET_paths_5,
+MET_paths_6,
+MET_paths_7,
+MET_paths_8,
+MET_paths_9,
+MET_paths_10,
+MET_paths_11,
+MET_paths_12,
+MET_paths_13,
+MET_paths_14,
+MET_paths_15,
+MET_paths_16,
+MET_paths_17,
+MET_paths_18,
+MET_paths_19,
+MET_paths_20,
+MET_paths_21,
+MET_paths_22,
+MET_paths_23,
+MET_paths_24,
+MET_paths_25)
+MET_Network <- graph.cfn.cccn (MET_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+MET_1_nrow_ratio <-nrow(MET_paths_1)/nrow(MET_intercet)
+MET_2_nrow_ratio <-nrow(MET_paths_2)/nrow(MET_intercet)
+MET_3_nrow_ratio <-nrow(MET_paths_3)/nrow(MET_intercet)
+MET_4_nrow_ratio <-nrow(MET_paths_4)/nrow(MET_intercet)
+MET_5_nrow_ratio <-nrow(MET_paths_5)/nrow(MET_intercet)
+MET_6_nrow_ratio <-nrow(MET_paths_6)/nrow(MET_intercet)
+MET_7_nrow_ratio <-nrow(MET_paths_7)/nrow(MET_intercet)
+MET_8_nrow_ratio <-nrow(MET_paths_8)/nrow(MET_intercet)
+MET_9_nrow_ratio <-nrow(MET_paths_9)/nrow(MET_intercet)
+MET_10_nrow_ratio <-nrow(MET_paths_10)/nrow(MET_intercet)
+MET_11_nrow_ratio <-nrow(MET_paths_11)/nrow(MET_intercet)
+MET_12_nrow_ratio <-nrow(MET_paths_12)/nrow(MET_intercet)
+MET_13_nrow_ratio <-nrow(MET_paths_13)/nrow(MET_intercet)
+MET_14_nrow_ratio <-nrow(MET_paths_14)/nrow(MET_intercet)
+MET_15_nrow_ratio <-nrow(MET_paths_15)/nrow(MET_intercet)
+MET_16_nrow_ratio <-nrow(MET_paths_16)/nrow(MET_intercet)
+MET_17_nrow_ratio <-nrow(MET_paths_17)/nrow(MET_intercet)
+MET_18_nrow_ratio <-nrow(MET_paths_18)/nrow(MET_intercet)
+MET_19_nrow_ratio <-nrow(MET_paths_19)/nrow(MET_intercet)
+MET_20_nrow_ratio <-nrow(MET_paths_20)/nrow(MET_intercet)
+MET_21_nrow_ratio <-nrow(MET_paths_21)/nrow(MET_intercet)
+MET_22_nrow_ratio <-nrow(MET_paths_22)/nrow(MET_intercet)
+MET_23_nrow_ratio <-nrow(MET_paths_23)/nrow(MET_intercet)
+MET_24_nrow_ratio <-nrow(MET_paths_24)/nrow(MET_intercet)
+MET_25_nrow_ratio <-nrow(MET_paths_25)/nrow(MET_intercet)
+
+#creating the ratio column
+MET_ratios <- c(MET_1_nrow_ratio,
+MET_2_nrow_ratio,
+MET_3_nrow_ratio,
+MET_4_nrow_ratio,
+MET_5_nrow_ratio,
+MET_6_nrow_ratio,
+MET_7_nrow_ratio,
+MET_8_nrow_ratio,
+MET_9_nrow_ratio,
+MET_10_nrow_ratio,
+MET_11_nrow_ratio,
+MET_12_nrow_ratio,
+MET_13_nrow_ratio,
+MET_14_nrow_ratio,
+MET_15_nrow_ratio,
+MET_16_nrow_ratio,
+MET_17_nrow_ratio,
+MET_18_nrow_ratio,
+MET_19_nrow_ratio,
+MET_20_nrow_ratio,
+MET_21_nrow_ratio,
+MET_22_nrow_ratio,
+MET_23_nrow_ratio,
+MET_24_nrow_ratio,
+MET_25_nrow_ratio)
+
+#creatign a dataframe to generate the heatmap
+MET_dataframe <- data.frame(MET_ratios)
+MET_dataframe <- t(MET_dataframe)
+colnames(MET_dataframe) <- cell_line
+write.table(MET_dataframe,"MET.txt")
+MET <-read.csv("MET.csv")
+rownames(MET) <- cell_line
+colnames(MET) <- cell_line
+MET <- MET[2:26]
+pheatmap::pheatmap(MET)
+
+
+```
+# target = EGFR
+```{r}
+EGFR_paths_1 <- shortest.paths.to.target(ss1, target = "EGFR")
+EGFR_paths_2 <- shortest.paths.to.target(ss2, target = "EGFR")
+EGFR_paths_3 <- shortest.paths.to.target(ss3, target = "EGFR")
+EGFR_paths_4 <- shortest.paths.to.target(ss4, target = "EGFR")
+EGFR_paths_5 <- shortest.paths.to.target(ss5, target = "EGFR")
+EGFR_paths_6 <- shortest.paths.to.target(ss6, target = "EGFR")
+EGFR_paths_7 <- shortest.paths.to.target(ss7, target = "EGFR")
+EGFR_paths_8 <- shortest.paths.to.target(ss8, target = "EGFR")
+EGFR_paths_9 <- shortest.paths.to.target(ss9, target = "EGFR")
+EGFR_paths_10 <- shortest.paths.to.target(ss10, target = "EGFR")
+EGFR_paths_11 <- shortest.paths.to.target(ss11, target = "EGFR")
+EGFR_paths_12 <- shortest.paths.to.target(ss12, target = "EGFR")
+EGFR_paths_13 <- shortest.paths.to.target(ss13, target = "EGFR")
+EGFR_paths_14 <- shortest.paths.to.target(ss14, target = "EGFR")
+EGFR_paths_15 <- shortest.paths.to.target(ss15, target = "EGFR")
+EGFR_paths_16 <- shortest.paths.to.target(ss16, target = "EGFR")
+EGFR_paths_17 <- shortest.paths.to.target(ss17, target = "EGFR")
+EGFR_paths_18 <- shortest.paths.to.target(ss18, target = "EGFR")
+EGFR_paths_19 <- shortest.paths.to.target(ss19, target = "EGFR")
+EGFR_paths_20 <- shortest.paths.to.target(ss20, target = "EGFR")
+EGFR_paths_21 <- shortest.paths.to.target(ss21, target = "EGFR")
+EGFR_paths_22 <- shortest.paths.to.target(ss22, target = "EGFR")
+EGFR_paths_23 <- shortest.paths.to.target(ss23, target = "EGFR")
+EGFR_paths_24 <- shortest.paths.to.target(ss24, target = "EGFR")
+EGFR_paths_25 <- shortest.paths.to.target(ss25, target = "EGFR")
+
+EGFR_intercet <- my.intersect(EGFR_paths_1,
+EGFR_paths_2,
+EGFR_paths_3,
+EGFR_paths_4,
+EGFR_paths_5,
+EGFR_paths_6,
+EGFR_paths_7,
+EGFR_paths_8,
+EGFR_paths_9,
+EGFR_paths_10,
+EGFR_paths_11,
+EGFR_paths_12,
+EGFR_paths_13,
+EGFR_paths_14,
+EGFR_paths_15,
+EGFR_paths_16,
+EGFR_paths_17,
+EGFR_paths_18,
+EGFR_paths_19,
+EGFR_paths_20,
+EGFR_paths_21,
+EGFR_paths_22,
+EGFR_paths_23,
+EGFR_paths_24,
+EGFR_paths_25)
+EGFR_Network <- graph.cfn.cccn (EGFR_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+# 
+EGFR_1_nrow_ratio <-nrow(EGFR_paths_1)/nrow(EGFR_intercet)
+EGFR_2_nrow_ratio <-nrow(EGFR_paths_2)/nrow(EGFR_intercet)
+EGFR_3_nrow_ratio <-nrow(EGFR_paths_3)/nrow(EGFR_intercet)
+EGFR_4_nrow_ratio <-nrow(EGFR_paths_4)/nrow(EGFR_intercet)
+EGFR_5_nrow_ratio <-nrow(EGFR_paths_5)/nrow(EGFR_intercet)
+EGFR_6_nrow_ratio <-nrow(EGFR_paths_6)/nrow(EGFR_intercet)
+EGFR_7_nrow_ratio <-nrow(EGFR_paths_7)/nrow(EGFR_intercet)
+EGFR_8_nrow_ratio <-nrow(EGFR_paths_8)/nrow(EGFR_intercet)
+EGFR_9_nrow_ratio <-nrow(EGFR_paths_9)/nrow(EGFR_intercet)
+EGFR_10_nrow_ratio <-nrow(EGFR_paths_10)/nrow(EGFR_intercet)
+EGFR_11_nrow_ratio <-nrow(EGFR_paths_11)/nrow(EGFR_intercet)
+EGFR_12_nrow_ratio <-nrow(EGFR_paths_12)/nrow(EGFR_intercet)
+EGFR_13_nrow_ratio <-nrow(EGFR_paths_13)/nrow(EGFR_intercet)
+EGFR_14_nrow_ratio <-nrow(EGFR_paths_14)/nrow(EGFR_intercet)
+EGFR_15_nrow_ratio <-nrow(EGFR_paths_15)/nrow(EGFR_intercet)
+EGFR_16_nrow_ratio <-nrow(EGFR_paths_16)/nrow(EGFR_intercet)
+EGFR_17_nrow_ratio <-nrow(EGFR_paths_17)/nrow(EGFR_intercet)
+EGFR_18_nrow_ratio <-nrow(EGFR_paths_18)/nrow(EGFR_intercet)
+EGFR_19_nrow_ratio <-nrow(EGFR_paths_19)/nrow(EGFR_intercet)
+EGFR_20_nrow_ratio <-nrow(EGFR_paths_20)/nrow(EGFR_intercet)
+EGFR_21_nrow_ratio <-nrow(EGFR_paths_21)/nrow(EGFR_intercet)
+EGFR_22_nrow_ratio <-nrow(EGFR_paths_22)/nrow(EGFR_intercet)
+EGFR_23_nrow_ratio <-nrow(EGFR_paths_23)/nrow(EGFR_intercet)
+EGFR_24_nrow_ratio <-nrow(EGFR_paths_24)/nrow(EGFR_intercet)
+EGFR_25_nrow_ratio <-nrow(EGFR_paths_25)/nrow(EGFR_intercet)
+
+EGFR_ratios <- c(EGFR_1_nrow_ratio,
+EGFR_2_nrow_ratio,
+EGFR_3_nrow_ratio,
+EGFR_4_nrow_ratio,
+EGFR_5_nrow_ratio,
+EGFR_6_nrow_ratio,
+EGFR_7_nrow_ratio,
+EGFR_8_nrow_ratio,
+EGFR_9_nrow_ratio,
+EGFR_10_nrow_ratio,
+EGFR_11_nrow_ratio,
+EGFR_12_nrow_ratio,
+EGFR_13_nrow_ratio,
+EGFR_14_nrow_ratio,
+EGFR_15_nrow_ratio,
+EGFR_16_nrow_ratio,
+EGFR_17_nrow_ratio,
+EGFR_18_nrow_ratio,
+EGFR_19_nrow_ratio,
+EGFR_20_nrow_ratio,
+EGFR_21_nrow_ratio,
+EGFR_22_nrow_ratio,
+EGFR_23_nrow_ratio,
+EGFR_24_nrow_ratio,
+EGFR_25_nrow_ratio)
+
+#creatign a dataframe to generate the heatmap
+EGFR_dataframe <- data.frame(EGFR_ratios)
+EGFR_dataframe <- t(EGFR_dataframe)
+colnames(EGFR_dataframe) <- cell_line
+write.table(EGFR_dataframe,"EGFR.txt")
+EGFR <-read.csv("EGFR.csv")
+rownames(EGFR) <- cell_line
+colnames(EGFR) <- cell_line
+EGFR <- EGFR[2:26]
+pheatmap::pheatmap(EGFR)
+
+```
+
+
+```{r target = ALK}
+ALK_paths_1 <- shortest.paths.to.target(ss1, target = "ALK")
+ALK_paths_2 <- shortest.paths.to.target(ss2, target = "ALK")
+ALK_paths_3 <- shortest.paths.to.target(ss3, target = "ALK")
+ALK_paths_4 <- shortest.paths.to.target(ss4, target = "ALK")
+ALK_paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
+ALK_paths_6 <- shortest.paths.to.target(ss6, target = "ALK")
+ALK_paths_7 <- shortest.paths.to.target(ss7, target = "ALK")
+ALK_paths_8 <- shortest.paths.to.target(ss8, target = "ALK")
+ALK_paths_9 <- shortest.paths.to.target(ss9, target = "ALK")
+ALK_paths_10 <- shortest.paths.to.target(ss10, target = "ALK")
+ALK_paths_11 <- shortest.paths.to.target(ss11, target = "ALK")
+ALK_paths_12 <- shortest.paths.to.target(ss12, target = "ALK")
+ALK_paths_13 <- shortest.paths.to.target(ss13, target = "ALK")
+ALK_paths_14 <- shortest.paths.to.target(ss14, target = "ALK")
+ALK_paths_15 <- shortest.paths.to.target(ss15, target = "ALK")
+ALK_paths_16 <- shortest.paths.to.target(ss16, target = "ALK")
+ALK_paths_17 <- shortest.paths.to.target(ss17, target = "ALK")
+ALK_paths_18 <- shortest.paths.to.target(ss18, target = "ALK")
+ALK_paths_19 <- shortest.paths.to.target(ss19, target = "ALK")
+ALK_paths_20 <- shortest.paths.to.target(ss20, target = "ALK")
+ALK_paths_21 <- shortest.paths.to.target(ss21, target = "ALK")
+ALK_paths_22 <- shortest.paths.to.target(ss22, target = "ALK")
+ALK_paths_23 <- shortest.paths.to.target(ss23, target = "ALK")
+ALK_paths_24 <- shortest.paths.to.target(ss24, target = "ALK")
+ALK_paths_25 <- shortest.paths.to.target(ss25, target = "ALK")
+ALK_intercet <- my.intersect(ALK_paths_1,
+ALK_paths_2,
+ALK_paths_3,
+ALK_paths_4,
+ALK_paths_5,
+ALK_paths_6,
+ALK_paths_7,
+ALK_paths_8,
+ALK_paths_9,
+ALK_paths_10,
+ALK_paths_11,
+ALK_paths_12,
+ALK_paths_13,
+ALK_paths_14,
+ALK_paths_15,
+ALK_paths_16,
+ALK_paths_17,
+ALK_paths_18,
+ALK_paths_19,
+ALK_paths_20,
+ALK_paths_21,
+ALK_paths_22,
+ALK_paths_23,
+ALK_paths_24,
+ALK_paths_25)
+ALK_Network <- graph.cfn.cccn (ALK_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+ALK_1_nrow_ratio <-nrow(ALK_paths_1)/nrow(ALK_intercet)
+ALK_2_nrow_ratio <-nrow(ALK_paths_2)/nrow(ALK_intercet)
+ALK_3_nrow_ratio <-nrow(ALK_paths_3)/nrow(ALK_intercet)
+ALK_4_nrow_ratio <-nrow(ALK_paths_4)/nrow(ALK_intercet)
+ALK_5_nrow_ratio <-nrow(ALK_paths_5)/nrow(ALK_intercet)
+ALK_6_nrow_ratio <-nrow(ALK_paths_6)/nrow(ALK_intercet)
+ALK_7_nrow_ratio <-nrow(ALK_paths_7)/nrow(ALK_intercet)
+ALK_8_nrow_ratio <-nrow(ALK_paths_8)/nrow(ALK_intercet)
+ALK_9_nrow_ratio <-nrow(ALK_paths_9)/nrow(ALK_intercet)
+ALK_10_nrow_ratio <-nrow(ALK_paths_10)/nrow(ALK_intercet)
+ALK_11_nrow_ratio <-nrow(ALK_paths_11)/nrow(ALK_intercet)
+ALK_12_nrow_ratio <-nrow(ALK_paths_12)/nrow(ALK_intercet)
+ALK_13_nrow_ratio <-nrow(ALK_paths_13)/nrow(ALK_intercet)
+ALK_14_nrow_ratio <-nrow(ALK_paths_14)/nrow(ALK_intercet)
+ALK_15_nrow_ratio <-nrow(ALK_paths_15)/nrow(ALK_intercet)
+ALK_16_nrow_ratio <-nrow(ALK_paths_16)/nrow(ALK_intercet)
+ALK_17_nrow_ratio <-nrow(ALK_paths_17)/nrow(ALK_intercet)
+ALK_18_nrow_ratio <-nrow(ALK_paths_18)/nrow(ALK_intercet)
+ALK_19_nrow_ratio <-nrow(ALK_paths_19)/nrow(ALK_intercet)
+ALK_20_nrow_ratio <-nrow(ALK_paths_20)/nrow(ALK_intercet)
+ALK_21_nrow_ratio <-nrow(ALK_paths_21)/nrow(ALK_intercet)
+ALK_22_nrow_ratio <-nrow(ALK_paths_22)/nrow(ALK_intercet)
+ALK_23_nrow_ratio <-nrow(ALK_paths_23)/nrow(ALK_intercet)
+ALK_24_nrow_ratio <-nrow(ALK_paths_24)/nrow(ALK_intercet)
+ALK_25_nrow_ratio <-nrow(ALK_paths_25)/nrow(ALK_intercet)
+
+ALK_ratios <- c(ALK_1_nrow_ratio,
+ALK_2_nrow_ratio,
+ALK_3_nrow_ratio,
+ALK_4_nrow_ratio,
+ALK_5_nrow_ratio,
+ALK_6_nrow_ratio,
+ALK_7_nrow_ratio,
+ALK_8_nrow_ratio,
+ALK_9_nrow_ratio,
+ALK_10_nrow_ratio,
+ALK_11_nrow_ratio,
+ALK_12_nrow_ratio,
+ALK_13_nrow_ratio,
+ALK_14_nrow_ratio,
+ALK_15_nrow_ratio,
+ALK_16_nrow_ratio,
+ALK_17_nrow_ratio,
+ALK_18_nrow_ratio,
+ALK_19_nrow_ratio,
+ALK_20_nrow_ratio,
+ALK_21_nrow_ratio,
+ALK_22_nrow_ratio,
+ALK_23_nrow_ratio,
+ALK_24_nrow_ratio,
+ALK_25_nrow_ratio)
+
+#creatign a dataframe to generate the heatmap
+ALK_dataframe <- data.frame(ALK_ratios)
+ALK_dataframe <- t(ALK_dataframe)
+colnames(ALK_dataframe) <- cell_line
+write.table(ALK_dataframe,"ALK.txt")
+ALK <-read.csv("ALK.csv")
+rownames(ALK) <- cell_line
+colnames(ALK) <- cell_line
+
+ALK <- ALK[2:26]
+pheatmap::pheatmap(ALK)
+
+
+```
+
+
+```{r target = ROS1}
+ROS1_paths_1 <- shortest.paths.to.target(ss1, target = "ROS1")
+ROS1_paths_2 <- shortest.paths.to.target(ss2, target = "ROS1")
+ROS1_paths_3 <- shortest.paths.to.target(ss3, target = "ROS1")
+ROS1_paths_4 <- shortest.paths.to.target(ss4, target = "ROS1")
+ROS1_paths_5 <- shortest.paths.to.target(ss5, target = "ROS1")
+ROS1_paths_6 <- shortest.paths.to.target(ss6, target = "ROS1")
+ROS1_paths_7 <- shortest.paths.to.target(ss7, target = "ROS1")
+ROS1_paths_8 <- shortest.paths.to.target(ss8, target = "ROS1")
+ROS1_paths_9 <- shortest.paths.to.target(ss9, target = "ROS1")
+ROS1_paths_10 <- shortest.paths.to.target(ss10, target = "ROS1")
+ROS1_paths_11 <- shortest.paths.to.target(ss11, target = "ROS1")
+ROS1_paths_12 <- shortest.paths.to.target(ss12, target = "ROS1")
+ROS1_paths_13 <- shortest.paths.to.target(ss13, target = "ROS1")
+ROS1_paths_14 <- shortest.paths.to.target(ss14, target = "ROS1")
+ROS1_paths_15 <- shortest.paths.to.target(ss15, target = "ROS1")
+ROS1_paths_16 <- shortest.paths.to.target(ss16, target = "ROS1")
+ROS1_paths_17 <- shortest.paths.to.target(ss17, target = "ROS1")
+ROS1_paths_18 <- shortest.paths.to.target(ss18, target = "ROS1")
+ROS1_paths_19 <- shortest.paths.to.target(ss19, target = "ROS1")
+ROS1_paths_20 <- shortest.paths.to.target(ss20, target = "ROS1")
+ROS1_paths_21 <- shortest.paths.to.target(ss21, target = "ROS1")
+ROS1_paths_22 <- shortest.paths.to.target(ss22, target = "ROS1")
+ROS1_paths_23 <- shortest.paths.to.target(ss23, target = "ROS1")
+ROS1_paths_24 <- shortest.paths.to.target(ss24, target = "ROS1")
+ROS1_paths_25 <- shortest.paths.to.target(ss25, target = "ROS1")
+
+ROS1_intercet <- my.intersect(ROS1_paths_1,
+ROS1_paths_2,
+ROS1_paths_3,
+ROS1_paths_4,
+ROS1_paths_5,
+ROS1_paths_6,
+ROS1_paths_7,
+ROS1_paths_8,
+ROS1_paths_9,
+ROS1_paths_10,
+ROS1_paths_11,
+ROS1_paths_12,
+ROS1_paths_13,
+ROS1_paths_14,
+ROS1_paths_15,
+ROS1_paths_16,
+ROS1_paths_17,
+ROS1_paths_18,
+ROS1_paths_19,
+ROS1_paths_20,
+ROS1_paths_21,
+ROS1_paths_22,
+ROS1_paths_23,
+ROS1_paths_24,
+ROS1_paths_25)
+ROS1_Network <- graph.cfn.cccn (ROS1_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+ROS1_1_nrow_ratio <-nrow(ROS1_paths_1)/nrow(ROS1_intercet)
+ROS1_2_nrow_ratio <-nrow(ROS1_paths_2)/nrow(ROS1_intercet)
+ROS1_3_nrow_ratio <-nrow(ROS1_paths_3)/nrow(ROS1_intercet)
+ROS1_4_nrow_ratio <-nrow(ROS1_paths_4)/nrow(ROS1_intercet)
+ROS1_5_nrow_ratio <-nrow(ROS1_paths_5)/nrow(ROS1_intercet)
+ROS1_6_nrow_ratio <-nrow(ROS1_paths_6)/nrow(ROS1_intercet)
+ROS1_7_nrow_ratio <-nrow(ROS1_paths_7)/nrow(ROS1_intercet)
+ROS1_8_nrow_ratio <-nrow(ROS1_paths_8)/nrow(ROS1_intercet)
+ROS1_9_nrow_ratio <-nrow(ROS1_paths_9)/nrow(ROS1_intercet)
+ROS1_10_nrow_ratio <-nrow(ROS1_paths_10)/nrow(ROS1_intercet)
+ROS1_11_nrow_ratio <-nrow(ROS1_paths_11)/nrow(ROS1_intercet)
+ROS1_12_nrow_ratio <-nrow(ROS1_paths_12)/nrow(ROS1_intercet)
+ROS1_13_nrow_ratio <-nrow(ROS1_paths_13)/nrow(ROS1_intercet)
+ROS1_14_nrow_ratio <-nrow(ROS1_paths_14)/nrow(ROS1_intercet)
+ROS1_15_nrow_ratio <-nrow(ROS1_paths_15)/nrow(ROS1_intercet)
+ROS1_16_nrow_ratio <-nrow(ROS1_paths_16)/nrow(ROS1_intercet)
+ROS1_17_nrow_ratio <-nrow(ROS1_paths_17)/nrow(ROS1_intercet)
+ROS1_18_nrow_ratio <-nrow(ROS1_paths_18)/nrow(ROS1_intercet)
+ROS1_19_nrow_ratio <-nrow(ROS1_paths_19)/nrow(ROS1_intercet)
+ROS1_20_nrow_ratio <-nrow(ROS1_paths_20)/nrow(ROS1_intercet)
+ROS1_21_nrow_ratio <-nrow(ROS1_paths_21)/nrow(ROS1_intercet)
+ROS1_22_nrow_ratio <-nrow(ROS1_paths_22)/nrow(ROS1_intercet)
+ROS1_23_nrow_ratio <-nrow(ROS1_paths_23)/nrow(ROS1_intercet)
+ROS1_24_nrow_ratio <-nrow(ROS1_paths_24)/nrow(ROS1_intercet)
+ROS1_25_nrow_ratio <-nrow(ROS1_paths_25)/nrow(ROS1_intercet)
+
+ROS1_ratios <- c(ROS1_1_nrow_ratio,
+ROS1_2_nrow_ratio,
+ROS1_3_nrow_ratio,
+ROS1_4_nrow_ratio,
+ROS1_5_nrow_ratio,
+ROS1_6_nrow_ratio,
+ROS1_7_nrow_ratio,
+ROS1_8_nrow_ratio,
+ROS1_9_nrow_ratio,
+ROS1_10_nrow_ratio,
+ROS1_11_nrow_ratio,
+ROS1_12_nrow_ratio,
+ROS1_13_nrow_ratio,
+ROS1_14_nrow_ratio,
+ROS1_15_nrow_ratio,
+ROS1_16_nrow_ratio,
+ROS1_17_nrow_ratio,
+ROS1_18_nrow_ratio,
+ROS1_19_nrow_ratio,
+ROS1_20_nrow_ratio,
+ROS1_21_nrow_ratio,
+ROS1_22_nrow_ratio,
+ROS1_23_nrow_ratio,
+ROS1_24_nrow_ratio,
+ROS1_25_nrow_ratio)
+
+#creatign a dataframe to generate the heatmap
+ROS1_dataframe <- data.frame(ROS1_ratios)
+ROS1_dataframe <- t(ROS1_dataframe)
+colnames(ROS1_dataframe) <- cell_line
+write.table(ROS1_dataframe,"ROS1.txt")
+
+
+
+
+```
+
+# Here matrix that composed of target(x) and cell line(y)
+
+```{r}
+General_matrix <- data.frame(met = c(MET_ratios)
+                             , egfr = c(EGFR_ratios)
+                             , alk = c(ALK_ratios))
+General_matrix <- t(General_matrix)
+colnames(General_matrix) <- cell_line
+heatmap(General_matrix)
+```
+
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
