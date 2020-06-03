@@ -137,10 +137,10 @@ paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
 # cell line = HCC78, ExpSet = TenCell, Drug = Crizotinib, rep = 2
 
 ss6 <- select.sites.w.min.value(gz.cf, "HCC78_Crizotinib.1Ratio", min_value = 2.25)
-paths_HC_T_Cri_rep1 <- shortest.paths.to.target(ss6, target = "ALK")
+paths_HC_T_Cri_rep1 <- shortest.paths.to.target(ss6, target = "ROS1")
 
 ss7 <- select.sites.w.min.value(gz.cf, "HCC78_CrizotinibRatio", min_value = 2.25)
-paths_7 <- shortest.paths.to.target(ss7, target = "ALK")
+paths_7 <- shortest.paths.to.target(ss7, target = "ROS1")
 
 ###
 # cell line = STE.1, ExpSet = TenCell, Drug = Crizotinib, rep = 1
@@ -223,7 +223,7 @@ paths_24 <- shortest.paths.to.target(ss24, target = "DDR2")
 # cell line = H1781, ExpSet = TenCell, Drug = Afatinib， rep = 1
 
 ss25 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
-paths_25 <- shortest.paths.to.target(ss25, target = "HER2")
+paths_25 <- shortest.paths.to.target(ss25, target = "ERBB2")
 ```
 # The union and intersection or single path network
 ```{r}
@@ -341,7 +341,919 @@ SU_1 <- my.union(paths_25)
 N_7 <- graph.cfn.cccn (SU_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
 ```
+# to make a the paired union and intersection and generate the ratio
 
+```{r}
+# Paired Union
+Uni_1_1 <- my.union(paths_1, paths_1)
+Uni_1_2 <- my.union(paths_1, paths_2)
+Uni_1_3 <- my.union(paths_1, paths_3)
+Uni_1_4 <- my.union(paths_1, paths_4)
+Uni_1_5 <- my.union(paths_1, paths_5)
+Uni_1_8 <- my.union(paths_1, paths_8)
+Uni_1_9 <- my.union(paths_1, paths_9)
+Uni_1_10 <- my.union(paths_1, paths_10)
+Uni_1_11 <- my.union(paths_1, paths_11)
+Uni_1_12 <- my.union(paths_1, paths_12)
+Uni_1_13 <- my.union(paths_1, paths_13)
+Uni_1_14 <- my.union(paths_1, paths_14)
+Uni_1_15 <- my.union(paths_1, paths_15)
+Uni_1_16 <- my.union(paths_1, paths_16)
+Uni_1_25 <- my.union(paths_1, paths_25)
+Uni_2_1 <- my.union(paths_2, paths_1)
+Uni_2_2 <- my.union(paths_2, paths_2)
+Uni_2_3 <- my.union(paths_2, paths_3)
+Uni_2_4 <- my.union(paths_2, paths_4)
+Uni_2_5 <- my.union(paths_2, paths_5)
+Uni_2_8 <- my.union(paths_2, paths_8)
+Uni_2_9 <- my.union(paths_2, paths_9)
+Uni_2_10 <- my.union(paths_2, paths_10)
+Uni_2_11 <- my.union(paths_2, paths_11)
+Uni_2_12 <- my.union(paths_2, paths_12)
+Uni_2_13 <- my.union(paths_2, paths_13)
+Uni_2_14 <- my.union(paths_2, paths_14)
+Uni_2_15 <- my.union(paths_2, paths_15)
+Uni_2_16 <- my.union(paths_2, paths_16)
+Uni_2_25 <- my.union(paths_2, paths_25)
+Uni_3_1 <- my.union(paths_3, paths_1)
+Uni_3_2 <- my.union(paths_3, paths_2)
+Uni_3_3 <- my.union(paths_3, paths_3)
+Uni_3_4 <- my.union(paths_3, paths_4)
+Uni_3_5 <- my.union(paths_3, paths_5)
+Uni_3_8 <- my.union(paths_3, paths_8)
+Uni_3_9 <- my.union(paths_3, paths_9)
+Uni_3_10 <- my.union(paths_3, paths_10)
+Uni_3_11 <- my.union(paths_3, paths_11)
+Uni_3_12 <- my.union(paths_3, paths_12)
+Uni_3_13 <- my.union(paths_3, paths_13)
+Uni_3_14 <- my.union(paths_3, paths_14)
+Uni_3_15 <- my.union(paths_3, paths_15)
+Uni_3_16 <- my.union(paths_3, paths_16)
+Uni_3_25 <- my.union(paths_3, paths_25)
+Uni_4_1 <- my.union(paths_4, paths_1)
+Uni_4_2 <- my.union(paths_4, paths_2)
+Uni_4_3 <- my.union(paths_4, paths_3)
+Uni_4_4 <- my.union(paths_4, paths_4)
+Uni_4_5 <- my.union(paths_4, paths_5)
+Uni_4_8 <- my.union(paths_4, paths_8)
+Uni_4_9 <- my.union(paths_4, paths_9)
+Uni_4_10 <- my.union(paths_4, paths_10)
+Uni_4_11 <- my.union(paths_4, paths_11)
+Uni_4_12 <- my.union(paths_4, paths_12)
+Uni_4_13 <- my.union(paths_4, paths_13)
+Uni_4_14 <- my.union(paths_4, paths_14)
+Uni_4_15 <- my.union(paths_4, paths_15)
+Uni_4_16 <- my.union(paths_4, paths_16)
+Uni_4_25 <- my.union(paths_4, paths_25)
+Uni_5_1 <- my.union(paths_5, paths_1)
+Uni_5_2 <- my.union(paths_5, paths_2)
+Uni_5_3 <- my.union(paths_5, paths_3)
+Uni_5_4 <- my.union(paths_5, paths_4)
+Uni_5_5 <- my.union(paths_5, paths_5)
+Uni_5_8 <- my.union(paths_5, paths_8)
+Uni_5_9 <- my.union(paths_5, paths_9)
+Uni_5_10 <- my.union(paths_5, paths_10)
+Uni_5_11 <- my.union(paths_5, paths_11)
+Uni_5_12 <- my.union(paths_5, paths_12)
+Uni_5_13 <- my.union(paths_5, paths_13)
+Uni_5_14 <- my.union(paths_5, paths_14)
+Uni_5_15 <- my.union(paths_5, paths_15)
+Uni_5_16 <- my.union(paths_5, paths_16)
+Uni_5_25 <- my.union(paths_5, paths_25)
+Uni_8_1 <- my.union(paths_8, paths_1)
+Uni_8_2 <- my.union(paths_8, paths_2)
+Uni_8_3 <- my.union(paths_8, paths_3)
+Uni_8_4 <- my.union(paths_8, paths_4)
+Uni_8_5 <- my.union(paths_8, paths_5)
+Uni_8_8 <- my.union(paths_8, paths_8)
+Uni_8_9 <- my.union(paths_8, paths_9)
+Uni_8_10 <- my.union(paths_8, paths_10)
+Uni_8_11 <- my.union(paths_8, paths_11)
+Uni_8_12 <- my.union(paths_8, paths_12)
+Uni_8_13 <- my.union(paths_8, paths_13)
+Uni_8_14 <- my.union(paths_8, paths_14)
+Uni_8_15 <- my.union(paths_8, paths_15)
+Uni_8_16 <- my.union(paths_8, paths_16)
+Uni_8_25 <- my.union(paths_8, paths_25)
+Uni_9_1 <- my.union(paths_9, paths_1)
+Uni_9_2 <- my.union(paths_9, paths_2)
+Uni_9_3 <- my.union(paths_9, paths_3)
+Uni_9_4 <- my.union(paths_9, paths_4)
+Uni_9_5 <- my.union(paths_9, paths_5)
+Uni_9_8 <- my.union(paths_9, paths_8)
+Uni_9_9 <- my.union(paths_9, paths_9)
+Uni_9_10 <- my.union(paths_9, paths_10)
+Uni_9_11 <- my.union(paths_9, paths_11)
+Uni_9_12 <- my.union(paths_9, paths_12)
+Uni_9_13 <- my.union(paths_9, paths_13)
+Uni_9_14 <- my.union(paths_9, paths_14)
+Uni_9_15 <- my.union(paths_9, paths_15)
+Uni_9_16 <- my.union(paths_9, paths_16)
+Uni_9_25 <- my.union(paths_9, paths_25)
+Uni_10_1 <- my.union(paths_10, paths_1)
+Uni_10_2 <- my.union(paths_10, paths_2)
+Uni_10_3 <- my.union(paths_10, paths_3)
+Uni_10_4 <- my.union(paths_10, paths_4)
+Uni_10_5 <- my.union(paths_10, paths_5)
+Uni_10_8 <- my.union(paths_10, paths_8)
+Uni_10_9 <- my.union(paths_10, paths_9)
+Uni_10_10 <- my.union(paths_10, paths_10)
+Uni_10_11 <- my.union(paths_10, paths_11)
+Uni_10_12 <- my.union(paths_10, paths_12)
+Uni_10_13 <- my.union(paths_10, paths_13)
+Uni_10_14 <- my.union(paths_10, paths_14)
+Uni_10_15 <- my.union(paths_10, paths_15)
+Uni_10_16 <- my.union(paths_10, paths_16)
+Uni_10_25 <- my.union(paths_10, paths_25)
+Uni_11_1 <- my.union(paths_11, paths_1)
+Uni_11_2 <- my.union(paths_11, paths_2)
+Uni_11_3 <- my.union(paths_11, paths_3)
+Uni_11_4 <- my.union(paths_11, paths_4)
+Uni_11_5 <- my.union(paths_11, paths_5)
+Uni_11_8 <- my.union(paths_11, paths_8)
+Uni_11_9 <- my.union(paths_11, paths_9)
+Uni_11_10 <- my.union(paths_11, paths_10)
+Uni_11_11 <- my.union(paths_11, paths_11)
+Uni_11_12 <- my.union(paths_11, paths_12)
+Uni_11_13 <- my.union(paths_11, paths_13)
+Uni_11_14 <- my.union(paths_11, paths_14)
+Uni_11_15 <- my.union(paths_11, paths_15)
+Uni_11_16 <- my.union(paths_11, paths_16)
+Uni_11_25 <- my.union(paths_11, paths_25)
+Uni_12_1 <- my.union(paths_12, paths_1)
+Uni_12_2 <- my.union(paths_12, paths_2)
+Uni_12_3 <- my.union(paths_12, paths_3)
+Uni_12_4 <- my.union(paths_12, paths_4)
+Uni_12_5 <- my.union(paths_12, paths_5)
+Uni_12_8 <- my.union(paths_12, paths_8)
+Uni_12_9 <- my.union(paths_12, paths_9)
+Uni_12_10 <- my.union(paths_12, paths_10)
+Uni_12_11 <- my.union(paths_12, paths_11)
+Uni_12_12 <- my.union(paths_12, paths_12)
+Uni_12_13 <- my.union(paths_12, paths_13)
+Uni_12_14 <- my.union(paths_12, paths_14)
+Uni_12_15 <- my.union(paths_12, paths_15)
+Uni_12_16 <- my.union(paths_12, paths_16)
+Uni_12_25 <- my.union(paths_12, paths_25)
+Uni_13_1 <- my.union(paths_13, paths_1)
+Uni_13_2 <- my.union(paths_13, paths_2)
+Uni_13_3 <- my.union(paths_13, paths_3)
+Uni_13_4 <- my.union(paths_13, paths_4)
+Uni_13_5 <- my.union(paths_13, paths_5)
+Uni_13_8 <- my.union(paths_13, paths_8)
+Uni_13_9 <- my.union(paths_13, paths_9)
+Uni_13_10 <- my.union(paths_13, paths_10)
+Uni_13_11 <- my.union(paths_13, paths_11)
+Uni_13_12 <- my.union(paths_13, paths_12)
+Uni_13_13 <- my.union(paths_13, paths_13)
+Uni_13_14 <- my.union(paths_13, paths_14)
+Uni_13_15 <- my.union(paths_13, paths_15)
+Uni_13_16 <- my.union(paths_13, paths_16)
+Uni_13_25 <- my.union(paths_13, paths_25)
+Uni_14_1 <- my.union(paths_14, paths_1)
+Uni_14_2 <- my.union(paths_14, paths_2)
+Uni_14_3 <- my.union(paths_14, paths_3)
+Uni_14_4 <- my.union(paths_14, paths_4)
+Uni_14_5 <- my.union(paths_14, paths_5)
+Uni_14_8 <- my.union(paths_14, paths_8)
+Uni_14_9 <- my.union(paths_14, paths_9)
+Uni_14_10 <- my.union(paths_14, paths_10)
+Uni_14_11 <- my.union(paths_14, paths_11)
+Uni_14_12 <- my.union(paths_14, paths_12)
+Uni_14_13 <- my.union(paths_14, paths_13)
+Uni_14_14 <- my.union(paths_14, paths_14)
+Uni_14_15 <- my.union(paths_14, paths_15)
+Uni_14_16 <- my.union(paths_14, paths_16)
+Uni_14_25 <- my.union(paths_14, paths_25)
+Uni_15_1 <- my.union(paths_15, paths_1)
+Uni_15_2 <- my.union(paths_15, paths_2)
+Uni_15_3 <- my.union(paths_15, paths_3)
+Uni_15_4 <- my.union(paths_15, paths_4)
+Uni_15_5 <- my.union(paths_15, paths_5)
+Uni_15_8 <- my.union(paths_15, paths_8)
+Uni_15_9 <- my.union(paths_15, paths_9)
+Uni_15_10 <- my.union(paths_15, paths_10)
+Uni_15_11 <- my.union(paths_15, paths_11)
+Uni_15_12 <- my.union(paths_15, paths_12)
+Uni_15_13 <- my.union(paths_15, paths_13)
+Uni_15_14 <- my.union(paths_15, paths_14)
+Uni_15_15 <- my.union(paths_15, paths_15)
+Uni_15_16 <- my.union(paths_15, paths_16)
+Uni_15_25 <- my.union(paths_15, paths_25)
+Uni_16_1 <- my.union(paths_16, paths_1)
+Uni_16_2 <- my.union(paths_16, paths_2)
+Uni_16_3 <- my.union(paths_16, paths_3)
+Uni_16_4 <- my.union(paths_16, paths_4)
+Uni_16_5 <- my.union(paths_16, paths_5)
+Uni_16_8 <- my.union(paths_16, paths_8)
+Uni_16_9 <- my.union(paths_16, paths_9)
+Uni_16_10 <- my.union(paths_16, paths_10)
+Uni_16_11 <- my.union(paths_16, paths_11)
+Uni_16_12 <- my.union(paths_16, paths_12)
+Uni_16_13 <- my.union(paths_16, paths_13)
+Uni_16_14 <- my.union(paths_16, paths_14)
+Uni_16_15 <- my.union(paths_16, paths_15)
+Uni_16_16 <- my.union(paths_16, paths_16)
+Uni_16_25 <- my.union(paths_16, paths_25)
+Uni_25_1 <- my.union(paths_25, paths_1)
+Uni_25_2 <- my.union(paths_25, paths_2)
+Uni_25_3 <- my.union(paths_25, paths_3)
+Uni_25_4 <- my.union(paths_25, paths_4)
+Uni_25_5 <- my.union(paths_25, paths_5)
+Uni_25_8 <- my.union(paths_25, paths_8)
+Uni_25_9 <- my.union(paths_25, paths_9)
+Uni_25_10 <- my.union(paths_25, paths_10)
+Uni_25_11 <- my.union(paths_25, paths_11)
+Uni_25_12 <- my.union(paths_25, paths_12)
+Uni_25_13 <- my.union(paths_25, paths_13)
+Uni_25_14 <- my.union(paths_25, paths_14)
+Uni_25_15 <- my.union(paths_25, paths_15)
+Uni_25_16 <- my.union(paths_25, paths_16)
+Uni_25_25 <- my.union(paths_25, paths_25)
+
+# Paired Intersection
+Inters_1_1 <- my.union(paths_1, paths_1)
+Inters_1_2 <- my.union(paths_1, paths_2)
+Inters_1_3 <- my.union(paths_1, paths_3)
+Inters_1_4 <- my.union(paths_1, paths_4)
+Inters_1_5 <- my.union(paths_1, paths_5)
+Inters_1_8 <- my.union(paths_1, paths_8)
+Inters_1_9 <- my.union(paths_1, paths_9)
+Inters_1_10 <- my.union(paths_1, paths_10)
+Inters_1_11 <- my.union(paths_1, paths_11)
+Inters_1_12 <- my.union(paths_1, paths_12)
+Inters_1_13 <- my.union(paths_1, paths_13)
+Inters_1_14 <- my.union(paths_1, paths_14)
+Inters_1_15 <- my.union(paths_1, paths_15)
+Inters_1_16 <- my.union(paths_1, paths_16)
+Inters_1_25 <- my.union(paths_1, paths_25)
+Inters_2_1 <- my.union(paths_2, paths_1)
+Inters_2_2 <- my.union(paths_2, paths_2)
+Inters_2_3 <- my.union(paths_2, paths_3)
+Inters_2_4 <- my.union(paths_2, paths_4)
+Inters_2_5 <- my.union(paths_2, paths_5)
+Inters_2_8 <- my.union(paths_2, paths_8)
+Inters_2_9 <- my.union(paths_2, paths_9)
+Inters_2_10 <- my.union(paths_2, paths_10)
+Inters_2_11 <- my.union(paths_2, paths_11)
+Inters_2_12 <- my.union(paths_2, paths_12)
+Inters_2_13 <- my.union(paths_2, paths_13)
+Inters_2_14 <- my.union(paths_2, paths_14)
+Inters_2_15 <- my.union(paths_2, paths_15)
+Inters_2_16 <- my.union(paths_2, paths_16)
+Inters_2_25 <- my.union(paths_2, paths_25)
+Inters_3_1 <- my.union(paths_3, paths_1)
+Inters_3_2 <- my.union(paths_3, paths_2)
+Inters_3_3 <- my.union(paths_3, paths_3)
+Inters_3_4 <- my.union(paths_3, paths_4)
+Inters_3_5 <- my.union(paths_3, paths_5)
+Inters_3_8 <- my.union(paths_3, paths_8)
+Inters_3_9 <- my.union(paths_3, paths_9)
+Inters_3_10 <- my.union(paths_3, paths_10)
+Inters_3_11 <- my.union(paths_3, paths_11)
+Inters_3_12 <- my.union(paths_3, paths_12)
+Inters_3_13 <- my.union(paths_3, paths_13)
+Inters_3_14 <- my.union(paths_3, paths_14)
+Inters_3_15 <- my.union(paths_3, paths_15)
+Inters_3_16 <- my.union(paths_3, paths_16)
+Inters_3_25 <- my.union(paths_3, paths_25)
+Inters_4_1 <- my.union(paths_4, paths_1)
+Inters_4_2 <- my.union(paths_4, paths_2)
+Inters_4_3 <- my.union(paths_4, paths_3)
+Inters_4_4 <- my.union(paths_4, paths_4)
+Inters_4_5 <- my.union(paths_4, paths_5)
+Inters_4_8 <- my.union(paths_4, paths_8)
+Inters_4_9 <- my.union(paths_4, paths_9)
+Inters_4_10 <- my.union(paths_4, paths_10)
+Inters_4_11 <- my.union(paths_4, paths_11)
+Inters_4_12 <- my.union(paths_4, paths_12)
+Inters_4_13 <- my.union(paths_4, paths_13)
+Inters_4_14 <- my.union(paths_4, paths_14)
+Inters_4_15 <- my.union(paths_4, paths_15)
+Inters_4_16 <- my.union(paths_4, paths_16)
+Inters_4_25 <- my.union(paths_4, paths_25)
+Inters_5_1 <- my.union(paths_5, paths_1)
+Inters_5_2 <- my.union(paths_5, paths_2)
+Inters_5_3 <- my.union(paths_5, paths_3)
+Inters_5_4 <- my.union(paths_5, paths_4)
+Inters_5_5 <- my.union(paths_5, paths_5)
+Inters_5_8 <- my.union(paths_5, paths_8)
+Inters_5_9 <- my.union(paths_5, paths_9)
+Inters_5_10 <- my.union(paths_5, paths_10)
+Inters_5_11 <- my.union(paths_5, paths_11)
+Inters_5_12 <- my.union(paths_5, paths_12)
+Inters_5_13 <- my.union(paths_5, paths_13)
+Inters_5_14 <- my.union(paths_5, paths_14)
+Inters_5_15 <- my.union(paths_5, paths_15)
+Inters_5_16 <- my.union(paths_5, paths_16)
+Inters_5_25 <- my.union(paths_5, paths_25)
+Inters_8_1 <- my.union(paths_8, paths_1)
+Inters_8_2 <- my.union(paths_8, paths_2)
+Inters_8_3 <- my.union(paths_8, paths_3)
+Inters_8_4 <- my.union(paths_8, paths_4)
+Inters_8_5 <- my.union(paths_8, paths_5)
+Inters_8_8 <- my.union(paths_8, paths_8)
+Inters_8_9 <- my.union(paths_8, paths_9)
+Inters_8_10 <- my.union(paths_8, paths_10)
+Inters_8_11 <- my.union(paths_8, paths_11)
+Inters_8_12 <- my.union(paths_8, paths_12)
+Inters_8_13 <- my.union(paths_8, paths_13)
+Inters_8_14 <- my.union(paths_8, paths_14)
+Inters_8_15 <- my.union(paths_8, paths_15)
+Inters_8_16 <- my.union(paths_8, paths_16)
+Inters_8_25 <- my.union(paths_8, paths_25)
+Inters_9_1 <- my.union(paths_9, paths_1)
+Inters_9_2 <- my.union(paths_9, paths_2)
+Inters_9_3 <- my.union(paths_9, paths_3)
+Inters_9_4 <- my.union(paths_9, paths_4)
+Inters_9_5 <- my.union(paths_9, paths_5)
+Inters_9_8 <- my.union(paths_9, paths_8)
+Inters_9_9 <- my.union(paths_9, paths_9)
+Inters_9_10 <- my.union(paths_9, paths_10)
+Inters_9_11 <- my.union(paths_9, paths_11)
+Inters_9_12 <- my.union(paths_9, paths_12)
+Inters_9_13 <- my.union(paths_9, paths_13)
+Inters_9_14 <- my.union(paths_9, paths_14)
+Inters_9_15 <- my.union(paths_9, paths_15)
+Inters_9_16 <- my.union(paths_9, paths_16)
+Inters_9_25 <- my.union(paths_9, paths_25)
+Inters_10_1 <- my.union(paths_10, paths_1)
+Inters_10_2 <- my.union(paths_10, paths_2)
+Inters_10_3 <- my.union(paths_10, paths_3)
+Inters_10_4 <- my.union(paths_10, paths_4)
+Inters_10_5 <- my.union(paths_10, paths_5)
+Inters_10_8 <- my.union(paths_10, paths_8)
+Inters_10_9 <- my.union(paths_10, paths_9)
+Inters_10_10 <- my.union(paths_10, paths_10)
+Inters_10_11 <- my.union(paths_10, paths_11)
+Inters_10_12 <- my.union(paths_10, paths_12)
+Inters_10_13 <- my.union(paths_10, paths_13)
+Inters_10_14 <- my.union(paths_10, paths_14)
+Inters_10_15 <- my.union(paths_10, paths_15)
+Inters_10_16 <- my.union(paths_10, paths_16)
+Inters_10_25 <- my.union(paths_10, paths_25)
+Inters_11_1 <- my.union(paths_11, paths_1)
+Inters_11_2 <- my.union(paths_11, paths_2)
+Inters_11_3 <- my.union(paths_11, paths_3)
+Inters_11_4 <- my.union(paths_11, paths_4)
+Inters_11_5 <- my.union(paths_11, paths_5)
+Inters_11_8 <- my.union(paths_11, paths_8)
+Inters_11_9 <- my.union(paths_11, paths_9)
+Inters_11_10 <- my.union(paths_11, paths_10)
+Inters_11_11 <- my.union(paths_11, paths_11)
+Inters_11_12 <- my.union(paths_11, paths_12)
+Inters_11_13 <- my.union(paths_11, paths_13)
+Inters_11_14 <- my.union(paths_11, paths_14)
+Inters_11_15 <- my.union(paths_11, paths_15)
+Inters_11_16 <- my.union(paths_11, paths_16)
+Inters_11_25 <- my.union(paths_11, paths_25)
+Inters_12_1 <- my.union(paths_12, paths_1)
+Inters_12_2 <- my.union(paths_12, paths_2)
+Inters_12_3 <- my.union(paths_12, paths_3)
+Inters_12_4 <- my.union(paths_12, paths_4)
+Inters_12_5 <- my.union(paths_12, paths_5)
+Inters_12_8 <- my.union(paths_12, paths_8)
+Inters_12_9 <- my.union(paths_12, paths_9)
+Inters_12_10 <- my.union(paths_12, paths_10)
+Inters_12_11 <- my.union(paths_12, paths_11)
+Inters_12_12 <- my.union(paths_12, paths_12)
+Inters_12_13 <- my.union(paths_12, paths_13)
+Inters_12_14 <- my.union(paths_12, paths_14)
+Inters_12_15 <- my.union(paths_12, paths_15)
+Inters_12_16 <- my.union(paths_12, paths_16)
+Inters_12_25 <- my.union(paths_12, paths_25)
+Inters_13_1 <- my.union(paths_13, paths_1)
+Inters_13_2 <- my.union(paths_13, paths_2)
+Inters_13_3 <- my.union(paths_13, paths_3)
+Inters_13_4 <- my.union(paths_13, paths_4)
+Inters_13_5 <- my.union(paths_13, paths_5)
+Inters_13_8 <- my.union(paths_13, paths_8)
+Inters_13_9 <- my.union(paths_13, paths_9)
+Inters_13_10 <- my.union(paths_13, paths_10)
+Inters_13_11 <- my.union(paths_13, paths_11)
+Inters_13_12 <- my.union(paths_13, paths_12)
+Inters_13_13 <- my.union(paths_13, paths_13)
+Inters_13_14 <- my.union(paths_13, paths_14)
+Inters_13_15 <- my.union(paths_13, paths_15)
+Inters_13_16 <- my.union(paths_13, paths_16)
+Inters_13_25 <- my.union(paths_13, paths_25)
+Inters_14_1 <- my.union(paths_14, paths_1)
+Inters_14_2 <- my.union(paths_14, paths_2)
+Inters_14_3 <- my.union(paths_14, paths_3)
+Inters_14_4 <- my.union(paths_14, paths_4)
+Inters_14_5 <- my.union(paths_14, paths_5)
+Inters_14_8 <- my.union(paths_14, paths_8)
+Inters_14_9 <- my.union(paths_14, paths_9)
+Inters_14_10 <- my.union(paths_14, paths_10)
+Inters_14_11 <- my.union(paths_14, paths_11)
+Inters_14_12 <- my.union(paths_14, paths_12)
+Inters_14_13 <- my.union(paths_14, paths_13)
+Inters_14_14 <- my.union(paths_14, paths_14)
+Inters_14_15 <- my.union(paths_14, paths_15)
+Inters_14_16 <- my.union(paths_14, paths_16)
+Inters_14_25 <- my.union(paths_14, paths_25)
+Inters_15_1 <- my.union(paths_15, paths_1)
+Inters_15_2 <- my.union(paths_15, paths_2)
+Inters_15_3 <- my.union(paths_15, paths_3)
+Inters_15_4 <- my.union(paths_15, paths_4)
+Inters_15_5 <- my.union(paths_15, paths_5)
+Inters_15_8 <- my.union(paths_15, paths_8)
+Inters_15_9 <- my.union(paths_15, paths_9)
+Inters_15_10 <- my.union(paths_15, paths_10)
+Inters_15_11 <- my.union(paths_15, paths_11)
+Inters_15_12 <- my.union(paths_15, paths_12)
+Inters_15_13 <- my.union(paths_15, paths_13)
+Inters_15_14 <- my.union(paths_15, paths_14)
+Inters_15_15 <- my.union(paths_15, paths_15)
+Inters_15_16 <- my.union(paths_15, paths_16)
+Inters_15_25 <- my.union(paths_15, paths_25)
+Inters_16_1 <- my.union(paths_16, paths_1)
+Inters_16_2 <- my.union(paths_16, paths_2)
+Inters_16_3 <- my.union(paths_16, paths_3)
+Inters_16_4 <- my.union(paths_16, paths_4)
+Inters_16_5 <- my.union(paths_16, paths_5)
+Inters_16_8 <- my.union(paths_16, paths_8)
+Inters_16_9 <- my.union(paths_16, paths_9)
+Inters_16_10 <- my.union(paths_16, paths_10)
+Inters_16_11 <- my.union(paths_16, paths_11)
+Inters_16_12 <- my.union(paths_16, paths_12)
+Inters_16_13 <- my.union(paths_16, paths_13)
+Inters_16_14 <- my.union(paths_16, paths_14)
+Inters_16_15 <- my.union(paths_16, paths_15)
+Inters_16_16 <- my.union(paths_16, paths_16)
+Inters_16_25 <- my.union(paths_16, paths_25)
+Inters_25_1 <- my.union(paths_25, paths_1)
+Inters_25_2 <- my.union(paths_25, paths_2)
+Inters_25_3 <- my.union(paths_25, paths_3)
+Inters_25_4 <- my.union(paths_25, paths_4)
+Inters_25_5 <- my.union(paths_25, paths_5)
+Inters_25_8 <- my.union(paths_25, paths_8)
+Inters_25_9 <- my.union(paths_25, paths_9)
+Inters_25_10 <- my.union(paths_25, paths_10)
+Inters_25_11 <- my.union(paths_25, paths_11)
+Inters_25_12 <- my.union(paths_25, paths_12)
+Inters_25_13 <- my.union(paths_25, paths_13)
+Inters_25_14 <- my.union(paths_25, paths_14)
+Inters_25_15 <- my.union(paths_25, paths_15)
+Inters_25_16 <- my.union(paths_25, paths_16)
+Inters_25_25 <- my.union(paths_25, paths_25)
+
+# The ratio = Inters_x_y/Uni_x_y
+Ratio_1_1 <- Inters_1_1 / Uni_1_1
+Ratio_1_2 <- Inters_1_2 / Uni_1_2
+Ratio_1_3 <- Inters_1_3 / Uni_1_3
+Ratio_1_4 <- Inters_1_4 / Uni_1_4
+Ratio_1_5 <- Inters_1_5 / Uni_1_5
+Ratio_1_8 <- Inters_1_8 / Uni_1_8
+Ratio_1_9 <- Inters_1_9 / Uni_1_9
+Ratio_1_10 <- Inters_1_10 / Uni_1_10
+Ratio_1_11 <- Inters_1_11 / Uni_1_11
+Ratio_1_12 <- Inters_1_12 / Uni_1_12
+Ratio_1_13 <- Inters_1_13 / Uni_1_13
+Ratio_1_14 <- Inters_1_14 / Uni_1_14
+Ratio_1_15 <- Inters_1_15 / Uni_1_15
+Ratio_1_16 <- Inters_1_16 / Uni_1_16
+Ratio_1_25 <- Inters_1_25 / Uni_1_25
+Ratio_2_1 <- Inters_2_1 / Uni_2_1
+Ratio_2_2 <- Inters_2_2 / Uni_2_2
+Ratio_2_3 <- Inters_2_3 / Uni_2_3
+Ratio_2_4 <- Inters_2_4 / Uni_2_4
+Ratio_2_5 <- Inters_2_5 / Uni_2_5
+Ratio_2_8 <- Inters_2_8 / Uni_2_8
+Ratio_2_9 <- Inters_2_9 / Uni_2_9
+Ratio_2_10 <- Inters_2_10 / Uni_2_10
+Ratio_2_11 <- Inters_2_11 / Uni_2_11
+Ratio_2_12 <- Inters_2_12 / Uni_2_12
+Ratio_2_13 <- Inters_2_13 / Uni_2_13
+Ratio_2_14 <- Inters_2_14 / Uni_2_14
+Ratio_2_15 <- Inters_2_15 / Uni_2_15
+Ratio_2_16 <- Inters_2_16 / Uni_2_16
+Ratio_2_25 <- Inters_2_25 / Uni_2_25
+Ratio_3_1 <- Inters_3_1 / Uni_3_1
+Ratio_3_2 <- Inters_3_2 / Uni_3_2
+Ratio_3_3 <- Inters_3_3 / Uni_3_3
+Ratio_3_4 <- Inters_3_4 / Uni_3_4
+Ratio_3_5 <- Inters_3_5 / Uni_3_5
+Ratio_3_8 <- Inters_3_8 / Uni_3_8
+Ratio_3_9 <- Inters_3_9 / Uni_3_9
+Ratio_3_10 <- Inters_3_10 / Uni_3_10
+Ratio_3_11 <- Inters_3_11 / Uni_3_11
+Ratio_3_12 <- Inters_3_12 / Uni_3_12
+Ratio_3_13 <- Inters_3_13 / Uni_3_13
+Ratio_3_14 <- Inters_3_14 / Uni_3_14
+Ratio_3_15 <- Inters_3_15 / Uni_3_15
+Ratio_3_16 <- Inters_3_16 / Uni_3_16
+Ratio_3_25 <- Inters_3_25 / Uni_3_25
+Ratio_4_1 <- Inters_4_1 / Uni_4_1
+Ratio_4_2 <- Inters_4_2 / Uni_4_2
+Ratio_4_3 <- Inters_4_3 / Uni_4_3
+Ratio_4_4 <- Inters_4_4 / Uni_4_4
+Ratio_4_5 <- Inters_4_5 / Uni_4_5
+Ratio_4_8 <- Inters_4_8 / Uni_4_8
+Ratio_4_9 <- Inters_4_9 / Uni_4_9
+Ratio_4_10 <- Inters_4_10 / Uni_4_10
+Ratio_4_11 <- Inters_4_11 / Uni_4_11
+Ratio_4_12 <- Inters_4_12 / Uni_4_12
+Ratio_4_13 <- Inters_4_13 / Uni_4_13
+Ratio_4_14 <- Inters_4_14 / Uni_4_14
+Ratio_4_15 <- Inters_4_15 / Uni_4_15
+Ratio_4_16 <- Inters_4_16 / Uni_4_16
+Ratio_4_25 <- Inters_4_25 / Uni_4_25
+Ratio_5_1 <- Inters_5_1 / Uni_5_1
+Ratio_5_2 <- Inters_5_2 / Uni_5_2
+Ratio_5_3 <- Inters_5_3 / Uni_5_3
+Ratio_5_4 <- Inters_5_4 / Uni_5_4
+Ratio_5_5 <- Inters_5_5 / Uni_5_5
+Ratio_5_8 <- Inters_5_8 / Uni_5_8
+Ratio_5_9 <- Inters_5_9 / Uni_5_9
+Ratio_5_10 <- Inters_5_10 / Uni_5_10
+Ratio_5_11 <- Inters_5_11 / Uni_5_11
+Ratio_5_12 <- Inters_5_12 / Uni_5_12
+Ratio_5_13 <- Inters_5_13 / Uni_5_13
+Ratio_5_14 <- Inters_5_14 / Uni_5_14
+Ratio_5_15 <- Inters_5_15 / Uni_5_15
+Ratio_5_16 <- Inters_5_16 / Uni_5_16
+Ratio_5_25 <- Inters_5_25 / Uni_5_25
+Ratio_8_1 <- Inters_8_1 / Uni_8_1
+Ratio_8_2 <- Inters_8_2 / Uni_8_2
+Ratio_8_3 <- Inters_8_3 / Uni_8_3
+Ratio_8_4 <- Inters_8_4 / Uni_8_4
+Ratio_8_5 <- Inters_8_5 / Uni_8_5
+Ratio_8_8 <- Inters_8_8 / Uni_8_8
+Ratio_8_9 <- Inters_8_9 / Uni_8_9
+Ratio_8_10 <- Inters_8_10 / Uni_8_10
+Ratio_8_11 <- Inters_8_11 / Uni_8_11
+Ratio_8_12 <- Inters_8_12 / Uni_8_12
+Ratio_8_13 <- Inters_8_13 / Uni_8_13
+Ratio_8_14 <- Inters_8_14 / Uni_8_14
+Ratio_8_15 <- Inters_8_15 / Uni_8_15
+Ratio_8_16 <- Inters_8_16 / Uni_8_16
+Ratio_8_25 <- Inters_8_25 / Uni_8_25
+Ratio_9_1 <- Inters_9_1 / Uni_9_1
+Ratio_9_2 <- Inters_9_2 / Uni_9_2
+Ratio_9_3 <- Inters_9_3 / Uni_9_3
+Ratio_9_4 <- Inters_9_4 / Uni_9_4
+Ratio_9_5 <- Inters_9_5 / Uni_9_5
+Ratio_9_8 <- Inters_9_8 / Uni_9_8
+Ratio_9_9 <- Inters_9_9 / Uni_9_9
+Ratio_9_10 <- Inters_9_10 / Uni_9_10
+Ratio_9_11 <- Inters_9_11 / Uni_9_11
+Ratio_9_12 <- Inters_9_12 / Uni_9_12
+Ratio_9_13 <- Inters_9_13 / Uni_9_13
+Ratio_9_14 <- Inters_9_14 / Uni_9_14
+Ratio_9_15 <- Inters_9_15 / Uni_9_15
+Ratio_9_16 <- Inters_9_16 / Uni_9_16
+Ratio_9_25 <- Inters_9_25 / Uni_9_25
+Ratio_10_1 <- Inters_10_1 / Uni_10_1
+Ratio_10_2 <- Inters_10_2 / Uni_10_2
+Ratio_10_3 <- Inters_10_3 / Uni_10_3
+Ratio_10_4 <- Inters_10_4 / Uni_10_4
+Ratio_10_5 <- Inters_10_5 / Uni_10_5
+Ratio_10_8 <- Inters_10_8 / Uni_10_8
+Ratio_10_9 <- Inters_10_9 / Uni_10_9
+Ratio_10_10 <- Inters_10_10 / Uni_10_10
+Ratio_10_11 <- Inters_10_11 / Uni_10_11
+Ratio_10_12 <- Inters_10_12 / Uni_10_12
+Ratio_10_13 <- Inters_10_13 / Uni_10_13
+Ratio_10_14 <- Inters_10_14 / Uni_10_14
+Ratio_10_15 <- Inters_10_15 / Uni_10_15
+Ratio_10_16 <- Inters_10_16 / Uni_10_16
+Ratio_10_25 <- Inters_10_25 / Uni_10_25
+Ratio_11_1 <- Inters_11_1 / Uni_11_1
+Ratio_11_2 <- Inters_11_2 / Uni_11_2
+Ratio_11_3 <- Inters_11_3 / Uni_11_3
+Ratio_11_4 <- Inters_11_4 / Uni_11_4
+Ratio_11_5 <- Inters_11_5 / Uni_11_5
+Ratio_11_8 <- Inters_11_8 / Uni_11_8
+Ratio_11_9 <- Inters_11_9 / Uni_11_9
+Ratio_11_10 <- Inters_11_10 / Uni_11_10
+Ratio_11_11 <- Inters_11_11 / Uni_11_11
+Ratio_11_12 <- Inters_11_12 / Uni_11_12
+Ratio_11_13 <- Inters_11_13 / Uni_11_13
+Ratio_11_14 <- Inters_11_14 / Uni_11_14
+Ratio_11_15 <- Inters_11_15 / Uni_11_15
+Ratio_11_16 <- Inters_11_16 / Uni_11_16
+Ratio_11_25 <- Inters_11_25 / Uni_11_25
+Ratio_12_1 <- Inters_12_1 / Uni_12_1
+Ratio_12_2 <- Inters_12_2 / Uni_12_2
+Ratio_12_3 <- Inters_12_3 / Uni_12_3
+Ratio_12_4 <- Inters_12_4 / Uni_12_4
+Ratio_12_5 <- Inters_12_5 / Uni_12_5
+Ratio_12_8 <- Inters_12_8 / Uni_12_8
+Ratio_12_9 <- Inters_12_9 / Uni_12_9
+Ratio_12_10 <- Inters_12_10 / Uni_12_10
+Ratio_12_11 <- Inters_12_11 / Uni_12_11
+Ratio_12_12 <- Inters_12_12 / Uni_12_12
+Ratio_12_13 <- Inters_12_13 / Uni_12_13
+Ratio_12_14 <- Inters_12_14 / Uni_12_14
+Ratio_12_15 <- Inters_12_15 / Uni_12_15
+Ratio_12_16 <- Inters_12_16 / Uni_12_16
+Ratio_12_25 <- Inters_12_25 / Uni_12_25
+Ratio_13_1 <- Inters_13_1 / Uni_13_1
+Ratio_13_2 <- Inters_13_2 / Uni_13_2
+Ratio_13_3 <- Inters_13_3 / Uni_13_3
+Ratio_13_4 <- Inters_13_4 / Uni_13_4
+Ratio_13_5 <- Inters_13_5 / Uni_13_5
+Ratio_13_8 <- Inters_13_8 / Uni_13_8
+Ratio_13_9 <- Inters_13_9 / Uni_13_9
+Ratio_13_10 <- Inters_13_10 / Uni_13_10
+Ratio_13_11 <- Inters_13_11 / Uni_13_11
+Ratio_13_12 <- Inters_13_12 / Uni_13_12
+Ratio_13_13 <- Inters_13_13 / Uni_13_13
+Ratio_13_14 <- Inters_13_14 / Uni_13_14
+Ratio_13_15 <- Inters_13_15 / Uni_13_15
+Ratio_13_16 <- Inters_13_16 / Uni_13_16
+Ratio_13_25 <- Inters_13_25 / Uni_13_25
+Ratio_14_1 <- Inters_14_1 / Uni_14_1
+Ratio_14_2 <- Inters_14_2 / Uni_14_2
+Ratio_14_3 <- Inters_14_3 / Uni_14_3
+Ratio_14_4 <- Inters_14_4 / Uni_14_4
+Ratio_14_5 <- Inters_14_5 / Uni_14_5
+Ratio_14_8 <- Inters_14_8 / Uni_14_8
+Ratio_14_9 <- Inters_14_9 / Uni_14_9
+Ratio_14_10 <- Inters_14_10 / Uni_14_10
+Ratio_14_11 <- Inters_14_11 / Uni_14_11
+Ratio_14_12 <- Inters_14_12 / Uni_14_12
+Ratio_14_13 <- Inters_14_13 / Uni_14_13
+Ratio_14_14 <- Inters_14_14 / Uni_14_14
+Ratio_14_15 <- Inters_14_15 / Uni_14_15
+Ratio_14_16 <- Inters_14_16 / Uni_14_16
+Ratio_14_25 <- Inters_14_25 / Uni_14_25
+Ratio_15_1 <- Inters_15_1 / Uni_15_1
+Ratio_15_2 <- Inters_15_2 / Uni_15_2
+Ratio_15_3 <- Inters_15_3 / Uni_15_3
+Ratio_15_4 <- Inters_15_4 / Uni_15_4
+Ratio_15_5 <- Inters_15_5 / Uni_15_5
+Ratio_15_8 <- Inters_15_8 / Uni_15_8
+Ratio_15_9 <- Inters_15_9 / Uni_15_9
+Ratio_15_10 <- Inters_15_10 / Uni_15_10
+Ratio_15_11 <- Inters_15_11 / Uni_15_11
+Ratio_15_12 <- Inters_15_12 / Uni_15_12
+Ratio_15_13 <- Inters_15_13 / Uni_15_13
+Ratio_15_14 <- Inters_15_14 / Uni_15_14
+Ratio_15_15 <- Inters_15_15 / Uni_15_15
+Ratio_15_16 <- Inters_15_16 / Uni_15_16
+Ratio_15_25 <- Inters_15_25 / Uni_15_25
+Ratio_16_1 <- Inters_16_1 / Uni_16_1
+Ratio_16_2 <- Inters_16_2 / Uni_16_2
+Ratio_16_3 <- Inters_16_3 / Uni_16_3
+Ratio_16_4 <- Inters_16_4 / Uni_16_4
+Ratio_16_5 <- Inters_16_5 / Uni_16_5
+Ratio_16_8 <- Inters_16_8 / Uni_16_8
+Ratio_16_9 <- Inters_16_9 / Uni_16_9
+Ratio_16_10 <- Inters_16_10 / Uni_16_10
+Ratio_16_11 <- Inters_16_11 / Uni_16_11
+Ratio_16_12 <- Inters_16_12 / Uni_16_12
+Ratio_16_13 <- Inters_16_13 / Uni_16_13
+Ratio_16_14 <- Inters_16_14 / Uni_16_14
+Ratio_16_15 <- Inters_16_15 / Uni_16_15
+Ratio_16_16 <- Inters_16_16 / Uni_16_16
+Ratio_16_25 <- Inters_16_25 / Uni_16_25
+Ratio_25_1 <- Inters_25_1 / Uni_25_1
+Ratio_25_2 <- Inters_25_2 / Uni_25_2
+Ratio_25_3 <- Inters_25_3 / Uni_25_3
+Ratio_25_4 <- Inters_25_4 / Uni_25_4
+Ratio_25_5 <- Inters_25_5 / Uni_25_5
+Ratio_25_8 <- Inters_25_8 / Uni_25_8
+Ratio_25_9 <- Inters_25_9 / Uni_25_9
+Ratio_25_10 <- Inters_25_10 / Uni_25_10
+Ratio_25_11 <- Inters_25_11 / Uni_25_11
+Ratio_25_12 <- Inters_25_12 / Uni_25_12
+Ratio_25_13 <- Inters_25_13 / Uni_25_13
+Ratio_25_14 <- Inters_25_14 / Uni_25_14
+Ratio_25_15 <- Inters_25_15 / Uni_25_15
+Ratio_25_16 <- Inters_25_16 / Uni_25_16
+Ratio_25_25 <- Inters_25_25 / Uni_25_25
+
+ratio_df <- c(Ratio_1_1,
+Ratio_1_2,
+Ratio_1_3,
+Ratio_1_4,
+Ratio_1_5,
+Ratio_1_8,
+Ratio_1_9,
+Ratio_1_10,
+Ratio_1_11,
+Ratio_1_12,
+Ratio_1_13,
+Ratio_1_14,
+Ratio_1_15,
+Ratio_1_16,
+Ratio_1_25,
+Ratio_2_1,
+Ratio_2_2,
+Ratio_2_3,
+Ratio_2_4,
+Ratio_2_5,
+Ratio_2_8,
+Ratio_2_9,
+Ratio_2_10,
+Ratio_2_11,
+Ratio_2_12,
+Ratio_2_13,
+Ratio_2_14,
+Ratio_2_15,
+Ratio_2_16,
+Ratio_2_25,
+Ratio_3_1,
+Ratio_3_2,
+Ratio_3_3,
+Ratio_3_4,
+Ratio_3_5,
+Ratio_3_8,
+Ratio_3_9,
+Ratio_3_10,
+Ratio_3_11,
+Ratio_3_12,
+Ratio_3_13,
+Ratio_3_14,
+Ratio_3_15,
+Ratio_3_16,
+Ratio_3_25,
+Ratio_4_1,
+Ratio_4_2,
+Ratio_4_3,
+Ratio_4_4,
+Ratio_4_5,
+Ratio_4_8,
+Ratio_4_9,
+Ratio_4_10,
+Ratio_4_11,
+Ratio_4_12,
+Ratio_4_13,
+Ratio_4_14,
+Ratio_4_15,
+Ratio_4_16,
+Ratio_4_25,
+Ratio_5_1,
+Ratio_5_2,
+Ratio_5_3,
+Ratio_5_4,
+Ratio_5_5,
+Ratio_5_8,
+Ratio_5_9,
+Ratio_5_10,
+Ratio_5_11,
+Ratio_5_12,
+Ratio_5_13,
+Ratio_5_14,
+Ratio_5_15,
+Ratio_5_16,
+Ratio_5_25,
+Ratio_8_1,
+Ratio_8_2,
+Ratio_8_3,
+Ratio_8_4,
+Ratio_8_5,
+Ratio_8_8,
+Ratio_8_9,
+Ratio_8_10,
+Ratio_8_11,
+Ratio_8_12,
+Ratio_8_13,
+Ratio_8_14,
+Ratio_8_15,
+Ratio_8_16,
+Ratio_8_25,
+Ratio_9_1,
+Ratio_9_2,
+Ratio_9_3,
+Ratio_9_4,
+Ratio_9_5,
+Ratio_9_8,
+Ratio_9_9,
+Ratio_9_10,
+Ratio_9_11,
+Ratio_9_12,
+Ratio_9_13,
+Ratio_9_14,
+Ratio_9_15,
+Ratio_9_16,
+Ratio_9_25,
+Ratio_10_1,
+Ratio_10_2,
+Ratio_10_3,
+Ratio_10_4,
+Ratio_10_5,
+Ratio_10_8,
+Ratio_10_9,
+Ratio_10_10,
+Ratio_10_11,
+Ratio_10_12,
+Ratio_10_13,
+Ratio_10_14,
+Ratio_10_15,
+Ratio_10_16,
+Ratio_10_25,
+Ratio_11_1,
+Ratio_11_2,
+Ratio_11_3,
+Ratio_11_4,
+Ratio_11_5,
+Ratio_11_8,
+Ratio_11_9,
+Ratio_11_10,
+Ratio_11_11,
+Ratio_11_12,
+Ratio_11_13,
+Ratio_11_14,
+Ratio_11_15,
+Ratio_11_16,
+Ratio_11_25,
+Ratio_12_1,
+Ratio_12_2,
+Ratio_12_3,
+Ratio_12_4,
+Ratio_12_5,
+Ratio_12_8,
+Ratio_12_9,
+Ratio_12_10,
+Ratio_12_11,
+Ratio_12_12,
+Ratio_12_13,
+Ratio_12_14,
+Ratio_12_15,
+Ratio_12_16,
+Ratio_12_25,
+Ratio_13_1,
+Ratio_13_2,
+Ratio_13_3,
+Ratio_13_4,
+Ratio_13_5,
+Ratio_13_8,
+Ratio_13_9,
+Ratio_13_10,
+Ratio_13_11,
+Ratio_13_12,
+Ratio_13_13,
+Ratio_13_14,
+Ratio_13_15,
+Ratio_13_16,
+Ratio_13_25,
+Ratio_14_1,
+Ratio_14_2,
+Ratio_14_3,
+Ratio_14_4,
+Ratio_14_5,
+Ratio_14_8,
+Ratio_14_9,
+Ratio_14_10,
+Ratio_14_11,
+Ratio_14_12,
+Ratio_14_13,
+Ratio_14_14,
+Ratio_14_15,
+Ratio_14_16,
+Ratio_14_25,
+Ratio_15_1,
+Ratio_15_2,
+Ratio_15_3,
+Ratio_15_4,
+Ratio_15_5,
+Ratio_15_8,
+Ratio_15_9,
+Ratio_15_10,
+Ratio_15_11,
+Ratio_15_12,
+Ratio_15_13,
+Ratio_15_14,
+Ratio_15_15,
+Ratio_15_16,
+Ratio_15_25,
+Ratio_16_1,
+Ratio_16_2,
+Ratio_16_3,
+Ratio_16_4,
+Ratio_16_5,
+Ratio_16_8,
+Ratio_16_9,
+Ratio_16_10,
+Ratio_16_11,
+Ratio_16_12,
+Ratio_16_13,
+Ratio_16_14,
+Ratio_16_15,
+Ratio_16_16,
+Ratio_16_25,
+Ratio_25_1,
+Ratio_25_2,
+Ratio_25_3,
+Ratio_25_4,
+Ratio_25_5,
+Ratio_25_8,
+Ratio_25_9,
+Ratio_25_10,
+Ratio_25_11,
+Ratio_25_12,
+Ratio_25_13,
+Ratio_25_14,
+Ratio_25_15,
+Ratio_25_16,
+Ratio_25_25)
+
+write.csv(ratio_df, "ratio_df.csv")
+
+```
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
 
