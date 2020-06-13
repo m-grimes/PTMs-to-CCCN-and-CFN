@@ -97,11 +97,12 @@ intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TR
 all.ratio.styles()
 
 ```  
-# An updated full version of all paths for each replicates
-# ss = selected sites
-
+# Cell line are matched to the interested drug-target
+# The gz.cf is the node list
+# The fold-change is abs(2.25) to acquire greatly changed molecules
+# This is the part for distance heatmap
 ```{r}
-##### Crizotinib
+
 # cell line = H3122, ExpSet = SEPTM, Drug = Crizotinib, rep = 3
 
 ss1 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C1.ratio", min_value = 2.25)
@@ -113,17 +114,7 @@ paths_2 <- shortest.paths.to.target(ss2, target = "ALK")
 ss3 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C3.ratio", min_value = 2.25)
 paths_3 <- shortest.paths.to.target(ss3, target = "ALK")
 
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_1 <- my.union(paths_1, paths_2, paths_3)
-union_network <- graph.cfn.cccn (U_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
 
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_1 <- my.intersect(paths_1, paths_2, paths_3)
-intersect_network <- graph.cfn.cccn (I_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-###
 # cell line = H3122, ExpSet = TenCell, Drug = Crizotinib, rep = 2
 
 ss4 <- select.sites.w.min.value(gz.cf, "H3122_Crizotinib.1Ratio", min_value = 2.25)
@@ -133,20 +124,20 @@ ss5 <- select.sites.w.min.value(gz.cf, "H3122CrizotinibRatio", min_value = 2.25)
 paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
 
 
-###
 # cell line = HCC78, ExpSet = TenCell, Drug = Crizotinib, rep = 2
 
 ss6 <- select.sites.w.min.value(gz.cf, "HCC78_Crizotinib.1Ratio", min_value = 2.25)
-paths_HC_T_Cri_rep1 <- shortest.paths.to.target(ss6, target = "ROS1")
+paths_6 <- shortest.paths.to.target(ss6, target = "ROS1")
 
 ss7 <- select.sites.w.min.value(gz.cf, "HCC78_CrizotinibRatio", min_value = 2.25)
 paths_7 <- shortest.paths.to.target(ss7, target = "ROS1")
 
-###
+
 # cell line = STE.1, ExpSet = TenCell, Drug = Crizotinib, rep = 1
 
 ss8 <- select.sites.w.min.value(gz.cf, "STE.1_CrizotinibRatio", min_value = 2.25)
 paths_8 <- shortest.paths.to.target(ss8, target = "ALK")
+
 
 # cell line = H2228, ExpSet = TenCell, Drug = Crizotinib, rep = 1
 
@@ -154,7 +145,6 @@ ss9 <- select.sites.w.min.value(gz.cf, "H2228CrizotinibRatio", min_value = 2.25)
 paths_9 <- shortest.paths.to.target(ss9, target = "ALK")
 
 
-##### Erlotinib
 # cell line = PC9, ExpSet = SEPTM, Drug = Erlotinib, rep = 3
 
 ss10 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
@@ -208,1050 +198,89 @@ paths_21 <- shortest.paths.to.target(ss21, target = "")
 ss22 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR3.ratio", min_value = 2.25)
 paths_22 <- shortest.paths.to.target(ss22, target = "")
 
-##### Dasatinib
+
 # cell line = H2286, ExpSet = TenCell, Drug = Dasatinib， rep = 1
 
-ss23 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
-paths_23 <- shortest.paths.to.target(ss23, target = "DDR2")
+ss23 <- select.sites.w.min.value(gz.cf, "H2286_DasatinibRatio", min_value = 2.25)
+paths_23 <- shortest.paths.to.target(ss23, target = "")
 
 # cell line = H366, ExpSet = TenCell, Drug = Dasatinib， rep = 1
 
-ss24 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
-paths_24 <- shortest.paths.to.target(ss24, target = "DDR2")
+ss24 <- select.sites.w.min.value(gz.cf, "H366_DasatinibRatio", min_value = 2.25)
+paths_24 <- shortest.paths.to.target(ss24, target = "")
 
-##### Afatinib
+
 # cell line = H1781, ExpSet = TenCell, Drug = Afatinib， rep = 1
 
-ss25 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+ss25 <- select.sites.w.min.value(gz.cf, "H1781_AfatinibRatio", min_value = 2.25)
 paths_25 <- shortest.paths.to.target(ss25, target = "ERBB2")
 ```
 # The union and intersection or single path network
-```{r}
-### 123
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_1 <- my.union(paths_1, paths_2, paths_3)
-UN_1 <- graph.cfn.cccn (U_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
 
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_1 <- my.intersect(paths_1, paths_2, paths_3)
-IN_1 <- graph.cfn.cccn (I_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-
-### 45
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_2 <- my.union(paths_4, paths_5)
-UN_2 <- graph.cfn.cccn (U_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_2 <- my.intersect(paths_4, paths_5)
-IN_2 <- graph.cfn.cccn (I_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-
-### 67
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_3 <- my.union(paths_6, paths_7)
-UN_3 <- graph.cfn.cccn (U_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_3 <- my.intersect(paths_6, paths_7)
-IN_3 <- graph.cfn.cccn (I_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 8
-SU_1 <- my.union(paths_8)
-N_1 <- graph.cfn.cccn (SU_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 9
-SU_2 <- my.union(paths_8)
-N_2 <- graph.cfn.cccn (SU_2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 101112
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_4 <- my.union(paths_10, paths_11, paths_12)
-UN_4 <- graph.cfn.cccn (U_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_4 <- my.intersect(paths_10, paths_11, paths_12)
-IN_4 <- graph.cfn.cccn (I_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 1314
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_5 <- my.union(paths_13, paths_14)
-UN_5 <- graph.cfn.cccn (U_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_5 <- my.intersect(paths_13, paths_14)
-IN_5 <- graph.cfn.cccn (I_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 15
-SU_3 <- my.union(paths_15)
-N_3 <- graph.cfn.cccn (SU_3, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 16
-SU_4 <- my.union(paths_16)
-N_4 <- graph.cfn.cccn (SU_4, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 171819
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_6 <- my.union(paths_17, paths_18, paths_19)
-UN_6 <- graph.cfn.cccn (U_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_6 <- my.intersect(paths_17, paths_18, paths_19)
-IN_6 <- graph.cfn.cccn (I_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 202122
-#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
-U_7 <- my.union(paths_20, paths_21, paths_22)
-UN_7 <- graph.cfn.cccn (U_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-#Find the intersection of shortest paths networks for the three SEPTM experiments
-I_7 <- my.intersect(paths_20, paths_21, paths_22)
-IN_7 <- graph.cfn.cccn (I_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 23
-SU_5 <- my.union(paths_23)
-N_5 <- graph.cfn.cccn (SU_5, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 24
-SU_6 <- my.union(paths_24)
-N_6 <- graph.cfn.cccn (SU_6, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-### 25
-SU_1 <- my.union(paths_25)
-N_7 <- graph.cfn.cccn (SU_7, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-```
-# to make a the paired union and intersection and generate the ratio
+# Paired union and intersection and generate the ratio. 
 
 ```{r}
 # Paired Union
-Uni_1_1 <- my.union(paths_1, paths_1)
-Uni_1_2 <- my.union(paths_1, paths_2)
-Uni_1_3 <- my.union(paths_1, paths_3)
-Uni_1_4 <- my.union(paths_1, paths_4)
-Uni_1_5 <- my.union(paths_1, paths_5)
-Uni_1_8 <- my.union(paths_1, paths_8)
-Uni_1_9 <- my.union(paths_1, paths_9)
-Uni_1_10 <- my.union(paths_1, paths_10)
-Uni_1_11 <- my.union(paths_1, paths_11)
-Uni_1_12 <- my.union(paths_1, paths_12)
-Uni_1_13 <- my.union(paths_1, paths_13)
-Uni_1_14 <- my.union(paths_1, paths_14)
-Uni_1_15 <- my.union(paths_1, paths_15)
-Uni_1_16 <- my.union(paths_1, paths_16)
-Uni_1_25 <- my.union(paths_1, paths_25)
-Uni_2_1 <- my.union(paths_2, paths_1)
-Uni_2_2 <- my.union(paths_2, paths_2)
-Uni_2_3 <- my.union(paths_2, paths_3)
-Uni_2_4 <- my.union(paths_2, paths_4)
-Uni_2_5 <- my.union(paths_2, paths_5)
-Uni_2_8 <- my.union(paths_2, paths_8)
-Uni_2_9 <- my.union(paths_2, paths_9)
-Uni_2_10 <- my.union(paths_2, paths_10)
-Uni_2_11 <- my.union(paths_2, paths_11)
-Uni_2_12 <- my.union(paths_2, paths_12)
-Uni_2_13 <- my.union(paths_2, paths_13)
-Uni_2_14 <- my.union(paths_2, paths_14)
-Uni_2_15 <- my.union(paths_2, paths_15)
-Uni_2_16 <- my.union(paths_2, paths_16)
-Uni_2_25 <- my.union(paths_2, paths_25)
-Uni_3_1 <- my.union(paths_3, paths_1)
-Uni_3_2 <- my.union(paths_3, paths_2)
-Uni_3_3 <- my.union(paths_3, paths_3)
-Uni_3_4 <- my.union(paths_3, paths_4)
-Uni_3_5 <- my.union(paths_3, paths_5)
-Uni_3_8 <- my.union(paths_3, paths_8)
-Uni_3_9 <- my.union(paths_3, paths_9)
-Uni_3_10 <- my.union(paths_3, paths_10)
-Uni_3_11 <- my.union(paths_3, paths_11)
-Uni_3_12 <- my.union(paths_3, paths_12)
-Uni_3_13 <- my.union(paths_3, paths_13)
-Uni_3_14 <- my.union(paths_3, paths_14)
-Uni_3_15 <- my.union(paths_3, paths_15)
-Uni_3_16 <- my.union(paths_3, paths_16)
-Uni_3_25 <- my.union(paths_3, paths_25)
-Uni_4_1 <- my.union(paths_4, paths_1)
-Uni_4_2 <- my.union(paths_4, paths_2)
-Uni_4_3 <- my.union(paths_4, paths_3)
-Uni_4_4 <- my.union(paths_4, paths_4)
-Uni_4_5 <- my.union(paths_4, paths_5)
-Uni_4_8 <- my.union(paths_4, paths_8)
-Uni_4_9 <- my.union(paths_4, paths_9)
-Uni_4_10 <- my.union(paths_4, paths_10)
-Uni_4_11 <- my.union(paths_4, paths_11)
-Uni_4_12 <- my.union(paths_4, paths_12)
-Uni_4_13 <- my.union(paths_4, paths_13)
-Uni_4_14 <- my.union(paths_4, paths_14)
-Uni_4_15 <- my.union(paths_4, paths_15)
-Uni_4_16 <- my.union(paths_4, paths_16)
-Uni_4_25 <- my.union(paths_4, paths_25)
-Uni_5_1 <- my.union(paths_5, paths_1)
-Uni_5_2 <- my.union(paths_5, paths_2)
-Uni_5_3 <- my.union(paths_5, paths_3)
-Uni_5_4 <- my.union(paths_5, paths_4)
-Uni_5_5 <- my.union(paths_5, paths_5)
-Uni_5_8 <- my.union(paths_5, paths_8)
-Uni_5_9 <- my.union(paths_5, paths_9)
-Uni_5_10 <- my.union(paths_5, paths_10)
-Uni_5_11 <- my.union(paths_5, paths_11)
-Uni_5_12 <- my.union(paths_5, paths_12)
-Uni_5_13 <- my.union(paths_5, paths_13)
-Uni_5_14 <- my.union(paths_5, paths_14)
-Uni_5_15 <- my.union(paths_5, paths_15)
-Uni_5_16 <- my.union(paths_5, paths_16)
-Uni_5_25 <- my.union(paths_5, paths_25)
-Uni_8_1 <- my.union(paths_8, paths_1)
-Uni_8_2 <- my.union(paths_8, paths_2)
-Uni_8_3 <- my.union(paths_8, paths_3)
-Uni_8_4 <- my.union(paths_8, paths_4)
-Uni_8_5 <- my.union(paths_8, paths_5)
-Uni_8_8 <- my.union(paths_8, paths_8)
-Uni_8_9 <- my.union(paths_8, paths_9)
-Uni_8_10 <- my.union(paths_8, paths_10)
-Uni_8_11 <- my.union(paths_8, paths_11)
-Uni_8_12 <- my.union(paths_8, paths_12)
-Uni_8_13 <- my.union(paths_8, paths_13)
-Uni_8_14 <- my.union(paths_8, paths_14)
-Uni_8_15 <- my.union(paths_8, paths_15)
-Uni_8_16 <- my.union(paths_8, paths_16)
-Uni_8_25 <- my.union(paths_8, paths_25)
-Uni_9_1 <- my.union(paths_9, paths_1)
-Uni_9_2 <- my.union(paths_9, paths_2)
-Uni_9_3 <- my.union(paths_9, paths_3)
-Uni_9_4 <- my.union(paths_9, paths_4)
-Uni_9_5 <- my.union(paths_9, paths_5)
-Uni_9_8 <- my.union(paths_9, paths_8)
-Uni_9_9 <- my.union(paths_9, paths_9)
-Uni_9_10 <- my.union(paths_9, paths_10)
-Uni_9_11 <- my.union(paths_9, paths_11)
-Uni_9_12 <- my.union(paths_9, paths_12)
-Uni_9_13 <- my.union(paths_9, paths_13)
-Uni_9_14 <- my.union(paths_9, paths_14)
-Uni_9_15 <- my.union(paths_9, paths_15)
-Uni_9_16 <- my.union(paths_9, paths_16)
-Uni_9_25 <- my.union(paths_9, paths_25)
-Uni_10_1 <- my.union(paths_10, paths_1)
-Uni_10_2 <- my.union(paths_10, paths_2)
-Uni_10_3 <- my.union(paths_10, paths_3)
-Uni_10_4 <- my.union(paths_10, paths_4)
-Uni_10_5 <- my.union(paths_10, paths_5)
-Uni_10_8 <- my.union(paths_10, paths_8)
-Uni_10_9 <- my.union(paths_10, paths_9)
-Uni_10_10 <- my.union(paths_10, paths_10)
-Uni_10_11 <- my.union(paths_10, paths_11)
-Uni_10_12 <- my.union(paths_10, paths_12)
-Uni_10_13 <- my.union(paths_10, paths_13)
-Uni_10_14 <- my.union(paths_10, paths_14)
-Uni_10_15 <- my.union(paths_10, paths_15)
-Uni_10_16 <- my.union(paths_10, paths_16)
-Uni_10_25 <- my.union(paths_10, paths_25)
-Uni_11_1 <- my.union(paths_11, paths_1)
-Uni_11_2 <- my.union(paths_11, paths_2)
-Uni_11_3 <- my.union(paths_11, paths_3)
-Uni_11_4 <- my.union(paths_11, paths_4)
-Uni_11_5 <- my.union(paths_11, paths_5)
-Uni_11_8 <- my.union(paths_11, paths_8)
-Uni_11_9 <- my.union(paths_11, paths_9)
-Uni_11_10 <- my.union(paths_11, paths_10)
-Uni_11_11 <- my.union(paths_11, paths_11)
-Uni_11_12 <- my.union(paths_11, paths_12)
-Uni_11_13 <- my.union(paths_11, paths_13)
-Uni_11_14 <- my.union(paths_11, paths_14)
-Uni_11_15 <- my.union(paths_11, paths_15)
-Uni_11_16 <- my.union(paths_11, paths_16)
-Uni_11_25 <- my.union(paths_11, paths_25)
-Uni_12_1 <- my.union(paths_12, paths_1)
-Uni_12_2 <- my.union(paths_12, paths_2)
-Uni_12_3 <- my.union(paths_12, paths_3)
-Uni_12_4 <- my.union(paths_12, paths_4)
-Uni_12_5 <- my.union(paths_12, paths_5)
-Uni_12_8 <- my.union(paths_12, paths_8)
-Uni_12_9 <- my.union(paths_12, paths_9)
-Uni_12_10 <- my.union(paths_12, paths_10)
-Uni_12_11 <- my.union(paths_12, paths_11)
-Uni_12_12 <- my.union(paths_12, paths_12)
-Uni_12_13 <- my.union(paths_12, paths_13)
-Uni_12_14 <- my.union(paths_12, paths_14)
-Uni_12_15 <- my.union(paths_12, paths_15)
-Uni_12_16 <- my.union(paths_12, paths_16)
-Uni_12_25 <- my.union(paths_12, paths_25)
-Uni_13_1 <- my.union(paths_13, paths_1)
-Uni_13_2 <- my.union(paths_13, paths_2)
-Uni_13_3 <- my.union(paths_13, paths_3)
-Uni_13_4 <- my.union(paths_13, paths_4)
-Uni_13_5 <- my.union(paths_13, paths_5)
-Uni_13_8 <- my.union(paths_13, paths_8)
-Uni_13_9 <- my.union(paths_13, paths_9)
-Uni_13_10 <- my.union(paths_13, paths_10)
-Uni_13_11 <- my.union(paths_13, paths_11)
-Uni_13_12 <- my.union(paths_13, paths_12)
-Uni_13_13 <- my.union(paths_13, paths_13)
-Uni_13_14 <- my.union(paths_13, paths_14)
-Uni_13_15 <- my.union(paths_13, paths_15)
-Uni_13_16 <- my.union(paths_13, paths_16)
-Uni_13_25 <- my.union(paths_13, paths_25)
-Uni_14_1 <- my.union(paths_14, paths_1)
-Uni_14_2 <- my.union(paths_14, paths_2)
-Uni_14_3 <- my.union(paths_14, paths_3)
-Uni_14_4 <- my.union(paths_14, paths_4)
-Uni_14_5 <- my.union(paths_14, paths_5)
-Uni_14_8 <- my.union(paths_14, paths_8)
-Uni_14_9 <- my.union(paths_14, paths_9)
-Uni_14_10 <- my.union(paths_14, paths_10)
-Uni_14_11 <- my.union(paths_14, paths_11)
-Uni_14_12 <- my.union(paths_14, paths_12)
-Uni_14_13 <- my.union(paths_14, paths_13)
-Uni_14_14 <- my.union(paths_14, paths_14)
-Uni_14_15 <- my.union(paths_14, paths_15)
-Uni_14_16 <- my.union(paths_14, paths_16)
-Uni_14_25 <- my.union(paths_14, paths_25)
-Uni_15_1 <- my.union(paths_15, paths_1)
-Uni_15_2 <- my.union(paths_15, paths_2)
-Uni_15_3 <- my.union(paths_15, paths_3)
-Uni_15_4 <- my.union(paths_15, paths_4)
-Uni_15_5 <- my.union(paths_15, paths_5)
-Uni_15_8 <- my.union(paths_15, paths_8)
-Uni_15_9 <- my.union(paths_15, paths_9)
-Uni_15_10 <- my.union(paths_15, paths_10)
-Uni_15_11 <- my.union(paths_15, paths_11)
-Uni_15_12 <- my.union(paths_15, paths_12)
-Uni_15_13 <- my.union(paths_15, paths_13)
-Uni_15_14 <- my.union(paths_15, paths_14)
-Uni_15_15 <- my.union(paths_15, paths_15)
-Uni_15_16 <- my.union(paths_15, paths_16)
-Uni_15_25 <- my.union(paths_15, paths_25)
-Uni_16_1 <- my.union(paths_16, paths_1)
-Uni_16_2 <- my.union(paths_16, paths_2)
-Uni_16_3 <- my.union(paths_16, paths_3)
-Uni_16_4 <- my.union(paths_16, paths_4)
-Uni_16_5 <- my.union(paths_16, paths_5)
-Uni_16_8 <- my.union(paths_16, paths_8)
-Uni_16_9 <- my.union(paths_16, paths_9)
-Uni_16_10 <- my.union(paths_16, paths_10)
-Uni_16_11 <- my.union(paths_16, paths_11)
-Uni_16_12 <- my.union(paths_16, paths_12)
-Uni_16_13 <- my.union(paths_16, paths_13)
-Uni_16_14 <- my.union(paths_16, paths_14)
-Uni_16_15 <- my.union(paths_16, paths_15)
-Uni_16_16 <- my.union(paths_16, paths_16)
-Uni_16_25 <- my.union(paths_16, paths_25)
-Uni_25_1 <- my.union(paths_25, paths_1)
-Uni_25_2 <- my.union(paths_25, paths_2)
-Uni_25_3 <- my.union(paths_25, paths_3)
-Uni_25_4 <- my.union(paths_25, paths_4)
-Uni_25_5 <- my.union(paths_25, paths_5)
-Uni_25_8 <- my.union(paths_25, paths_8)
-Uni_25_9 <- my.union(paths_25, paths_9)
-Uni_25_10 <- my.union(paths_25, paths_10)
-Uni_25_11 <- my.union(paths_25, paths_11)
-Uni_25_12 <- my.union(paths_25, paths_12)
-Uni_25_13 <- my.union(paths_25, paths_13)
-Uni_25_14 <- my.union(paths_25, paths_14)
-Uni_25_15 <- my.union(paths_25, paths_15)
-Uni_25_16 <- my.union(paths_25, paths_16)
-Uni_25_25 <- my.union(paths_25, paths_25)
+sample_order_l <- c(1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 25)
+
+# Uni_i_j <- my.union(paths_i,paths_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Uni",i,j,sep = "_"), my.union(get(paste("paths_",i,sep = "")),get(paste("paths_",j,sep = ""))))
+   }
+}
 
 # Paired Intersection
-Inters_1_1 <- my.union(paths_1, paths_1)
-Inters_1_2 <- my.union(paths_1, paths_2)
-Inters_1_3 <- my.union(paths_1, paths_3)
-Inters_1_4 <- my.union(paths_1, paths_4)
-Inters_1_5 <- my.union(paths_1, paths_5)
-Inters_1_8 <- my.union(paths_1, paths_8)
-Inters_1_9 <- my.union(paths_1, paths_9)
-Inters_1_10 <- my.union(paths_1, paths_10)
-Inters_1_11 <- my.union(paths_1, paths_11)
-Inters_1_12 <- my.union(paths_1, paths_12)
-Inters_1_13 <- my.union(paths_1, paths_13)
-Inters_1_14 <- my.union(paths_1, paths_14)
-Inters_1_15 <- my.union(paths_1, paths_15)
-Inters_1_16 <- my.union(paths_1, paths_16)
-Inters_1_25 <- my.union(paths_1, paths_25)
-Inters_2_1 <- my.union(paths_2, paths_1)
-Inters_2_2 <- my.union(paths_2, paths_2)
-Inters_2_3 <- my.union(paths_2, paths_3)
-Inters_2_4 <- my.union(paths_2, paths_4)
-Inters_2_5 <- my.union(paths_2, paths_5)
-Inters_2_8 <- my.union(paths_2, paths_8)
-Inters_2_9 <- my.union(paths_2, paths_9)
-Inters_2_10 <- my.union(paths_2, paths_10)
-Inters_2_11 <- my.union(paths_2, paths_11)
-Inters_2_12 <- my.union(paths_2, paths_12)
-Inters_2_13 <- my.union(paths_2, paths_13)
-Inters_2_14 <- my.union(paths_2, paths_14)
-Inters_2_15 <- my.union(paths_2, paths_15)
-Inters_2_16 <- my.union(paths_2, paths_16)
-Inters_2_25 <- my.union(paths_2, paths_25)
-Inters_3_1 <- my.union(paths_3, paths_1)
-Inters_3_2 <- my.union(paths_3, paths_2)
-Inters_3_3 <- my.union(paths_3, paths_3)
-Inters_3_4 <- my.union(paths_3, paths_4)
-Inters_3_5 <- my.union(paths_3, paths_5)
-Inters_3_8 <- my.union(paths_3, paths_8)
-Inters_3_9 <- my.union(paths_3, paths_9)
-Inters_3_10 <- my.union(paths_3, paths_10)
-Inters_3_11 <- my.union(paths_3, paths_11)
-Inters_3_12 <- my.union(paths_3, paths_12)
-Inters_3_13 <- my.union(paths_3, paths_13)
-Inters_3_14 <- my.union(paths_3, paths_14)
-Inters_3_15 <- my.union(paths_3, paths_15)
-Inters_3_16 <- my.union(paths_3, paths_16)
-Inters_3_25 <- my.union(paths_3, paths_25)
-Inters_4_1 <- my.union(paths_4, paths_1)
-Inters_4_2 <- my.union(paths_4, paths_2)
-Inters_4_3 <- my.union(paths_4, paths_3)
-Inters_4_4 <- my.union(paths_4, paths_4)
-Inters_4_5 <- my.union(paths_4, paths_5)
-Inters_4_8 <- my.union(paths_4, paths_8)
-Inters_4_9 <- my.union(paths_4, paths_9)
-Inters_4_10 <- my.union(paths_4, paths_10)
-Inters_4_11 <- my.union(paths_4, paths_11)
-Inters_4_12 <- my.union(paths_4, paths_12)
-Inters_4_13 <- my.union(paths_4, paths_13)
-Inters_4_14 <- my.union(paths_4, paths_14)
-Inters_4_15 <- my.union(paths_4, paths_15)
-Inters_4_16 <- my.union(paths_4, paths_16)
-Inters_4_25 <- my.union(paths_4, paths_25)
-Inters_5_1 <- my.union(paths_5, paths_1)
-Inters_5_2 <- my.union(paths_5, paths_2)
-Inters_5_3 <- my.union(paths_5, paths_3)
-Inters_5_4 <- my.union(paths_5, paths_4)
-Inters_5_5 <- my.union(paths_5, paths_5)
-Inters_5_8 <- my.union(paths_5, paths_8)
-Inters_5_9 <- my.union(paths_5, paths_9)
-Inters_5_10 <- my.union(paths_5, paths_10)
-Inters_5_11 <- my.union(paths_5, paths_11)
-Inters_5_12 <- my.union(paths_5, paths_12)
-Inters_5_13 <- my.union(paths_5, paths_13)
-Inters_5_14 <- my.union(paths_5, paths_14)
-Inters_5_15 <- my.union(paths_5, paths_15)
-Inters_5_16 <- my.union(paths_5, paths_16)
-Inters_5_25 <- my.union(paths_5, paths_25)
-Inters_8_1 <- my.union(paths_8, paths_1)
-Inters_8_2 <- my.union(paths_8, paths_2)
-Inters_8_3 <- my.union(paths_8, paths_3)
-Inters_8_4 <- my.union(paths_8, paths_4)
-Inters_8_5 <- my.union(paths_8, paths_5)
-Inters_8_8 <- my.union(paths_8, paths_8)
-Inters_8_9 <- my.union(paths_8, paths_9)
-Inters_8_10 <- my.union(paths_8, paths_10)
-Inters_8_11 <- my.union(paths_8, paths_11)
-Inters_8_12 <- my.union(paths_8, paths_12)
-Inters_8_13 <- my.union(paths_8, paths_13)
-Inters_8_14 <- my.union(paths_8, paths_14)
-Inters_8_15 <- my.union(paths_8, paths_15)
-Inters_8_16 <- my.union(paths_8, paths_16)
-Inters_8_25 <- my.union(paths_8, paths_25)
-Inters_9_1 <- my.union(paths_9, paths_1)
-Inters_9_2 <- my.union(paths_9, paths_2)
-Inters_9_3 <- my.union(paths_9, paths_3)
-Inters_9_4 <- my.union(paths_9, paths_4)
-Inters_9_5 <- my.union(paths_9, paths_5)
-Inters_9_8 <- my.union(paths_9, paths_8)
-Inters_9_9 <- my.union(paths_9, paths_9)
-Inters_9_10 <- my.union(paths_9, paths_10)
-Inters_9_11 <- my.union(paths_9, paths_11)
-Inters_9_12 <- my.union(paths_9, paths_12)
-Inters_9_13 <- my.union(paths_9, paths_13)
-Inters_9_14 <- my.union(paths_9, paths_14)
-Inters_9_15 <- my.union(paths_9, paths_15)
-Inters_9_16 <- my.union(paths_9, paths_16)
-Inters_9_25 <- my.union(paths_9, paths_25)
-Inters_10_1 <- my.union(paths_10, paths_1)
-Inters_10_2 <- my.union(paths_10, paths_2)
-Inters_10_3 <- my.union(paths_10, paths_3)
-Inters_10_4 <- my.union(paths_10, paths_4)
-Inters_10_5 <- my.union(paths_10, paths_5)
-Inters_10_8 <- my.union(paths_10, paths_8)
-Inters_10_9 <- my.union(paths_10, paths_9)
-Inters_10_10 <- my.union(paths_10, paths_10)
-Inters_10_11 <- my.union(paths_10, paths_11)
-Inters_10_12 <- my.union(paths_10, paths_12)
-Inters_10_13 <- my.union(paths_10, paths_13)
-Inters_10_14 <- my.union(paths_10, paths_14)
-Inters_10_15 <- my.union(paths_10, paths_15)
-Inters_10_16 <- my.union(paths_10, paths_16)
-Inters_10_25 <- my.union(paths_10, paths_25)
-Inters_11_1 <- my.union(paths_11, paths_1)
-Inters_11_2 <- my.union(paths_11, paths_2)
-Inters_11_3 <- my.union(paths_11, paths_3)
-Inters_11_4 <- my.union(paths_11, paths_4)
-Inters_11_5 <- my.union(paths_11, paths_5)
-Inters_11_8 <- my.union(paths_11, paths_8)
-Inters_11_9 <- my.union(paths_11, paths_9)
-Inters_11_10 <- my.union(paths_11, paths_10)
-Inters_11_11 <- my.union(paths_11, paths_11)
-Inters_11_12 <- my.union(paths_11, paths_12)
-Inters_11_13 <- my.union(paths_11, paths_13)
-Inters_11_14 <- my.union(paths_11, paths_14)
-Inters_11_15 <- my.union(paths_11, paths_15)
-Inters_11_16 <- my.union(paths_11, paths_16)
-Inters_11_25 <- my.union(paths_11, paths_25)
-Inters_12_1 <- my.union(paths_12, paths_1)
-Inters_12_2 <- my.union(paths_12, paths_2)
-Inters_12_3 <- my.union(paths_12, paths_3)
-Inters_12_4 <- my.union(paths_12, paths_4)
-Inters_12_5 <- my.union(paths_12, paths_5)
-Inters_12_8 <- my.union(paths_12, paths_8)
-Inters_12_9 <- my.union(paths_12, paths_9)
-Inters_12_10 <- my.union(paths_12, paths_10)
-Inters_12_11 <- my.union(paths_12, paths_11)
-Inters_12_12 <- my.union(paths_12, paths_12)
-Inters_12_13 <- my.union(paths_12, paths_13)
-Inters_12_14 <- my.union(paths_12, paths_14)
-Inters_12_15 <- my.union(paths_12, paths_15)
-Inters_12_16 <- my.union(paths_12, paths_16)
-Inters_12_25 <- my.union(paths_12, paths_25)
-Inters_13_1 <- my.union(paths_13, paths_1)
-Inters_13_2 <- my.union(paths_13, paths_2)
-Inters_13_3 <- my.union(paths_13, paths_3)
-Inters_13_4 <- my.union(paths_13, paths_4)
-Inters_13_5 <- my.union(paths_13, paths_5)
-Inters_13_8 <- my.union(paths_13, paths_8)
-Inters_13_9 <- my.union(paths_13, paths_9)
-Inters_13_10 <- my.union(paths_13, paths_10)
-Inters_13_11 <- my.union(paths_13, paths_11)
-Inters_13_12 <- my.union(paths_13, paths_12)
-Inters_13_13 <- my.union(paths_13, paths_13)
-Inters_13_14 <- my.union(paths_13, paths_14)
-Inters_13_15 <- my.union(paths_13, paths_15)
-Inters_13_16 <- my.union(paths_13, paths_16)
-Inters_13_25 <- my.union(paths_13, paths_25)
-Inters_14_1 <- my.union(paths_14, paths_1)
-Inters_14_2 <- my.union(paths_14, paths_2)
-Inters_14_3 <- my.union(paths_14, paths_3)
-Inters_14_4 <- my.union(paths_14, paths_4)
-Inters_14_5 <- my.union(paths_14, paths_5)
-Inters_14_8 <- my.union(paths_14, paths_8)
-Inters_14_9 <- my.union(paths_14, paths_9)
-Inters_14_10 <- my.union(paths_14, paths_10)
-Inters_14_11 <- my.union(paths_14, paths_11)
-Inters_14_12 <- my.union(paths_14, paths_12)
-Inters_14_13 <- my.union(paths_14, paths_13)
-Inters_14_14 <- my.union(paths_14, paths_14)
-Inters_14_15 <- my.union(paths_14, paths_15)
-Inters_14_16 <- my.union(paths_14, paths_16)
-Inters_14_25 <- my.union(paths_14, paths_25)
-Inters_15_1 <- my.union(paths_15, paths_1)
-Inters_15_2 <- my.union(paths_15, paths_2)
-Inters_15_3 <- my.union(paths_15, paths_3)
-Inters_15_4 <- my.union(paths_15, paths_4)
-Inters_15_5 <- my.union(paths_15, paths_5)
-Inters_15_8 <- my.union(paths_15, paths_8)
-Inters_15_9 <- my.union(paths_15, paths_9)
-Inters_15_10 <- my.union(paths_15, paths_10)
-Inters_15_11 <- my.union(paths_15, paths_11)
-Inters_15_12 <- my.union(paths_15, paths_12)
-Inters_15_13 <- my.union(paths_15, paths_13)
-Inters_15_14 <- my.union(paths_15, paths_14)
-Inters_15_15 <- my.union(paths_15, paths_15)
-Inters_15_16 <- my.union(paths_15, paths_16)
-Inters_15_25 <- my.union(paths_15, paths_25)
-Inters_16_1 <- my.union(paths_16, paths_1)
-Inters_16_2 <- my.union(paths_16, paths_2)
-Inters_16_3 <- my.union(paths_16, paths_3)
-Inters_16_4 <- my.union(paths_16, paths_4)
-Inters_16_5 <- my.union(paths_16, paths_5)
-Inters_16_8 <- my.union(paths_16, paths_8)
-Inters_16_9 <- my.union(paths_16, paths_9)
-Inters_16_10 <- my.union(paths_16, paths_10)
-Inters_16_11 <- my.union(paths_16, paths_11)
-Inters_16_12 <- my.union(paths_16, paths_12)
-Inters_16_13 <- my.union(paths_16, paths_13)
-Inters_16_14 <- my.union(paths_16, paths_14)
-Inters_16_15 <- my.union(paths_16, paths_15)
-Inters_16_16 <- my.union(paths_16, paths_16)
-Inters_16_25 <- my.union(paths_16, paths_25)
-Inters_25_1 <- my.union(paths_25, paths_1)
-Inters_25_2 <- my.union(paths_25, paths_2)
-Inters_25_3 <- my.union(paths_25, paths_3)
-Inters_25_4 <- my.union(paths_25, paths_4)
-Inters_25_5 <- my.union(paths_25, paths_5)
-Inters_25_8 <- my.union(paths_25, paths_8)
-Inters_25_9 <- my.union(paths_25, paths_9)
-Inters_25_10 <- my.union(paths_25, paths_10)
-Inters_25_11 <- my.union(paths_25, paths_11)
-Inters_25_12 <- my.union(paths_25, paths_12)
-Inters_25_13 <- my.union(paths_25, paths_13)
-Inters_25_14 <- my.union(paths_25, paths_14)
-Inters_25_15 <- my.union(paths_25, paths_15)
-Inters_25_16 <- my.union(paths_25, paths_16)
-Inters_25_25 <- my.union(paths_25, paths_25)
 
-# The ratio = Inters_x_y/Uni_x_y
-Ratio_1_1 <- Inters_1_1 / Uni_1_1
-Ratio_1_2 <- Inters_1_2 / Uni_1_2
-Ratio_1_3 <- Inters_1_3 / Uni_1_3
-Ratio_1_4 <- Inters_1_4 / Uni_1_4
-Ratio_1_5 <- Inters_1_5 / Uni_1_5
-Ratio_1_8 <- Inters_1_8 / Uni_1_8
-Ratio_1_9 <- Inters_1_9 / Uni_1_9
-Ratio_1_10 <- Inters_1_10 / Uni_1_10
-Ratio_1_11 <- Inters_1_11 / Uni_1_11
-Ratio_1_12 <- Inters_1_12 / Uni_1_12
-Ratio_1_13 <- Inters_1_13 / Uni_1_13
-Ratio_1_14 <- Inters_1_14 / Uni_1_14
-Ratio_1_15 <- Inters_1_15 / Uni_1_15
-Ratio_1_16 <- Inters_1_16 / Uni_1_16
-Ratio_1_25 <- Inters_1_25 / Uni_1_25
-Ratio_2_1 <- Inters_2_1 / Uni_2_1
-Ratio_2_2 <- Inters_2_2 / Uni_2_2
-Ratio_2_3 <- Inters_2_3 / Uni_2_3
-Ratio_2_4 <- Inters_2_4 / Uni_2_4
-Ratio_2_5 <- Inters_2_5 / Uni_2_5
-Ratio_2_8 <- Inters_2_8 / Uni_2_8
-Ratio_2_9 <- Inters_2_9 / Uni_2_9
-Ratio_2_10 <- Inters_2_10 / Uni_2_10
-Ratio_2_11 <- Inters_2_11 / Uni_2_11
-Ratio_2_12 <- Inters_2_12 / Uni_2_12
-Ratio_2_13 <- Inters_2_13 / Uni_2_13
-Ratio_2_14 <- Inters_2_14 / Uni_2_14
-Ratio_2_15 <- Inters_2_15 / Uni_2_15
-Ratio_2_16 <- Inters_2_16 / Uni_2_16
-Ratio_2_25 <- Inters_2_25 / Uni_2_25
-Ratio_3_1 <- Inters_3_1 / Uni_3_1
-Ratio_3_2 <- Inters_3_2 / Uni_3_2
-Ratio_3_3 <- Inters_3_3 / Uni_3_3
-Ratio_3_4 <- Inters_3_4 / Uni_3_4
-Ratio_3_5 <- Inters_3_5 / Uni_3_5
-Ratio_3_8 <- Inters_3_8 / Uni_3_8
-Ratio_3_9 <- Inters_3_9 / Uni_3_9
-Ratio_3_10 <- Inters_3_10 / Uni_3_10
-Ratio_3_11 <- Inters_3_11 / Uni_3_11
-Ratio_3_12 <- Inters_3_12 / Uni_3_12
-Ratio_3_13 <- Inters_3_13 / Uni_3_13
-Ratio_3_14 <- Inters_3_14 / Uni_3_14
-Ratio_3_15 <- Inters_3_15 / Uni_3_15
-Ratio_3_16 <- Inters_3_16 / Uni_3_16
-Ratio_3_25 <- Inters_3_25 / Uni_3_25
-Ratio_4_1 <- Inters_4_1 / Uni_4_1
-Ratio_4_2 <- Inters_4_2 / Uni_4_2
-Ratio_4_3 <- Inters_4_3 / Uni_4_3
-Ratio_4_4 <- Inters_4_4 / Uni_4_4
-Ratio_4_5 <- Inters_4_5 / Uni_4_5
-Ratio_4_8 <- Inters_4_8 / Uni_4_8
-Ratio_4_9 <- Inters_4_9 / Uni_4_9
-Ratio_4_10 <- Inters_4_10 / Uni_4_10
-Ratio_4_11 <- Inters_4_11 / Uni_4_11
-Ratio_4_12 <- Inters_4_12 / Uni_4_12
-Ratio_4_13 <- Inters_4_13 / Uni_4_13
-Ratio_4_14 <- Inters_4_14 / Uni_4_14
-Ratio_4_15 <- Inters_4_15 / Uni_4_15
-Ratio_4_16 <- Inters_4_16 / Uni_4_16
-Ratio_4_25 <- Inters_4_25 / Uni_4_25
-Ratio_5_1 <- Inters_5_1 / Uni_5_1
-Ratio_5_2 <- Inters_5_2 / Uni_5_2
-Ratio_5_3 <- Inters_5_3 / Uni_5_3
-Ratio_5_4 <- Inters_5_4 / Uni_5_4
-Ratio_5_5 <- Inters_5_5 / Uni_5_5
-Ratio_5_8 <- Inters_5_8 / Uni_5_8
-Ratio_5_9 <- Inters_5_9 / Uni_5_9
-Ratio_5_10 <- Inters_5_10 / Uni_5_10
-Ratio_5_11 <- Inters_5_11 / Uni_5_11
-Ratio_5_12 <- Inters_5_12 / Uni_5_12
-Ratio_5_13 <- Inters_5_13 / Uni_5_13
-Ratio_5_14 <- Inters_5_14 / Uni_5_14
-Ratio_5_15 <- Inters_5_15 / Uni_5_15
-Ratio_5_16 <- Inters_5_16 / Uni_5_16
-Ratio_5_25 <- Inters_5_25 / Uni_5_25
-Ratio_8_1 <- Inters_8_1 / Uni_8_1
-Ratio_8_2 <- Inters_8_2 / Uni_8_2
-Ratio_8_3 <- Inters_8_3 / Uni_8_3
-Ratio_8_4 <- Inters_8_4 / Uni_8_4
-Ratio_8_5 <- Inters_8_5 / Uni_8_5
-Ratio_8_8 <- Inters_8_8 / Uni_8_8
-Ratio_8_9 <- Inters_8_9 / Uni_8_9
-Ratio_8_10 <- Inters_8_10 / Uni_8_10
-Ratio_8_11 <- Inters_8_11 / Uni_8_11
-Ratio_8_12 <- Inters_8_12 / Uni_8_12
-Ratio_8_13 <- Inters_8_13 / Uni_8_13
-Ratio_8_14 <- Inters_8_14 / Uni_8_14
-Ratio_8_15 <- Inters_8_15 / Uni_8_15
-Ratio_8_16 <- Inters_8_16 / Uni_8_16
-Ratio_8_25 <- Inters_8_25 / Uni_8_25
-Ratio_9_1 <- Inters_9_1 / Uni_9_1
-Ratio_9_2 <- Inters_9_2 / Uni_9_2
-Ratio_9_3 <- Inters_9_3 / Uni_9_3
-Ratio_9_4 <- Inters_9_4 / Uni_9_4
-Ratio_9_5 <- Inters_9_5 / Uni_9_5
-Ratio_9_8 <- Inters_9_8 / Uni_9_8
-Ratio_9_9 <- Inters_9_9 / Uni_9_9
-Ratio_9_10 <- Inters_9_10 / Uni_9_10
-Ratio_9_11 <- Inters_9_11 / Uni_9_11
-Ratio_9_12 <- Inters_9_12 / Uni_9_12
-Ratio_9_13 <- Inters_9_13 / Uni_9_13
-Ratio_9_14 <- Inters_9_14 / Uni_9_14
-Ratio_9_15 <- Inters_9_15 / Uni_9_15
-Ratio_9_16 <- Inters_9_16 / Uni_9_16
-Ratio_9_25 <- Inters_9_25 / Uni_9_25
-Ratio_10_1 <- Inters_10_1 / Uni_10_1
-Ratio_10_2 <- Inters_10_2 / Uni_10_2
-Ratio_10_3 <- Inters_10_3 / Uni_10_3
-Ratio_10_4 <- Inters_10_4 / Uni_10_4
-Ratio_10_5 <- Inters_10_5 / Uni_10_5
-Ratio_10_8 <- Inters_10_8 / Uni_10_8
-Ratio_10_9 <- Inters_10_9 / Uni_10_9
-Ratio_10_10 <- Inters_10_10 / Uni_10_10
-Ratio_10_11 <- Inters_10_11 / Uni_10_11
-Ratio_10_12 <- Inters_10_12 / Uni_10_12
-Ratio_10_13 <- Inters_10_13 / Uni_10_13
-Ratio_10_14 <- Inters_10_14 / Uni_10_14
-Ratio_10_15 <- Inters_10_15 / Uni_10_15
-Ratio_10_16 <- Inters_10_16 / Uni_10_16
-Ratio_10_25 <- Inters_10_25 / Uni_10_25
-Ratio_11_1 <- Inters_11_1 / Uni_11_1
-Ratio_11_2 <- Inters_11_2 / Uni_11_2
-Ratio_11_3 <- Inters_11_3 / Uni_11_3
-Ratio_11_4 <- Inters_11_4 / Uni_11_4
-Ratio_11_5 <- Inters_11_5 / Uni_11_5
-Ratio_11_8 <- Inters_11_8 / Uni_11_8
-Ratio_11_9 <- Inters_11_9 / Uni_11_9
-Ratio_11_10 <- Inters_11_10 / Uni_11_10
-Ratio_11_11 <- Inters_11_11 / Uni_11_11
-Ratio_11_12 <- Inters_11_12 / Uni_11_12
-Ratio_11_13 <- Inters_11_13 / Uni_11_13
-Ratio_11_14 <- Inters_11_14 / Uni_11_14
-Ratio_11_15 <- Inters_11_15 / Uni_11_15
-Ratio_11_16 <- Inters_11_16 / Uni_11_16
-Ratio_11_25 <- Inters_11_25 / Uni_11_25
-Ratio_12_1 <- Inters_12_1 / Uni_12_1
-Ratio_12_2 <- Inters_12_2 / Uni_12_2
-Ratio_12_3 <- Inters_12_3 / Uni_12_3
-Ratio_12_4 <- Inters_12_4 / Uni_12_4
-Ratio_12_5 <- Inters_12_5 / Uni_12_5
-Ratio_12_8 <- Inters_12_8 / Uni_12_8
-Ratio_12_9 <- Inters_12_9 / Uni_12_9
-Ratio_12_10 <- Inters_12_10 / Uni_12_10
-Ratio_12_11 <- Inters_12_11 / Uni_12_11
-Ratio_12_12 <- Inters_12_12 / Uni_12_12
-Ratio_12_13 <- Inters_12_13 / Uni_12_13
-Ratio_12_14 <- Inters_12_14 / Uni_12_14
-Ratio_12_15 <- Inters_12_15 / Uni_12_15
-Ratio_12_16 <- Inters_12_16 / Uni_12_16
-Ratio_12_25 <- Inters_12_25 / Uni_12_25
-Ratio_13_1 <- Inters_13_1 / Uni_13_1
-Ratio_13_2 <- Inters_13_2 / Uni_13_2
-Ratio_13_3 <- Inters_13_3 / Uni_13_3
-Ratio_13_4 <- Inters_13_4 / Uni_13_4
-Ratio_13_5 <- Inters_13_5 / Uni_13_5
-Ratio_13_8 <- Inters_13_8 / Uni_13_8
-Ratio_13_9 <- Inters_13_9 / Uni_13_9
-Ratio_13_10 <- Inters_13_10 / Uni_13_10
-Ratio_13_11 <- Inters_13_11 / Uni_13_11
-Ratio_13_12 <- Inters_13_12 / Uni_13_12
-Ratio_13_13 <- Inters_13_13 / Uni_13_13
-Ratio_13_14 <- Inters_13_14 / Uni_13_14
-Ratio_13_15 <- Inters_13_15 / Uni_13_15
-Ratio_13_16 <- Inters_13_16 / Uni_13_16
-Ratio_13_25 <- Inters_13_25 / Uni_13_25
-Ratio_14_1 <- Inters_14_1 / Uni_14_1
-Ratio_14_2 <- Inters_14_2 / Uni_14_2
-Ratio_14_3 <- Inters_14_3 / Uni_14_3
-Ratio_14_4 <- Inters_14_4 / Uni_14_4
-Ratio_14_5 <- Inters_14_5 / Uni_14_5
-Ratio_14_8 <- Inters_14_8 / Uni_14_8
-Ratio_14_9 <- Inters_14_9 / Uni_14_9
-Ratio_14_10 <- Inters_14_10 / Uni_14_10
-Ratio_14_11 <- Inters_14_11 / Uni_14_11
-Ratio_14_12 <- Inters_14_12 / Uni_14_12
-Ratio_14_13 <- Inters_14_13 / Uni_14_13
-Ratio_14_14 <- Inters_14_14 / Uni_14_14
-Ratio_14_15 <- Inters_14_15 / Uni_14_15
-Ratio_14_16 <- Inters_14_16 / Uni_14_16
-Ratio_14_25 <- Inters_14_25 / Uni_14_25
-Ratio_15_1 <- Inters_15_1 / Uni_15_1
-Ratio_15_2 <- Inters_15_2 / Uni_15_2
-Ratio_15_3 <- Inters_15_3 / Uni_15_3
-Ratio_15_4 <- Inters_15_4 / Uni_15_4
-Ratio_15_5 <- Inters_15_5 / Uni_15_5
-Ratio_15_8 <- Inters_15_8 / Uni_15_8
-Ratio_15_9 <- Inters_15_9 / Uni_15_9
-Ratio_15_10 <- Inters_15_10 / Uni_15_10
-Ratio_15_11 <- Inters_15_11 / Uni_15_11
-Ratio_15_12 <- Inters_15_12 / Uni_15_12
-Ratio_15_13 <- Inters_15_13 / Uni_15_13
-Ratio_15_14 <- Inters_15_14 / Uni_15_14
-Ratio_15_15 <- Inters_15_15 / Uni_15_15
-Ratio_15_16 <- Inters_15_16 / Uni_15_16
-Ratio_15_25 <- Inters_15_25 / Uni_15_25
-Ratio_16_1 <- Inters_16_1 / Uni_16_1
-Ratio_16_2 <- Inters_16_2 / Uni_16_2
-Ratio_16_3 <- Inters_16_3 / Uni_16_3
-Ratio_16_4 <- Inters_16_4 / Uni_16_4
-Ratio_16_5 <- Inters_16_5 / Uni_16_5
-Ratio_16_8 <- Inters_16_8 / Uni_16_8
-Ratio_16_9 <- Inters_16_9 / Uni_16_9
-Ratio_16_10 <- Inters_16_10 / Uni_16_10
-Ratio_16_11 <- Inters_16_11 / Uni_16_11
-Ratio_16_12 <- Inters_16_12 / Uni_16_12
-Ratio_16_13 <- Inters_16_13 / Uni_16_13
-Ratio_16_14 <- Inters_16_14 / Uni_16_14
-Ratio_16_15 <- Inters_16_15 / Uni_16_15
-Ratio_16_16 <- Inters_16_16 / Uni_16_16
-Ratio_16_25 <- Inters_16_25 / Uni_16_25
-Ratio_25_1 <- Inters_25_1 / Uni_25_1
-Ratio_25_2 <- Inters_25_2 / Uni_25_2
-Ratio_25_3 <- Inters_25_3 / Uni_25_3
-Ratio_25_4 <- Inters_25_4 / Uni_25_4
-Ratio_25_5 <- Inters_25_5 / Uni_25_5
-Ratio_25_8 <- Inters_25_8 / Uni_25_8
-Ratio_25_9 <- Inters_25_9 / Uni_25_9
-Ratio_25_10 <- Inters_25_10 / Uni_25_10
-Ratio_25_11 <- Inters_25_11 / Uni_25_11
-Ratio_25_12 <- Inters_25_12 / Uni_25_12
-Ratio_25_13 <- Inters_25_13 / Uni_25_13
-Ratio_25_14 <- Inters_25_14 / Uni_25_14
-Ratio_25_15 <- Inters_25_15 / Uni_25_15
-Ratio_25_16 <- Inters_25_16 / Uni_25_16
-Ratio_25_25 <- Inters_25_25 / Uni_25_25
+# Inters_i_j <- my.intersect(paths_i,paths_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Inters",i,j,sep = "_"), my.intersect(get(paste("paths_",i,sep = "")),get(paste("paths_",j,sep = ""))))
+   }
+}
 
-ratio_df <- c(Ratio_1_1,
-Ratio_1_2,
-Ratio_1_3,
-Ratio_1_4,
-Ratio_1_5,
-Ratio_1_8,
-Ratio_1_9,
-Ratio_1_10,
-Ratio_1_11,
-Ratio_1_12,
-Ratio_1_13,
-Ratio_1_14,
-Ratio_1_15,
-Ratio_1_16,
-Ratio_1_25,
-Ratio_2_1,
-Ratio_2_2,
-Ratio_2_3,
-Ratio_2_4,
-Ratio_2_5,
-Ratio_2_8,
-Ratio_2_9,
-Ratio_2_10,
-Ratio_2_11,
-Ratio_2_12,
-Ratio_2_13,
-Ratio_2_14,
-Ratio_2_15,
-Ratio_2_16,
-Ratio_2_25,
-Ratio_3_1,
-Ratio_3_2,
-Ratio_3_3,
-Ratio_3_4,
-Ratio_3_5,
-Ratio_3_8,
-Ratio_3_9,
-Ratio_3_10,
-Ratio_3_11,
-Ratio_3_12,
-Ratio_3_13,
-Ratio_3_14,
-Ratio_3_15,
-Ratio_3_16,
-Ratio_3_25,
-Ratio_4_1,
-Ratio_4_2,
-Ratio_4_3,
-Ratio_4_4,
-Ratio_4_5,
-Ratio_4_8,
-Ratio_4_9,
-Ratio_4_10,
-Ratio_4_11,
-Ratio_4_12,
-Ratio_4_13,
-Ratio_4_14,
-Ratio_4_15,
-Ratio_4_16,
-Ratio_4_25,
-Ratio_5_1,
-Ratio_5_2,
-Ratio_5_3,
-Ratio_5_4,
-Ratio_5_5,
-Ratio_5_8,
-Ratio_5_9,
-Ratio_5_10,
-Ratio_5_11,
-Ratio_5_12,
-Ratio_5_13,
-Ratio_5_14,
-Ratio_5_15,
-Ratio_5_16,
-Ratio_5_25,
-Ratio_8_1,
-Ratio_8_2,
-Ratio_8_3,
-Ratio_8_4,
-Ratio_8_5,
-Ratio_8_8,
-Ratio_8_9,
-Ratio_8_10,
-Ratio_8_11,
-Ratio_8_12,
-Ratio_8_13,
-Ratio_8_14,
-Ratio_8_15,
-Ratio_8_16,
-Ratio_8_25,
-Ratio_9_1,
-Ratio_9_2,
-Ratio_9_3,
-Ratio_9_4,
-Ratio_9_5,
-Ratio_9_8,
-Ratio_9_9,
-Ratio_9_10,
-Ratio_9_11,
-Ratio_9_12,
-Ratio_9_13,
-Ratio_9_14,
-Ratio_9_15,
-Ratio_9_16,
-Ratio_9_25,
-Ratio_10_1,
-Ratio_10_2,
-Ratio_10_3,
-Ratio_10_4,
-Ratio_10_5,
-Ratio_10_8,
-Ratio_10_9,
-Ratio_10_10,
-Ratio_10_11,
-Ratio_10_12,
-Ratio_10_13,
-Ratio_10_14,
-Ratio_10_15,
-Ratio_10_16,
-Ratio_10_25,
-Ratio_11_1,
-Ratio_11_2,
-Ratio_11_3,
-Ratio_11_4,
-Ratio_11_5,
-Ratio_11_8,
-Ratio_11_9,
-Ratio_11_10,
-Ratio_11_11,
-Ratio_11_12,
-Ratio_11_13,
-Ratio_11_14,
-Ratio_11_15,
-Ratio_11_16,
-Ratio_11_25,
-Ratio_12_1,
-Ratio_12_2,
-Ratio_12_3,
-Ratio_12_4,
-Ratio_12_5,
-Ratio_12_8,
-Ratio_12_9,
-Ratio_12_10,
-Ratio_12_11,
-Ratio_12_12,
-Ratio_12_13,
-Ratio_12_14,
-Ratio_12_15,
-Ratio_12_16,
-Ratio_12_25,
-Ratio_13_1,
-Ratio_13_2,
-Ratio_13_3,
-Ratio_13_4,
-Ratio_13_5,
-Ratio_13_8,
-Ratio_13_9,
-Ratio_13_10,
-Ratio_13_11,
-Ratio_13_12,
-Ratio_13_13,
-Ratio_13_14,
-Ratio_13_15,
-Ratio_13_16,
-Ratio_13_25,
-Ratio_14_1,
-Ratio_14_2,
-Ratio_14_3,
-Ratio_14_4,
-Ratio_14_5,
-Ratio_14_8,
-Ratio_14_9,
-Ratio_14_10,
-Ratio_14_11,
-Ratio_14_12,
-Ratio_14_13,
-Ratio_14_14,
-Ratio_14_15,
-Ratio_14_16,
-Ratio_14_25,
-Ratio_15_1,
-Ratio_15_2,
-Ratio_15_3,
-Ratio_15_4,
-Ratio_15_5,
-Ratio_15_8,
-Ratio_15_9,
-Ratio_15_10,
-Ratio_15_11,
-Ratio_15_12,
-Ratio_15_13,
-Ratio_15_14,
-Ratio_15_15,
-Ratio_15_16,
-Ratio_15_25,
-Ratio_16_1,
-Ratio_16_2,
-Ratio_16_3,
-Ratio_16_4,
-Ratio_16_5,
-Ratio_16_8,
-Ratio_16_9,
-Ratio_16_10,
-Ratio_16_11,
-Ratio_16_12,
-Ratio_16_13,
-Ratio_16_14,
-Ratio_16_15,
-Ratio_16_16,
-Ratio_16_25,
-Ratio_25_1,
-Ratio_25_2,
-Ratio_25_3,
-Ratio_25_4,
-Ratio_25_5,
-Ratio_25_8,
-Ratio_25_9,
-Ratio_25_10,
-Ratio_25_11,
-Ratio_25_12,
-Ratio_25_13,
-Ratio_25_14,
-Ratio_25_15,
-Ratio_25_16,
-Ratio_25_25)
+# The ratio = nrow(Inters_i_j)/nrow(Uni_i_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Ratio",i,j,sep = "_"), nrow(get(paste("Inters",i,j,sep = "_")))/nrow(get(paste("Uni",i,j,sep = "_"))))
+   }
+}
 
-write.csv(ratio_df, "ratio_df.csv")
+
+# 15*15 ratio dataframe 
+ratio_df <- list()
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign("ratio_df", append(ratio_df,get(paste("Ratio",i,j,sep = "_"))))
+  }
+}
+
+
+ratio_df <- as.matrix(ratio_df)
+ratio_df <- t(ratio_df)
+write.table(ratio_df, "ratio_df.txt")
+
+ratio_dataframe <- read.csv("ratio_df.csv",header = FALSE)
+sample_15 <- c("ss1",
+"ss2",
+"ss3",
+"ss4",
+"ss5",
+"ss8",
+"ss9",
+"ss10",
+"ss11",
+"ss12",
+"ss13",
+"ss14",
+"ss15",
+"ss16",
+"ss25")
+colnames(ratio_dataframe) <- sample_15
+rownames(ratio_dataframe) <- sample_15
+pheatmap::pheatmap(ratio_dataframe)
+
+
 
 ```
 
@@ -1326,115 +355,34 @@ cell_line <- gz_experiments_df$Column.6
 # Based on this assumpation, a target-based comparison would make more biological sense and give more clue about the overlapping pahtways
 # target = MET/HGFR
 ```{r}
-MET_paths_1 <- shortest.paths.to.target(ss1, target = "MET")
-MET_paths_2 <- shortest.paths.to.target(ss2, target = "MET")
-MET_paths_3 <- shortest.paths.to.target(ss3, target = "MET")
-MET_paths_4 <- shortest.paths.to.target(ss4, target = "MET")
-MET_paths_5 <- shortest.paths.to.target(ss5, target = "MET")
-MET_paths_6 <- shortest.paths.to.target(ss6, target = "MET")
-MET_paths_7 <- shortest.paths.to.target(ss7, target = "MET")
-MET_paths_8 <- shortest.paths.to.target(ss8, target = "MET")
-MET_paths_9 <- shortest.paths.to.target(ss9, target = "MET")
-MET_paths_10 <- shortest.paths.to.target(ss10, target = "MET")
-MET_paths_11 <- shortest.paths.to.target(ss11, target = "MET")
-MET_paths_12 <- shortest.paths.to.target(ss12, target = "MET")
-MET_paths_13 <- shortest.paths.to.target(ss13, target = "MET")
-MET_paths_14 <- shortest.paths.to.target(ss14, target = "MET")
-MET_paths_15 <- shortest.paths.to.target(ss15, target = "MET")
-MET_paths_16 <- shortest.paths.to.target(ss16, target = "MET")
-MET_paths_17 <- shortest.paths.to.target(ss17, target = "MET")
-MET_paths_18 <- shortest.paths.to.target(ss18, target = "MET")
-MET_paths_19 <- shortest.paths.to.target(ss19, target = "MET")
-MET_paths_20 <- shortest.paths.to.target(ss20, target = "MET")
-MET_paths_21 <- shortest.paths.to.target(ss21, target = "MET")
-MET_paths_22 <- shortest.paths.to.target(ss22, target = "MET")
-MET_paths_23 <- shortest.paths.to.target(ss23, target = "MET")
-MET_paths_24 <- shortest.paths.to.target(ss24, target = "MET")
-MET_paths_25 <- shortest.paths.to.target(ss25, target = "MET")
+# MET_paths_i <- shortest.paths.to.target(ssi,target = "MET")
+for (i in 1:25){
+  assign(paste("MET_paths_",i, sep = ""), shortest.paths.to.target(get(paste("ss", i, sep="")), target = "MET"))
+}
 
-MET_intercet <- my.intersect(MET_paths_1,
-MET_paths_2,
-MET_paths_3,
-MET_paths_4,
-MET_paths_5,
-MET_paths_6,
-MET_paths_7,
-MET_paths_8,
-MET_paths_9,
-MET_paths_10,
-MET_paths_11,
-MET_paths_12,
-MET_paths_13,
-MET_paths_14,
-MET_paths_15,
-MET_paths_16,
-MET_paths_17,
-MET_paths_18,
-MET_paths_19,
-MET_paths_20,
-MET_paths_21,
-MET_paths_22,
-MET_paths_23,
-MET_paths_24,
-MET_paths_25)
+# MET_intercet is the intersection of 25 MET targeting samples
+for (i in 1:25){
+  MET_intercet <- my.intersect(get(paste("MET_paths_",i,sep = "")))
+}
+
 MET_Network <- graph.cfn.cccn (MET_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
-MET_1_nrow_ratio <-nrow(MET_paths_1)/nrow(MET_intercet)
-MET_2_nrow_ratio <-nrow(MET_paths_2)/nrow(MET_intercet)
-MET_3_nrow_ratio <-nrow(MET_paths_3)/nrow(MET_intercet)
-MET_4_nrow_ratio <-nrow(MET_paths_4)/nrow(MET_intercet)
-MET_5_nrow_ratio <-nrow(MET_paths_5)/nrow(MET_intercet)
-MET_6_nrow_ratio <-nrow(MET_paths_6)/nrow(MET_intercet)
-MET_7_nrow_ratio <-nrow(MET_paths_7)/nrow(MET_intercet)
-MET_8_nrow_ratio <-nrow(MET_paths_8)/nrow(MET_intercet)
-MET_9_nrow_ratio <-nrow(MET_paths_9)/nrow(MET_intercet)
-MET_10_nrow_ratio <-nrow(MET_paths_10)/nrow(MET_intercet)
-MET_11_nrow_ratio <-nrow(MET_paths_11)/nrow(MET_intercet)
-MET_12_nrow_ratio <-nrow(MET_paths_12)/nrow(MET_intercet)
-MET_13_nrow_ratio <-nrow(MET_paths_13)/nrow(MET_intercet)
-MET_14_nrow_ratio <-nrow(MET_paths_14)/nrow(MET_intercet)
-MET_15_nrow_ratio <-nrow(MET_paths_15)/nrow(MET_intercet)
-MET_16_nrow_ratio <-nrow(MET_paths_16)/nrow(MET_intercet)
-MET_17_nrow_ratio <-nrow(MET_paths_17)/nrow(MET_intercet)
-MET_18_nrow_ratio <-nrow(MET_paths_18)/nrow(MET_intercet)
-MET_19_nrow_ratio <-nrow(MET_paths_19)/nrow(MET_intercet)
-MET_20_nrow_ratio <-nrow(MET_paths_20)/nrow(MET_intercet)
-MET_21_nrow_ratio <-nrow(MET_paths_21)/nrow(MET_intercet)
-MET_22_nrow_ratio <-nrow(MET_paths_22)/nrow(MET_intercet)
-MET_23_nrow_ratio <-nrow(MET_paths_23)/nrow(MET_intercet)
-MET_24_nrow_ratio <-nrow(MET_paths_24)/nrow(MET_intercet)
-MET_25_nrow_ratio <-nrow(MET_paths_25)/nrow(MET_intercet)
 
-#creating the ratio column
-MET_ratios <- c(MET_1_nrow_ratio,
-MET_2_nrow_ratio,
-MET_3_nrow_ratio,
-MET_4_nrow_ratio,
-MET_5_nrow_ratio,
-MET_6_nrow_ratio,
-MET_7_nrow_ratio,
-MET_8_nrow_ratio,
-MET_9_nrow_ratio,
-MET_10_nrow_ratio,
-MET_11_nrow_ratio,
-MET_12_nrow_ratio,
-MET_13_nrow_ratio,
-MET_14_nrow_ratio,
-MET_15_nrow_ratio,
-MET_16_nrow_ratio,
-MET_17_nrow_ratio,
-MET_18_nrow_ratio,
-MET_19_nrow_ratio,
-MET_20_nrow_ratio,
-MET_21_nrow_ratio,
-MET_22_nrow_ratio,
-MET_23_nrow_ratio,
-MET_24_nrow_ratio,
-MET_25_nrow_ratio)
+# MET_i_nrow_ratio <- nrow(MET_paths_i)/nrow(MET_intercet)
+for (i in 1:25){
+  assign(paste("MET_",i,"_nrow_ratio", sep = ""),nrow(get(paste("MET_paths_",i,sep = "")))/nrow(MET_intercet))
+}
+
+# MET_ratios <- list(MET_i_nrow_ratio)
+MET_ratios <- list()
+for (i in 1:25){
+  assign("MET_ratios", append(MET_ratios,get(paste("MET_",i,"_nrow_ratio", sep = ""))))
+}
+
+
 
 #creatign a dataframe to generate the heatmap
 MET_dataframe <- data.frame(MET_ratios)
-MET_dataframe <- t(MET_dataframe)
 colnames(MET_dataframe) <- cell_line
 write.table(MET_dataframe,"MET.txt")
 MET <-read.csv("MET.csv")
@@ -1443,119 +391,92 @@ colnames(MET) <- cell_line
 MET <- MET[2:26]
 pheatmap::pheatmap(MET)
 
-
 ```
+# Paried/ same target/ shortest path analysis
+# target = MET
+```{r}
+
+# pairwise comparison in for single target function
+
+# MET_Uni_i_j <- my.union(paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("MET_Uni",i,j,sep = "_"), my.union(get(paste("MET_paths_",i,sep = "")),get(paste("MET_paths_",j,sep = ""))))
+   }
+}
+
+
+
+# MET_Inters_i_j <- my.intersect(MET_paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("MET_Inters",i,j,sep = "_"), my.intersect(get(paste("MET_paths_",i,sep = "")),get(paste("MET_paths_",j,sep = ""))))
+   }
+}
+
+# The MET_paired_ratio_i_j = nrow(MET_Inters_i_j)/nrow(MET_Uni_i_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("MET_paired_ratio",i,j,sep = "_"), nrow(get(paste("MET_Inters",i,j,sep = "_")))/nrow(get(paste("MET_Uni",i,j,sep = "_"))))
+   }
+}
+
+#
+MET_paired_ratio_df <- list()
+for (i in 1:25){
+  for (j in 1:25){
+    assign("MET_paired_ratio_df",append(MET_paired_ratio_df,get(paste("MET_paired_ratio",i,j,sep = "_"))))
+    }
+}
+
+write.table(MET_paired_ratio_df, "MET_paired_ratio_df.txt")
+
+
+MET_ratio_dataframe <- read.csv("MET_paired_ratio_df.csv",header = FALSE)
+
+sample_25 <- list()
+for (i in 1:25){
+  assign("sample_25",append(sample_25,paste("ss",i,sep = "")))
+}
+
+colnames(MET_ratio_dataframe) <- cell_line
+rownames(MET_ratio_dataframe) <- cell_line
+pheatmap::pheatmap(MET_ratio_dataframe)
+```
+
+
+
+
 # target = EGFR
 ```{r}
-EGFR_paths_1 <- shortest.paths.to.target(ss1, target = "EGFR")
-EGFR_paths_2 <- shortest.paths.to.target(ss2, target = "EGFR")
-EGFR_paths_3 <- shortest.paths.to.target(ss3, target = "EGFR")
-EGFR_paths_4 <- shortest.paths.to.target(ss4, target = "EGFR")
-EGFR_paths_5 <- shortest.paths.to.target(ss5, target = "EGFR")
-EGFR_paths_6 <- shortest.paths.to.target(ss6, target = "EGFR")
-EGFR_paths_7 <- shortest.paths.to.target(ss7, target = "EGFR")
-EGFR_paths_8 <- shortest.paths.to.target(ss8, target = "EGFR")
-EGFR_paths_9 <- shortest.paths.to.target(ss9, target = "EGFR")
-EGFR_paths_10 <- shortest.paths.to.target(ss10, target = "EGFR")
-EGFR_paths_11 <- shortest.paths.to.target(ss11, target = "EGFR")
-EGFR_paths_12 <- shortest.paths.to.target(ss12, target = "EGFR")
-EGFR_paths_13 <- shortest.paths.to.target(ss13, target = "EGFR")
-EGFR_paths_14 <- shortest.paths.to.target(ss14, target = "EGFR")
-EGFR_paths_15 <- shortest.paths.to.target(ss15, target = "EGFR")
-EGFR_paths_16 <- shortest.paths.to.target(ss16, target = "EGFR")
-EGFR_paths_17 <- shortest.paths.to.target(ss17, target = "EGFR")
-EGFR_paths_18 <- shortest.paths.to.target(ss18, target = "EGFR")
-EGFR_paths_19 <- shortest.paths.to.target(ss19, target = "EGFR")
-EGFR_paths_20 <- shortest.paths.to.target(ss20, target = "EGFR")
-EGFR_paths_21 <- shortest.paths.to.target(ss21, target = "EGFR")
-EGFR_paths_22 <- shortest.paths.to.target(ss22, target = "EGFR")
-EGFR_paths_23 <- shortest.paths.to.target(ss23, target = "EGFR")
-EGFR_paths_24 <- shortest.paths.to.target(ss24, target = "EGFR")
-EGFR_paths_25 <- shortest.paths.to.target(ss25, target = "EGFR")
+# EGFR_paths_i <- shortest.paths.to.target(ssi,target = "EGFR")
+for (i in 1:25){
+  assign(paste("EGFR_paths_",i, sep = ""), shortest.paths.to.target(get(paste("ss", i, sep="")), target = "EGFR"))
+}
 
-EGFR_intercet <- my.intersect(EGFR_paths_1,
-EGFR_paths_2,
-EGFR_paths_3,
-EGFR_paths_4,
-EGFR_paths_5,
-EGFR_paths_6,
-EGFR_paths_7,
-EGFR_paths_8,
-EGFR_paths_9,
-EGFR_paths_10,
-EGFR_paths_11,
-EGFR_paths_12,
-EGFR_paths_13,
-EGFR_paths_14,
-EGFR_paths_15,
-EGFR_paths_16,
-EGFR_paths_17,
-EGFR_paths_18,
-EGFR_paths_19,
-EGFR_paths_20,
-EGFR_paths_21,
-EGFR_paths_22,
-EGFR_paths_23,
-EGFR_paths_24,
-EGFR_paths_25)
+# EGFR_intercet is the intersection of 25 EGFR targeting samples
+for (i in 1:25){
+  EGFR_intercet <- my.intersect(get(paste("EGFR_paths_",i,sep = "")))
+}
+
 EGFR_Network <- graph.cfn.cccn (EGFR_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
-# 
-EGFR_1_nrow_ratio <-nrow(EGFR_paths_1)/nrow(EGFR_intercet)
-EGFR_2_nrow_ratio <-nrow(EGFR_paths_2)/nrow(EGFR_intercet)
-EGFR_3_nrow_ratio <-nrow(EGFR_paths_3)/nrow(EGFR_intercet)
-EGFR_4_nrow_ratio <-nrow(EGFR_paths_4)/nrow(EGFR_intercet)
-EGFR_5_nrow_ratio <-nrow(EGFR_paths_5)/nrow(EGFR_intercet)
-EGFR_6_nrow_ratio <-nrow(EGFR_paths_6)/nrow(EGFR_intercet)
-EGFR_7_nrow_ratio <-nrow(EGFR_paths_7)/nrow(EGFR_intercet)
-EGFR_8_nrow_ratio <-nrow(EGFR_paths_8)/nrow(EGFR_intercet)
-EGFR_9_nrow_ratio <-nrow(EGFR_paths_9)/nrow(EGFR_intercet)
-EGFR_10_nrow_ratio <-nrow(EGFR_paths_10)/nrow(EGFR_intercet)
-EGFR_11_nrow_ratio <-nrow(EGFR_paths_11)/nrow(EGFR_intercet)
-EGFR_12_nrow_ratio <-nrow(EGFR_paths_12)/nrow(EGFR_intercet)
-EGFR_13_nrow_ratio <-nrow(EGFR_paths_13)/nrow(EGFR_intercet)
-EGFR_14_nrow_ratio <-nrow(EGFR_paths_14)/nrow(EGFR_intercet)
-EGFR_15_nrow_ratio <-nrow(EGFR_paths_15)/nrow(EGFR_intercet)
-EGFR_16_nrow_ratio <-nrow(EGFR_paths_16)/nrow(EGFR_intercet)
-EGFR_17_nrow_ratio <-nrow(EGFR_paths_17)/nrow(EGFR_intercet)
-EGFR_18_nrow_ratio <-nrow(EGFR_paths_18)/nrow(EGFR_intercet)
-EGFR_19_nrow_ratio <-nrow(EGFR_paths_19)/nrow(EGFR_intercet)
-EGFR_20_nrow_ratio <-nrow(EGFR_paths_20)/nrow(EGFR_intercet)
-EGFR_21_nrow_ratio <-nrow(EGFR_paths_21)/nrow(EGFR_intercet)
-EGFR_22_nrow_ratio <-nrow(EGFR_paths_22)/nrow(EGFR_intercet)
-EGFR_23_nrow_ratio <-nrow(EGFR_paths_23)/nrow(EGFR_intercet)
-EGFR_24_nrow_ratio <-nrow(EGFR_paths_24)/nrow(EGFR_intercet)
-EGFR_25_nrow_ratio <-nrow(EGFR_paths_25)/nrow(EGFR_intercet)
 
-EGFR_ratios <- c(EGFR_1_nrow_ratio,
-EGFR_2_nrow_ratio,
-EGFR_3_nrow_ratio,
-EGFR_4_nrow_ratio,
-EGFR_5_nrow_ratio,
-EGFR_6_nrow_ratio,
-EGFR_7_nrow_ratio,
-EGFR_8_nrow_ratio,
-EGFR_9_nrow_ratio,
-EGFR_10_nrow_ratio,
-EGFR_11_nrow_ratio,
-EGFR_12_nrow_ratio,
-EGFR_13_nrow_ratio,
-EGFR_14_nrow_ratio,
-EGFR_15_nrow_ratio,
-EGFR_16_nrow_ratio,
-EGFR_17_nrow_ratio,
-EGFR_18_nrow_ratio,
-EGFR_19_nrow_ratio,
-EGFR_20_nrow_ratio,
-EGFR_21_nrow_ratio,
-EGFR_22_nrow_ratio,
-EGFR_23_nrow_ratio,
-EGFR_24_nrow_ratio,
-EGFR_25_nrow_ratio)
+# EGFR_i_nrow_ratio <- nrow(EGFR_paths_i)/nrow(EGFR_intercet)
+for (i in 1:25){
+  assign(paste("EGFR_",i,"_nrow_ratio", sep = ""),nrow(get(paste("EGFR_paths_",i,sep = "")))/nrow(EGFR_intercet))
+}
+
+# EGFR_ratios <- list(EGFR_i_nrow_ratio)
+EGFR_ratios <- list()
+for (i in 1:25){
+  assign("EGFR_ratios", append(EGFR_ratios,get(paste("EGFR_",i,"_nrow_ratio", sep = ""))))
+}
+
+
 
 #creatign a dataframe to generate the heatmap
 EGFR_dataframe <- data.frame(EGFR_ratios)
-EGFR_dataframe <- t(EGFR_dataframe)
 colnames(EGFR_dataframe) <- cell_line
 write.table(EGFR_dataframe,"EGFR.txt")
 EGFR <-read.csv("EGFR.csv")
@@ -1565,247 +486,141 @@ EGFR <- EGFR[2:26]
 pheatmap::pheatmap(EGFR)
 
 ```
+# Paried/ same target/ shortest path analysis
+# target = EGFR
+
+```{r}
+
+# EGFR_Uni_i_j <- my.union(paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("EGFR_Uni",i,j,sep = "_"), my.union(get(paste("EGFR_paths_",i,sep = "")),get(paste("EGFR_paths_",j,sep = ""))))
+   }
+}
 
 
+# EGFR_Inters_i_j <- my.intersect(EGFR_paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("EGFR_Inters",i,j,sep = "_"), my.intersect(get(paste("EGFR_paths_",i,sep = "")),get(paste("EGFR_paths_",j,sep = ""))))
+   }
+}
+
+# The EGFR_paired_ratio_i_j = nrow(EGFR_Inters_i_j)/nrow(EGFR_Uni_i_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("EGFR_paired_ratio",i,j,sep = "_"), nrow(get(paste("EGFR_Inters",i,j,sep = "_")))/nrow(get(paste("EGFR_Uni",i,j,sep = "_"))))
+   }
+}
+
+
+EGFR_paired_ratio_df <- list()
+for (i in 1:25){
+  for (j in 1:25){
+    assign("EGFR_paired_ratio_df",append(EGFR_paired_ratio_df,get(paste("EGFR_paired_ratio",i,j,sep = "_"))))
+    }
+}
+
+write.table(EGFR_paired_ratio_df, "EGFR_paired_ratio_df.txt")
+
+EGFR_ratio_dataframe <- read.csv("EGFR_paired_ratio_df.csv",header = FALSE)
+colnames(EGFR_ratio_dataframe) <- sample_25
+rownames(EGFR_ratio_dataframe) <- sample_25
+pheatmap::pheatmap(EGFR_ratio_dataframe)
+```
+
+
+
+# nrow(ALK_paths_i)/nrow(intersection of 25 samples)
 ```{r target = ALK}
-ALK_paths_1 <- shortest.paths.to.target(ss1, target = "ALK")
-ALK_paths_2 <- shortest.paths.to.target(ss2, target = "ALK")
-ALK_paths_3 <- shortest.paths.to.target(ss3, target = "ALK")
-ALK_paths_4 <- shortest.paths.to.target(ss4, target = "ALK")
-ALK_paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
-ALK_paths_6 <- shortest.paths.to.target(ss6, target = "ALK")
-ALK_paths_7 <- shortest.paths.to.target(ss7, target = "ALK")
-ALK_paths_8 <- shortest.paths.to.target(ss8, target = "ALK")
-ALK_paths_9 <- shortest.paths.to.target(ss9, target = "ALK")
-ALK_paths_10 <- shortest.paths.to.target(ss10, target = "ALK")
-ALK_paths_11 <- shortest.paths.to.target(ss11, target = "ALK")
-ALK_paths_12 <- shortest.paths.to.target(ss12, target = "ALK")
-ALK_paths_13 <- shortest.paths.to.target(ss13, target = "ALK")
-ALK_paths_14 <- shortest.paths.to.target(ss14, target = "ALK")
-ALK_paths_15 <- shortest.paths.to.target(ss15, target = "ALK")
-ALK_paths_16 <- shortest.paths.to.target(ss16, target = "ALK")
-ALK_paths_17 <- shortest.paths.to.target(ss17, target = "ALK")
-ALK_paths_18 <- shortest.paths.to.target(ss18, target = "ALK")
-ALK_paths_19 <- shortest.paths.to.target(ss19, target = "ALK")
-ALK_paths_20 <- shortest.paths.to.target(ss20, target = "ALK")
-ALK_paths_21 <- shortest.paths.to.target(ss21, target = "ALK")
-ALK_paths_22 <- shortest.paths.to.target(ss22, target = "ALK")
-ALK_paths_23 <- shortest.paths.to.target(ss23, target = "ALK")
-ALK_paths_24 <- shortest.paths.to.target(ss24, target = "ALK")
-ALK_paths_25 <- shortest.paths.to.target(ss25, target = "ALK")
-ALK_intercet <- my.intersect(ALK_paths_1,
-ALK_paths_2,
-ALK_paths_3,
-ALK_paths_4,
-ALK_paths_5,
-ALK_paths_6,
-ALK_paths_7,
-ALK_paths_8,
-ALK_paths_9,
-ALK_paths_10,
-ALK_paths_11,
-ALK_paths_12,
-ALK_paths_13,
-ALK_paths_14,
-ALK_paths_15,
-ALK_paths_16,
-ALK_paths_17,
-ALK_paths_18,
-ALK_paths_19,
-ALK_paths_20,
-ALK_paths_21,
-ALK_paths_22,
-ALK_paths_23,
-ALK_paths_24,
-ALK_paths_25)
+# ALK_paths_i <- shortest.paths.to.target(ssi,target = "ALK)
+for (i in 1:25){
+  assign(paste("ALK_paths_",i,sep = ""),shortest.paths.to.target(get(paste("ss",i,sep = "")),target = "ALK"))
+}
+
+# ALK_intercet is the intersection of 25 ALK targeting samples
+for (i in 1:25){
+  ALK_intercet <- my.intersect(get(paste("ALK_paths_",i,sep = "")))
+}
+
+# ALK_Network <- graph.cfn.cccn (ALK_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+
+# ALK_i_nrow_ratio <- nrow(ALK_paths_i)/nrow(ALK_intercet)
+for (i in 1:25){
+  assign(paste("ALK_",i,"_nrow_ratio", sep = ""),nrow(get(paste("ALK_paths_",i,sep = "")))/nrow(ALK_intercet))
+}
+
+# ALK_ratios <- list(ALK_i_nrow_ratio)
+ALK_ratios <- list()
+
+for (i in 1:25){
+  assign("ALK_ratios", append(ALK_ratios,get(paste("ALK_",i,"_nrow_ratio", sep = ""))))
+}  
+  
+
 ALK_Network <- graph.cfn.cccn (ALK_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
 
-ALK_1_nrow_ratio <-nrow(ALK_paths_1)/nrow(ALK_intercet)
-ALK_2_nrow_ratio <-nrow(ALK_paths_2)/nrow(ALK_intercet)
-ALK_3_nrow_ratio <-nrow(ALK_paths_3)/nrow(ALK_intercet)
-ALK_4_nrow_ratio <-nrow(ALK_paths_4)/nrow(ALK_intercet)
-ALK_5_nrow_ratio <-nrow(ALK_paths_5)/nrow(ALK_intercet)
-ALK_6_nrow_ratio <-nrow(ALK_paths_6)/nrow(ALK_intercet)
-ALK_7_nrow_ratio <-nrow(ALK_paths_7)/nrow(ALK_intercet)
-ALK_8_nrow_ratio <-nrow(ALK_paths_8)/nrow(ALK_intercet)
-ALK_9_nrow_ratio <-nrow(ALK_paths_9)/nrow(ALK_intercet)
-ALK_10_nrow_ratio <-nrow(ALK_paths_10)/nrow(ALK_intercet)
-ALK_11_nrow_ratio <-nrow(ALK_paths_11)/nrow(ALK_intercet)
-ALK_12_nrow_ratio <-nrow(ALK_paths_12)/nrow(ALK_intercet)
-ALK_13_nrow_ratio <-nrow(ALK_paths_13)/nrow(ALK_intercet)
-ALK_14_nrow_ratio <-nrow(ALK_paths_14)/nrow(ALK_intercet)
-ALK_15_nrow_ratio <-nrow(ALK_paths_15)/nrow(ALK_intercet)
-ALK_16_nrow_ratio <-nrow(ALK_paths_16)/nrow(ALK_intercet)
-ALK_17_nrow_ratio <-nrow(ALK_paths_17)/nrow(ALK_intercet)
-ALK_18_nrow_ratio <-nrow(ALK_paths_18)/nrow(ALK_intercet)
-ALK_19_nrow_ratio <-nrow(ALK_paths_19)/nrow(ALK_intercet)
-ALK_20_nrow_ratio <-nrow(ALK_paths_20)/nrow(ALK_intercet)
-ALK_21_nrow_ratio <-nrow(ALK_paths_21)/nrow(ALK_intercet)
-ALK_22_nrow_ratio <-nrow(ALK_paths_22)/nrow(ALK_intercet)
-ALK_23_nrow_ratio <-nrow(ALK_paths_23)/nrow(ALK_intercet)
-ALK_24_nrow_ratio <-nrow(ALK_paths_24)/nrow(ALK_intercet)
-ALK_25_nrow_ratio <-nrow(ALK_paths_25)/nrow(ALK_intercet)
-
-ALK_ratios <- c(ALK_1_nrow_ratio,
-ALK_2_nrow_ratio,
-ALK_3_nrow_ratio,
-ALK_4_nrow_ratio,
-ALK_5_nrow_ratio,
-ALK_6_nrow_ratio,
-ALK_7_nrow_ratio,
-ALK_8_nrow_ratio,
-ALK_9_nrow_ratio,
-ALK_10_nrow_ratio,
-ALK_11_nrow_ratio,
-ALK_12_nrow_ratio,
-ALK_13_nrow_ratio,
-ALK_14_nrow_ratio,
-ALK_15_nrow_ratio,
-ALK_16_nrow_ratio,
-ALK_17_nrow_ratio,
-ALK_18_nrow_ratio,
-ALK_19_nrow_ratio,
-ALK_20_nrow_ratio,
-ALK_21_nrow_ratio,
-ALK_22_nrow_ratio,
-ALK_23_nrow_ratio,
-ALK_24_nrow_ratio,
-ALK_25_nrow_ratio)
 
 #creatign a dataframe to generate the heatmap
 ALK_dataframe <- data.frame(ALK_ratios)
-ALK_dataframe <- t(ALK_dataframe)
 colnames(ALK_dataframe) <- cell_line
 write.table(ALK_dataframe,"ALK.txt")
 ALK <-read.csv("ALK.csv")
 rownames(ALK) <- cell_line
 colnames(ALK) <- cell_line
-
 ALK <- ALK[2:26]
 pheatmap::pheatmap(ALK)
 
+```
+# TARGET = ALK
 
+```{r}
+# ALK_Uni_i_j <- my.union(paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("ALK_Uni",i,j,sep = "_"), my.union(get(paste("ALK_paths_",i,sep = "")),get(paste("ALK_paths_",j,sep = ""))))
+   }
+}
+
+
+
+# ALK_Inters_i_j <- my.intersect(ALK_paths_i,paths_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("ALK_Inters",i,j,sep = "_"), my.intersect(get(paste("ALK_paths_",i,sep = "")),get(paste("ALK_paths_",j,sep = ""))))
+   }
+}
+
+# The ALK_paired_ratio_i_j = nrow(ALK_Inters_i_j)/nrow(ALK_Uni_i_j)
+for (i in 1:25){
+  for (j in 1:25){
+    assign(paste("ALK_paired_ratio",i,j,sep = "_"), nrow(get(paste("ALK_Inters",i,j,sep = "_")))/nrow(get(paste("ALK_Uni",i,j,sep = "_"))))
+   }
+}
+
+#
+ALK_paired_ratio_df <- list()
+for (i in 1:25){
+  for (j in 1:25){
+    assign("ALK_paired_ratio_df",append(ALK_paired_ratio_df,get(paste("ALK_paired_ratio",i,j,sep = "_"))))
+    }
+}
+
+write.table(ALK_paired_ratio_df, "ALK_paired_ratio_df.txt")
+
+
+
+ALK_ratio_dataframe <- read.csv("ALK_paired_ratio_df.csv",header = FALSE)
+
+colnames(ALK_ratio_dataframe) <- cell_line
+rownames(ALK_ratio_dataframe) <- cell_line
+pheatmap::pheatmap(ALK_ratio_dataframe)
 ```
 
 
-```{r target = ROS1}
-ROS1_paths_1 <- shortest.paths.to.target(ss1, target = "ROS1")
-ROS1_paths_2 <- shortest.paths.to.target(ss2, target = "ROS1")
-ROS1_paths_3 <- shortest.paths.to.target(ss3, target = "ROS1")
-ROS1_paths_4 <- shortest.paths.to.target(ss4, target = "ROS1")
-ROS1_paths_5 <- shortest.paths.to.target(ss5, target = "ROS1")
-ROS1_paths_6 <- shortest.paths.to.target(ss6, target = "ROS1")
-ROS1_paths_7 <- shortest.paths.to.target(ss7, target = "ROS1")
-ROS1_paths_8 <- shortest.paths.to.target(ss8, target = "ROS1")
-ROS1_paths_9 <- shortest.paths.to.target(ss9, target = "ROS1")
-ROS1_paths_10 <- shortest.paths.to.target(ss10, target = "ROS1")
-ROS1_paths_11 <- shortest.paths.to.target(ss11, target = "ROS1")
-ROS1_paths_12 <- shortest.paths.to.target(ss12, target = "ROS1")
-ROS1_paths_13 <- shortest.paths.to.target(ss13, target = "ROS1")
-ROS1_paths_14 <- shortest.paths.to.target(ss14, target = "ROS1")
-ROS1_paths_15 <- shortest.paths.to.target(ss15, target = "ROS1")
-ROS1_paths_16 <- shortest.paths.to.target(ss16, target = "ROS1")
-ROS1_paths_17 <- shortest.paths.to.target(ss17, target = "ROS1")
-ROS1_paths_18 <- shortest.paths.to.target(ss18, target = "ROS1")
-ROS1_paths_19 <- shortest.paths.to.target(ss19, target = "ROS1")
-ROS1_paths_20 <- shortest.paths.to.target(ss20, target = "ROS1")
-ROS1_paths_21 <- shortest.paths.to.target(ss21, target = "ROS1")
-ROS1_paths_22 <- shortest.paths.to.target(ss22, target = "ROS1")
-ROS1_paths_23 <- shortest.paths.to.target(ss23, target = "ROS1")
-ROS1_paths_24 <- shortest.paths.to.target(ss24, target = "ROS1")
-ROS1_paths_25 <- shortest.paths.to.target(ss25, target = "ROS1")
 
-ROS1_intercet <- my.intersect(ROS1_paths_1,
-ROS1_paths_2,
-ROS1_paths_3,
-ROS1_paths_4,
-ROS1_paths_5,
-ROS1_paths_6,
-ROS1_paths_7,
-ROS1_paths_8,
-ROS1_paths_9,
-ROS1_paths_10,
-ROS1_paths_11,
-ROS1_paths_12,
-ROS1_paths_13,
-ROS1_paths_14,
-ROS1_paths_15,
-ROS1_paths_16,
-ROS1_paths_17,
-ROS1_paths_18,
-ROS1_paths_19,
-ROS1_paths_20,
-ROS1_paths_21,
-ROS1_paths_22,
-ROS1_paths_23,
-ROS1_paths_24,
-ROS1_paths_25)
-ROS1_Network <- graph.cfn.cccn (ROS1_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-ROS1_1_nrow_ratio <-nrow(ROS1_paths_1)/nrow(ROS1_intercet)
-ROS1_2_nrow_ratio <-nrow(ROS1_paths_2)/nrow(ROS1_intercet)
-ROS1_3_nrow_ratio <-nrow(ROS1_paths_3)/nrow(ROS1_intercet)
-ROS1_4_nrow_ratio <-nrow(ROS1_paths_4)/nrow(ROS1_intercet)
-ROS1_5_nrow_ratio <-nrow(ROS1_paths_5)/nrow(ROS1_intercet)
-ROS1_6_nrow_ratio <-nrow(ROS1_paths_6)/nrow(ROS1_intercet)
-ROS1_7_nrow_ratio <-nrow(ROS1_paths_7)/nrow(ROS1_intercet)
-ROS1_8_nrow_ratio <-nrow(ROS1_paths_8)/nrow(ROS1_intercet)
-ROS1_9_nrow_ratio <-nrow(ROS1_paths_9)/nrow(ROS1_intercet)
-ROS1_10_nrow_ratio <-nrow(ROS1_paths_10)/nrow(ROS1_intercet)
-ROS1_11_nrow_ratio <-nrow(ROS1_paths_11)/nrow(ROS1_intercet)
-ROS1_12_nrow_ratio <-nrow(ROS1_paths_12)/nrow(ROS1_intercet)
-ROS1_13_nrow_ratio <-nrow(ROS1_paths_13)/nrow(ROS1_intercet)
-ROS1_14_nrow_ratio <-nrow(ROS1_paths_14)/nrow(ROS1_intercet)
-ROS1_15_nrow_ratio <-nrow(ROS1_paths_15)/nrow(ROS1_intercet)
-ROS1_16_nrow_ratio <-nrow(ROS1_paths_16)/nrow(ROS1_intercet)
-ROS1_17_nrow_ratio <-nrow(ROS1_paths_17)/nrow(ROS1_intercet)
-ROS1_18_nrow_ratio <-nrow(ROS1_paths_18)/nrow(ROS1_intercet)
-ROS1_19_nrow_ratio <-nrow(ROS1_paths_19)/nrow(ROS1_intercet)
-ROS1_20_nrow_ratio <-nrow(ROS1_paths_20)/nrow(ROS1_intercet)
-ROS1_21_nrow_ratio <-nrow(ROS1_paths_21)/nrow(ROS1_intercet)
-ROS1_22_nrow_ratio <-nrow(ROS1_paths_22)/nrow(ROS1_intercet)
-ROS1_23_nrow_ratio <-nrow(ROS1_paths_23)/nrow(ROS1_intercet)
-ROS1_24_nrow_ratio <-nrow(ROS1_paths_24)/nrow(ROS1_intercet)
-ROS1_25_nrow_ratio <-nrow(ROS1_paths_25)/nrow(ROS1_intercet)
-
-ROS1_ratios <- c(ROS1_1_nrow_ratio,
-ROS1_2_nrow_ratio,
-ROS1_3_nrow_ratio,
-ROS1_4_nrow_ratio,
-ROS1_5_nrow_ratio,
-ROS1_6_nrow_ratio,
-ROS1_7_nrow_ratio,
-ROS1_8_nrow_ratio,
-ROS1_9_nrow_ratio,
-ROS1_10_nrow_ratio,
-ROS1_11_nrow_ratio,
-ROS1_12_nrow_ratio,
-ROS1_13_nrow_ratio,
-ROS1_14_nrow_ratio,
-ROS1_15_nrow_ratio,
-ROS1_16_nrow_ratio,
-ROS1_17_nrow_ratio,
-ROS1_18_nrow_ratio,
-ROS1_19_nrow_ratio,
-ROS1_20_nrow_ratio,
-ROS1_21_nrow_ratio,
-ROS1_22_nrow_ratio,
-ROS1_23_nrow_ratio,
-ROS1_24_nrow_ratio,
-ROS1_25_nrow_ratio)
-
-#creatign a dataframe to generate the heatmap
-ROS1_dataframe <- data.frame(ROS1_ratios)
-ROS1_dataframe <- t(ROS1_dataframe)
-colnames(ROS1_dataframe) <- cell_line
-write.table(ROS1_dataframe,"ROS1.txt")
-
-
-
-
-```
 
 # Here matrix that composed of target(x) and cell line(y)
 
