@@ -214,6 +214,9 @@ paths_24 <- shortest.paths.to.target(ss24, target = "")
 
 ss25 <- select.sites.w.min.value(gz.cf, "H1781_AfatinibRatio", min_value = 2.25)
 paths_25 <- shortest.paths.to.target(ss25, target = "ERBB2")
+
+# The table for the cell line, Experiment set, Drug etc.
+gz_experiments_df <- read.csv("gz_experiments.csv")
 ```
 # The union and intersection or single path network
 
@@ -276,9 +279,33 @@ sample_15 <- c("ss1",
 "ss15",
 "ss16",
 "ss25")
-colnames(ratio_dataframe) <- sample_15
-rownames(ratio_dataframe) <- sample_15
-pheatmap::pheatmap(ratio_dataframe)
+
+gz_exp_15_df <- gz_experiments_df[sample_order_l,]
+gz_exp_15_df <- gz_exp_15_df[,2:5]
+target_l <- c("ALK","ALK","ALK","ALK","ALK","ALK","ALK",
+              "EGFR","EGFR","EGFR","EGFR","EGFR","EGFR","EGFR"
+              ,"ERBb2")
+gz_exp_15_df$target <- target_l
+gz_exp_15_df$merge <- paste(gz_exp_15_df$CellLine,gz_exp_15_df$ExpSet,gz_exp_15_df$Drug,gz_exp_15_df$target,gz_exp_15_df$Rep,sep = "_")
+
+colnames(ratio_dataframe) <- gz_exp_15_df$merge
+rownames(ratio_dataframe) <- gz_exp_15_df$merge
+
+# The following code brings in the extra annotative information about the drug and cell line and target.
+
+
+Cell <- factor(gz_exp_15_df$CellLine,labels = unique(gz_exp_15_df$CellLine))
+Var1_color <- c()
+
+Drug <- factor(gz_exp_15_df$Drug,levels = unique(gz_exp_15_df$Drug))
+Var2_color <- c()
+
+Target <- factor(gz_exp_15_df$target,levels = unique(gz_exp_15_df$target))
+
+annotation<-data.frame(Cell,Drug,Target)
+rownames(annotation) <- colnames(ratio_dataframe)
+
+pheatmap::pheatmap(ratio_dataframe,annotation = annotation)
 
 
 
@@ -343,12 +370,6 @@ all.ratio.styles()
 
 ```
 
-```{r creating cell line name list}
-gz_experiments_df <- read.csv("gz_experiments.csv")
-cell_line <- gz_experiments_df$Column.6
-
-
-```
 
 # Heatmap comparison of shortest paths network
 # Assumptions: In SPN, each nodes is a representative maker for the impact of drug (if no change, then no drug effect)
