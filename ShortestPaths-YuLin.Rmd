@@ -258,12 +258,11 @@ for (i in sample_order_l){
   }
 }
 
+ratio_df <- as.numeric(ratio_df)
+ratio_mat <- matrix(ratio_df,nrow = 15,ncol = 15)
+ratio_dataframe <- as.data.frame(ratio_mat)
 
-ratio_df <- as.matrix(ratio_df)
-ratio_df <- t(ratio_df)
-write.table(ratio_df, "ratio_df.txt")
 
-ratio_dataframe <- read.csv("ratio_df.csv",header = FALSE)
 sample_15 <- c("ss1",
 "ss2",
 "ss3",
@@ -303,13 +302,41 @@ Var2_color <- c()
 Target <- factor(gz_exp_15_df$target,levels = unique(gz_exp_15_df$target))
 
 annotation<-data.frame(Cell,Drug,Target)
-rownames(annotation) <- colnames(ratio_dataframe)
+rownames(annotation) <- rownames(ratio_dataframe)
 
 pheatmap::pheatmap(ratio_dataframe,annotation = annotation)
 
 
 
 ```
+# As the rown() acturally counts each correlation (source to target) realtionship, there must be many duplicated counting of nodes.
+# The following heatmap is based on the nodes/gene dependet counting and hopefully this would generate a approximal heatmap to what we already have.
+```{r}
+#This counts the node number of in the network.
+node_number_counting <- function(node_list){
+  len <- length(union(unique(node_list$target),unique(node_list$source)))
+  return(len)
+}
+
+# Node count list for the unions NLU, Node count list for intersection NLI
+NLU <- list()
+NLI <- list()
+for (i in sample_order_l){
+  for (i in sample_order_l){
+    assign("NLU", append(NLU,node_number_counting(get(paste("Uni",i,j,sep = "_")))))
+    assign("NLI", append(NLU,node_number_counting(get(paste("Inters",i,j,sep = "_")))))
+  }
+}
+
+node_ratio_list <- list()
+
+for (i in 1:225){
+  assign("node_ratio_List", append(node_ratio_list, NLU[i]/NLI[i]))
+}
+
+
+```
+
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
 
