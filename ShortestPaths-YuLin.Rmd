@@ -322,18 +322,28 @@ node_number_counting <- function(node_list){
 NLU <- list()
 NLI <- list()
 for (i in sample_order_l){
-  for (i in sample_order_l){
+  for (j in sample_order_l){
     assign("NLU", append(NLU,node_number_counting(get(paste("Uni",i,j,sep = "_")))))
-    assign("NLI", append(NLU,node_number_counting(get(paste("Inters",i,j,sep = "_")))))
+    assign("NLI", append(NLI,node_number_counting(get(paste("Inters",i,j,sep = "_")))))
   }
 }
+
+NLU <- as.numeric(NLU)
+NLI <- as.numeric(NLI)
 
 node_ratio_list <- list()
 
 for (i in 1:225){
-  assign("node_ratio_List", append(node_ratio_list, NLU[i]/NLI[i]))
+  assign("node_ratio_list", append(node_ratio_list, NLI[i]/NLU[i]))
 }
 
+node_ratio_list <- as.numeric(node_ratio_list)
+node_ratio_mat <- matrix(node_ratio_list,nrow = 15,ncol = 15)
+node_ratio_df <- data.frame(node_ratio_mat)
+
+colnames(node_ratio_df) <- gz_exp_15_df$merge
+rownames(node_ratio_df) <- gz_exp_15_df$merge
+pheatmap::pheatmap(node_ratio_df, annotation= annotation)
 
 ```
 
@@ -492,6 +502,10 @@ rownames(MET_ratio_dataframe) <- cell_line
 pheatmap::pheatmap(MET_ratio_dataframe)
 ```
 
+```{r}
+#nod number counting on MET
+
+```
 
 
 
