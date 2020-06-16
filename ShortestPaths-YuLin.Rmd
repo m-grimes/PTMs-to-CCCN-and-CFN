@@ -294,17 +294,18 @@ rownames(ratio_dataframe) <- gz_exp_15_df$merge
 
 
 Cell <- factor(gz_exp_15_df$CellLine,labels = unique(gz_exp_15_df$CellLine))
-Var1_color <- c()
+
 
 Drug <- factor(gz_exp_15_df$Drug,levels = unique(gz_exp_15_df$Drug))
-Var2_color <- c()
+
 
 Target <- factor(gz_exp_15_df$target,levels = unique(gz_exp_15_df$target))
 
+ann_colors = list(Cell = c(H3122="#CC9999",STE.1="#CCCC99",H2228="#FFFF99",PC9="#CCCCFF",HCC4006="#666666",HCC827="#FF6666",H1781="#99CC66"),Drug = c(Crizotinib="#99CCCC",Erlotinib="#FF9999",Afatinib="#FFCC99"),Target = c(ALK="#FFFFCC",EGFR="#CCCCFF",ERBb2="#CCFFFF"))
 annotation<-data.frame(Cell,Drug,Target)
 rownames(annotation) <- rownames(ratio_dataframe)
 
-pheatmap::pheatmap(ratio_dataframe,annotation = annotation)
+pheatmap::pheatmap(ratio_dataframe,annotation = annotation,annotation_colors = ann_colors)
 
 
 
