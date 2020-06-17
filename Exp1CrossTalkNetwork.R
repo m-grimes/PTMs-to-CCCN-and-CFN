@@ -210,6 +210,10 @@ colnames(clusters) <- c("Site", "Cluster")
 clusters$Site <- trimws(as.character(clusters$Site))
 # we are interested in the symbol of the Site
 # for example, we need to extract "TUBB4B" from TUBB4B ubi K379
+
+# take the leading one from the breakup
+# if mu;tiple ptms bring the same gene, what do you do?
+# count once or count multiple?
 clusters$Site = sapply(strsplit(clusters$Site, " "), `[`, 1)
 allPtmCounts = data.frame(table(clusters$Cluster))
 colnames(allPtmCounts) = c("Cluster", "ptmCount")
@@ -245,6 +249,7 @@ percOfPathways = 3
 
 maxInvolvedPTMs = 30000
 results<-data.frame()
+infoFrame<-data.frame()
 for (step in seq.int(1, maxStep, 1)) {
    percOfPtms = step / maxStep
    
@@ -276,7 +281,7 @@ for (step in seq.int(1, maxStep, 1)) {
       
       s= invPtmCounts[invPtmCounts$Cluster == clID,]
       if(nrow(s)>0) involvedPtmCount=s$ptmCount
-      
+      # unique numbers
       # how many pathways are connected to this cluster?
       involvedPathwayCount = 0
       p <- invPwCounts[invPwCounts$Cluster == clID,]
@@ -285,6 +290,7 @@ for (step in seq.int(1, maxStep, 1)) {
       }
       #message(involvedPtmCount/(1.0 * ptmCount))
       # rule 1: how much percent of the cluster ptms are found in the pathway file
+      infoFrame = bind_rows(infoFrame,c(st=step,cl=clID, pc=ptmCount,iptm=involvedPtmCount,ipw=involvedPathwayCount ))
       if (ptmCount == 0 ||
           involvedPtmCount / (1.0 * ptmCount) < percOfPtms) {
          next
@@ -294,6 +300,10 @@ for (step in seq.int(1, maxStep, 1)) {
           (involvedPathwayCount / involvedPtmCount) < percOfPathways) {
          next
       }
+      
+      # importance of genes
+      # decrease weight by pathways
+      # increase weight by PTMs
       
       # So this cluster survives the rules 1 and 2
       # we will take its ptms, find their pathways and
@@ -332,15 +342,17 @@ for (step in seq.int(1, maxStep, 1)) {
          avgEdgeSim=0.0
          for(node in V(gr)){
             pathway1 = (names(dic[node]))
-           
-            for ( neig in neighbors(gr,node)){
+             sim=0.0
+             neList = neighbors(gr,node)
+            for ( neig in neList){
                pathway2 = (names(dic[neig]))
                # strange: Bioplanet has gene symbols that are 9818 Levels: 1-Dec 1-Sep 2-Sep 4-Sep 5-Sep 6-Mar 7-Sep 9-Sep A1BG A1CF A2M ... ZYX
                
-               #avgEdgeSim = sim+pathwaySim(pathway1,pathway2,geneSimMap,(pathways))
+               sim = sim+pathwaySim(pathway1,pathway2,geneSimMap,(pathways))
             }
+            avgEdgeSim = avgEdgeSim+sim/length(neList)
          }
-         
+         avgEdgeSim = avgEdgeSim/length(V(gr))
          x=c(step=step,maxInvolvedPTMs=maxInvolvedPTMs,percOfPathways=percOfPathways,minPtmClusters=minPtmClusters,
              avgEdgeSim=avgEdgeSim,gorder=gorder(gr),gsize=gsize(gr))
         results= bind_rows(results,x)
