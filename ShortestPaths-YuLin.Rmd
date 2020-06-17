@@ -388,9 +388,28 @@ for (i in sample_order_l){
 }
 node_l <- as.numeric(node_l)
 
-sample_counting <- data.frame(edge_l,node_l,sample_order_l)
+
+total_edge_l <- list()
+total_node_l <- list()
+
+for (i in sample_order_l){
+  assign("total_edge_l",append(total_edge_l,nrow(get(paste("paths",i,sep = "_")))))
+}
+total_edge_l <- as.numeric(total_edge_l)
+
+for (i in sample_order_l){
+  assign("total_node_l",append(total_node_l,node_number_counting(get(paste("paths",i,sep = "_")))))
+}
+total_node_l <- as.numeric(total_node_l)
+
+
+sample_counting <- data.frame(edge_l,node_l,sample_order_l,total_edge_l,totoal_node_l)
 rownames(sample_counting) <- gz_exp_15_df$merge
 sample_counting
+
+
+
+
 
 #ALK network
 # H3122_ALK_SEPTM
