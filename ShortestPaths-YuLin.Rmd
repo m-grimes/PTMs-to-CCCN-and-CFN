@@ -284,7 +284,7 @@ gz_exp_15_df <- gz_experiments_df[sample_order_l,]
 gz_exp_15_df <- gz_exp_15_df[,2:5]
 target_l <- c("ALK","ALK","ALK","ALK","ALK","ALK","ALK",
               "EGFR","EGFR","EGFR","EGFR","EGFR","EGFR","EGFR"
-              ,"ERBb2")
+              ,"ERBB2")
 gz_exp_15_df$target <- target_l
 gz_exp_15_df$merge <- paste(gz_exp_15_df$CellLine,gz_exp_15_df$ExpSet,gz_exp_15_df$Drug,gz_exp_15_df$target,gz_exp_15_df$Rep,sep = "_")
 
@@ -302,7 +302,7 @@ Drug <- factor(gz_exp_15_df$Drug,levels = unique(gz_exp_15_df$Drug))
 
 Target <- factor(gz_exp_15_df$target,levels = unique(gz_exp_15_df$target))
 
-ann_colors = list(Cell = c(H3122="#99CC66",STE.1="#CCCC99",H2228="#FFFF99",PC9="#87CEFA",HCC4006="#7FFFD4",HCC827="#FF6666",H1781="#FFD700"),Drug = c(Crizotinib="#99CCCC",Erlotinib="#FF9999",Afatinib="#FFCC99"),Target = c(ALK="#FFFFCC",EGFR="#CCCCFF",ERBb2="#CCFFFF"))
+ann_colors = list(Cell = c(H3122="#99CC66",STE.1="#CCCC99",H2228="#FFFF99",PC9="#87CEFA",HCC4006="#7FFFD4",HCC827="#FF6666",H1781="#FFD700"),Drug = c(Crizotinib="#99CCCC",Erlotinib="#FF9999",Afatinib="#FFCC99"),Target = c(ALK="#FFFFCC",EGFR="#CCCCFF",ERBB2="#CCFFFF"))
 annotation<-data.frame(Cell,Drug,Target)
 rownames(annotation) <- rownames(ratio_dataframe)
 
@@ -367,11 +367,11 @@ for (i in 1:25){
 
 # shortest path of up-regulated sites
 
-
+# up_paths_i <- shortest.paths.to.target(up_ss_i,target= x)
 for (i in 1:15){
   assign(paste("up_paths_",sample_order_l[i],sep = ""),shortest.paths.to.target(get(paste("up_ss_",sample_order_l[i],sep = "")), target = target_l[i]))
 }
-up_paths__1 <- 
+
 
 
 #This is a general table of nodes and edge number in the shortest path network
@@ -388,14 +388,39 @@ for (i in sample_order_l){
 }
 node_l <- as.numeric(node_l)
 
-sample_counting <- data.frame(edge_l,node_l)
+sample_counting <- data.frame(edge_l,node_l,sample_order_l)
 rownames(sample_counting) <- gz_exp_15_df$merge
 sample_counting
 
-#
+#ALK network
+# H3122_ALK_SEPTM
 H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
 graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
+
+# PC9_SEPTM_Erlotinib_EGFR_2
+graph.cfn.cccn (up_paths_11, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+
+# verification 1, for loop generate up_ss_i
+# up_ss11 <- select.sites.up.regulated(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+# up_path11 <- shortest.paths.to.target(up_ss11, target = "EGFR")
+# up_paths_11 == up_path11
+
+# verification 2
+# up_ss4 <- select.sites.up.regulated(gz.cf, "H3122_Crizotinib.1Ratio", min_value = 2.25)
+# up_path4 <- shortest.paths.to.target(up_ss4, target = "ALK")
+# up_path4 == up_paths_4
+
+# verification 3
+# up_ss13 <- select.sites.up.regulated(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+# up_path13 <- shortest.paths.to.target(up_ss13, target = "EGFR")
+# up_path13 == up_paths_13
+
+
+
+
 
 
 
