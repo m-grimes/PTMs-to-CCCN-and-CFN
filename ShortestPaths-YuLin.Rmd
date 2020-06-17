@@ -93,6 +93,7 @@ all.ratio.styles()
 
 #Find the intersection of shortest paths networks for the three SEPTM experiments
 S_intersect <- my.intersect(paths_S1, paths_S2, paths_S3)
+# CFN= False -> CCCN network
 intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
 
@@ -345,6 +346,59 @@ node_ratio_df <- data.frame(node_ratio_mat)
 colnames(node_ratio_df) <- gz_exp_15_df$merge
 rownames(node_ratio_df) <- gz_exp_15_df$merge
 pheatmap::pheatmap(node_ratio_df, annotation= annotation)
+
+```
+
+# The upregulated sites in the 15 sample
+```{r}
+# modifed version of select sites function that select nodes are upregulated only
+select.sites.up.regulated <- function(df, exp, min_value = 2.25) {
+  data <- df[, exp]
+  df <- df[ which(data > log2(min_value)), ]
+  return(df)
+}
+
+sample_names <- c("H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio","H3122_Crizotinib.1Ratio","H3122CrizotinibRatio","HCC78_Crizotinib.1Ratio","HCC78_CrizotinibRatio","STE.1_CrizotinibRatio","H2228CrizotinibRatio","PC9SEPTM.E1.ratio","PC9SEPTM.E2.ratio","PC9SEPTM.E3.ratio","PC9_Erlotinib.1Ratio","PC9_ErlotinibRatio","HCC4006_ErlotinibRatio","HCC827_ErlotinibRatio","H3122SEPTM.PR1.ratio","H3122SEPTM.PR2.ratio","H3122SEPTM.PR3.ratio","PC9SEPTM.PR1.ratio","PC9SEPTM.PR2.ratio","PC9SEPTM.PR3.ratio","H2286_DasatinibRatio","H366_DasatinibRatio","H1781_AfatinibRatio")
+
+# up_ss_i <- select.sites.up.regulated(gz.cf,sample_names[i],min_value = 2.25)
+for (i in 1:25){
+  assign(paste("up_ss",i,sep = "_"),select.sites.up.regulated(gz.cf,sample_names[i],min_value = 2.25))
+}
+
+# shortest path of up-regulated sites
+
+
+for (i in 1:15){
+  assign(paste("up_paths_",sample_order_l[i],sep = ""),shortest.paths.to.target(get(paste("up_ss_",sample_order_l[i],sep = "")), target = target_l[i]))
+}
+up_paths__1 <- 
+
+
+#This is a general table of nodes and edge number in the shortest path network
+edge_l <- list()
+for (i in sample_order_l){
+  assign("edge_l",append(edge_l,nrow(get(paste("up_paths_",i,sep = "")))))
+}
+edge_l <- as.numeric(edge_l)
+
+
+node_l <- list()
+for (i in sample_order_l){
+  assign("node_l",append(node_l,node_number_counting(get(paste(paste("up_paths_",i,sep = ""))))))
+}
+node_l <- as.numeric(node_l)
+
+sample_counting <- data.frame(edge_l,node_l)
+rownames(sample_counting) <- gz_exp_15_df$merge
+sample_counting
+
+#
+H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
+graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+
+
+
 
 ```
 
