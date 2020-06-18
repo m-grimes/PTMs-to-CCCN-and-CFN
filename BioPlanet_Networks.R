@@ -30,6 +30,8 @@ bioplanet[grep("PAG1", bioplanet)]
 length(grep("FYN", bioplanet, fixed=T)) # 82 note that these will get partial matches
 intersect(names(bioplanet[grep("PAG1", bioplanet)]), names(bioplanet[grep("FYN", bioplanet)]))
 # Interesting that PDGFB signaling pathway is the only RTK pathway; others are disease, immune system and "CXCR4 signaling pathway"
+
+
 # How many pathways for each gene?
 # Try stringr functions
 # See _work_Jun4.R for tests
@@ -45,17 +47,14 @@ calculate.pathways.per.gene <- function(gene, pathwaylist) {
   return(sum.paths)
 }
 
-
 # Works!
-# Deal with overlapping names
-
 # OKay go for it!
 bioplanetgenes$no.pathways <- sapply(bioplanetgenes$Gene.Name, calculate.pathways.per.gene, pathwaylist=bioplanet)
 # This still took over an hour!
 hist(bioplanetgenes$no.pathways, breaks=100, col="aquamarine", ylim=c(0,200))
 head(bioplanetgenes[order(bioplanetgenes$number.of.pathways, decreasing=TRUE),], 30)
 # Behold the usual suspects. 
-# Fix
+# Use correct columns (after tests)
 bioplanetgenes <- bioplanetgenes[,c(1,3)]
 #
 list.common <- function (list1, list2, keeplength=3) {
@@ -87,6 +86,7 @@ matrix.common <- function(clust.list1, clust.list2)	{
   }
   return(tt.dd)	}
 bioplanet.matrix.common <- matrix.common(bioplanet, bioplanet)
+# 1657 x 1657 pathways
 # Note: diagonal gives the number of genes in each pathway
 # Determine the number of distinct genes so that the fraction of genes in common may be calculated
 matrix.outersect <- function(clust.list1, clust.list2)	{
@@ -97,22 +97,44 @@ matrix.outersect <- function(clust.list1, clust.list2)	{
     for (j in 1:length(clust.list2)) {
       a <- clust.list1[[i]]
       b <- clust.list2[[j]]
-      common <- outersect (a, b)
-      if (length (common) >= 1 )  {
-        tt.dd[i,j] <- length (common) }
+      outer.sect <- outersect (a, b)
+      if (length (outer.sect) >= 1 )  {
+        tt.dd[i,j] <- length (outer.sect) }
     }
   }
   return(tt.dd)	}
 bioplanet.matrix.outersect <- matrix.outersect(bioplanet, bioplanet)
 # Divide these to give pathway relationships on a scale of 0 to  about 3.5
 bioplanet.adj.matrix <- bioplanet.matrix.common/bioplanet.matrix.outersect
+# Modifiy function to use Jaccard distance
+## Jacard formula: #common / (#i + #j - #common) or length(intersect(i,j)/length(union(i,j))
+matrix.union <- function(clust.list1, clust.list2)	{
+  tt.dd <- matrix(data = NA, nrow = length(clust.list1), ncol = length(clust.list2), byrow = FALSE, dimnames = NULL)
+  rownames(tt.dd) <- names(clust.list1)
+  colnames(tt.dd) <- names(clust.list2)
+  for (i in 1:length(clust.list1)) {
+    for (j in 1:length(clust.list2)) {
+      a <- clust.list1[[i]]
+      b <- clust.list2[[j]]
+      denominator <- union(a, b)
+      if (length (denominator) >= 1 )  {
+        tt.dd[i,j] <- length (denominator) }
+    }
+  }
+  return(tt.dd)	}
+bioplanet.matrix.union <- matrix.union(bioplanet, bioplanet)
+bioplanet.jaccard.matrix <- bioplanet.matrix.common/bioplanet.matrix.union
+range(unlist(bioplanet.jaccard.matrix), na.rm=T)
+# 0.0005350455 to 1.0000000000 (including diagnal)
 #_________________________________________________
 # Treat this as an adjacency matrix
 # BioPlanet Pathway Relationship = (number of genes shared between Pathwayi and Pathwayi2) / (number of distinct genes in  Pathwayi and Pathwayi2 )
-#
+# round 1:
 bpc.work <- bioplanet.matrix.common
-# round 2
+# round 2:
 bpc.work <- bioplanet.adj.matrix
+# round 3:
+bpc.work <- bioplanet.jaccard.matrix
 diag(bpc.work) <- NA
 hist(unlist(bpc.work), breaks=100, col="magenta", ylim=c(0, 200))
 # There are some pathways with large numbers of overlapping genes.
@@ -121,7 +143,8 @@ bpc.work[is.na(bpc.work)] <- 0
 bioplanet.g <- graph_from_adjacency_matrix(as.matrix(bpc.work), mode="lower", diag=FALSE, weighted="Weight")
 #  
 hist(edge_attr(bioplanet.g)[[1]], breaks=100, col="deepskyblue", ylim=c(0,200))
-# 
+range(edge_attr(bioplanet.g)[[1]])
+# [1] 0.0005350455 0.7777777778
 # ___make an edge list file
 bioplanetedges <- data.frame(as_edgelist(bioplanet.g))
 names(bioplanetedges) <- c("source", "target")
@@ -129,14 +152,20 @@ bioplanetedges$Weight <- edge_attr(bioplanet.g)[[1]]
 bioplanetedges$interaction <- "genes in common" 
 # round 2
 bioplanetedges$interaction <- "pathway relationship" 
-
+# round 3
+bioplanetedges$interaction <- "pathway Jaccard similarity" 
 # dim 207029      4
 bioplanetedges[which(bioplanetedges$Weight <1),] # none for round 1; many small fractions in round 2
 bioplanetgeneedges <- bioplanetedges
 # Repeat this with the adj matrix
 bioplanetreledges <- bioplanetedges
+# and with jaccard similarity
+bioplanetjaccardedges <- bioplanetedges
+# **** Max 0.7778, similar to cluster.pathway evidence below
 plot(bioplanetreledges$Weight~bioplanetgeneedges$Weight, pch=19, col=alpha("red", 0.2))
-
+plot(bioplanetreledges$Weight~bioplanetjaccardedges$Weight, pch=19, col=alpha("forestgreen", 0.2))
+# *** interesting. Max 0.7778, similar to cluster.pathway evidence below
+# 
 #_________________________________________#_________________________________________
 # Apply this approach to determine evidence for pathways based on the CCCN
 # Cluster Pathway Evidence = ∑( PTMs from gene(i) pathway in cluster /  total number of Pathways for gene(i)
@@ -199,14 +228,14 @@ look <- ambig.gene.clist[ambig.gene.clist.length>1]
 gene.clist.no.ambigs <- mapply(without, x=gene.clist, y=ambig.gene.clist)
 # ***
 gene.clist.bioplanet.common <- matrix.common(gene.clist, bioplanet)
-hist(unlist(gene.clist.bioplanet.common), breaks=100, col="magenta", ylim=c(0, 200))
+hist(unlist(gene.clist.bioplanet.common), breaks=40, col="magenta", ylim=c(0, 200))
 # A few clusters have 10 or more genes in common. Max=30
 gene.clist.bioplanet.common.no.ambigs <- matrix.common(gene.clist.no.ambigs, bioplanet)
 hist(unlist(gene.clist.bioplanet.common.no.ambigs), breaks=100, col="green", ylim=c(0, 200))
 # Fewer clusters have 10 or more genes in common.
 # ***
 ambigs.clist.bioplanet.common <- matrix.common(ambig.gene.clist, bioplanet)
-hist(unlist(gene.clist.bioplanet.common.no.ambigs), breaks=100, col="blueviolet", ylim=c(0, 200))
+hist(unlist(gene.clist.bioplanet.common.no.ambigs), breaks=40, col="blueviolet", ylim=c(0, 200))
 # Count those list elements with ambiguous genes
 count.ambiguous.gene.weights <- function(pepvec, pepsep="; ") {
   #ambigs <- pepvec[str_detect(pepvec, pepsep)]
@@ -232,13 +261,12 @@ weighted.matrix.common <- function(clist, pathwaylist=bioplanet, clist.weights)	
       b <- pathwaylist[[j]]
       common <- intersect (a, b)
       if (length (common) >= 1 )  {
-        tt.dd[i,j] <- sum(clist.weights[[i]][is.element(gene.clist[[i]], pathwaylist[[j]])]) }
-    }
-  }
+        tt.dd[i,j] <- sum(clist.weights[[i]][is.element(clist[[i]], pathwaylist[[j]])], na.rm=TRUE) }
+    }}
   return(tt.dd)	}
 #
 
-testvec1 <- get.all.gene.names.from.peps(pep.clist[["1.225.171"]])
+testvec1 <- get.all.gene.names.from.peps(c(pep.clist[["1.225.171"]], Rabp8="RAB8A p 8"))
 testvec2 <- get.all.gene.names.from.peps(testvec)
 testvec1.weights <- count.ambiguous.gene.weights(pep.clist[["1.225.171"]])
 testvec2.weights <- count.ambiguous.gene.weights(testvec)
@@ -249,15 +277,23 @@ testvec2[is.element(testvec2, testvec1)]
 # Apply to weights
 testvec1.weights[is.element(testvec1, testvec2)]
 testvec2.weights[is.element(testvec2, testvec1)]
-# Multiply or sum?
+# Sum
 testvec1.weights[is.element(testvec1, testvec2)]*testvec2.weights[is.element(testvec2, testvec1)]
 testvec1.weights[is.element(testvec1, testvec2)]+testvec2.weights[is.element(testvec2, testvec1)]
+# test function
+clist=testvec2
+pathwaylist=testvec1
+clist.weights=testvec2.weights
+weighted.matrix.common(testvec2, testvec1, testvec2.weights)
+
 # Given that the probability of two independent events occuring simoultaneously is the muliplication of both, choose mulitiplication, BUT
 # The bioplex genes should all have a probability of 1, so only use the weights from gene.clist
-
+# # > > > . NOTE  Test intersection to return 2 for RAB8A: 
+# OKAY: Note that is.element() is used to retrieve weights, not intersect(), which is used just as a tag to get past if()
 pathwaylist=head(bioplanet)
 clist=head(gene.clist)
 clist.weights=head(gene.clist.weights)
+weighted.matrix.common(clist, pathwaylist, clist.weights)
 # go for it
 gene.clist.bioplanet.weighted <- weighted.matrix.common(gene.clist, bioplanet, gene.clist.weights)
 # *** gene.clist.bioplanet.weighted uses the weights from ambigous genes 
@@ -265,7 +301,10 @@ dev.new()
 hist(unlist(gene.clist.bioplanet.common), breaks=100, col="magenta", ylim=c(0, 200))
 dev.new() 
 hist(unlist(gene.clist.bioplanet.weighted), breaks=100, col="purple", ylim=c(0, 200))
-# *** this is good. 95.5% NA
+# *** this is good. 
+max.na(gene.clist.bioplanet.weighted)  # 28.43056
+fractNA(gene.clist.bioplanet.weighted)
+# 95.5% NA
 #----------------------------------------------------------------------
 # Now deal with the number of pathways each gene returns
 # build on gene.clist.weights <- lapply(pep.clist, count.ambiguous.gene.weights)
@@ -295,7 +334,6 @@ gene.clist.pathway.weights <- lapply(pep.clist, calculate.gene.weights.using.pat
 # **** gene.clist.pathway.weights is the weights of genes porportional to both ambigous genes and the number of pathways per gene
 dev.new() 
 hist(unlist(gene.clist.pathway.weights), breaks=100, col="yellow")
-hist(unlist())
 # Max= 1, okay, many smaller values
 # go for it****
 gene.clist.bioplanet.pathway.weighted <- weighted.matrix.common(gene.clist, bioplanet, gene.clist.pathway.weights)
@@ -435,22 +473,104 @@ calc.net.density <- function(edgefile) {
   return(net.density)
 }
 # Do this iteratively to look at network dimensions as a function of threshold
-pathway.net.list <- list()
-density.list <- list()
+pathway.net.list2 <- list()
+density.list2 <- list()
 thresh.vec <- seq(0.2, 0.01, -0.01)
-for (i in 1:(length(thresh.vec))){
-  pathway.net.list[[i]] <- create.pathway.network(cluster.pathway.evidence, thresh.vec[i])
-  density.list[[i]] <- calc.net.density(pathway.net.list[[i]] )
+thresh.vec2 <- c(seq(0.2, 0.082, -0.002), seq(0.08, 0.01, -0.01))
+for (i in 1:(length(thresh.vec2))){
+  pathway.net.list2[[i]] <- create.pathway.network(cluster.pathway.evidence, thresh.vec2[i])
+  density.list2[[i]] <- calc.net.density(pathway.net.list2[[i]] )
 }
 #
-net.edges <- sapply(pathway.net.list, function(x) dim(x)[1])
+net.edges <- sapply(pathway.net.list2, function(x) dim(x)[1])
+net.nodes <- sapply(pathway.net.list2, function(x) length(unique(c(x[,2], x[ ,1]))))
+net.atts.df <- data.frame(threshold=thresh.vec2, nodes=net.nodes, edges=net.edges, density=unlist(density.list2))
 dev.new()
 plot(unlist(density.list) ~ thresh.vec)
 plot(net.edges ~ thresh.vec)
+plot(net.nodes ~ thresh.vec)
+plot(log2(net.nodes) ~ thresh.vec)
 # Threshold values from 0.11 to 0.16 produce a sort of local maximum. 
+###>>>>>----
+# Calculate background from bioplanet
+test.edges <- pathway.net.list[[1]]
+test.g <- graph_from_data_frame(test.edges)
+test.i1 <- intersect(test.edges[,1:2], bioplanetjaccardedges[,1:2])
+# reverse
+test.i2 <- intersect(test.edges[,1:2], bioplanetjaccardedges[,c(2,1)])
+identical(test.i1, test.i2)
+# [1] TRUE
+identical(test.i1, test.edges[,1:2])
+# FALSE - pulls in 19 from bioplanet vs 22 edges in test.edges
+# **** This means that there is a set of pathway edges not predicted, which is good!
+dim(unique(intersect(test.i1, test.i2))) #19
+dim(bioplanetjaccardedges[intersect(test.edges[,1:2], bioplanetjaccardedges[,1:2])],)
+# Doesn't work
+test.i4 <- bioplanetjaccardedges %>% right_join(test.edges, by=c("source","target"))
+# Works! 
+# Check for reverse
+test.edges.rev <- test.edges[, c(2,1,3,4)]
+names(test.edges.rev) <- names(test.edges)
+test.i4r <- bioplanetjaccardedges %>% right_join(test.edges.rev, by=c("source","target"))
+apply(test.i4, 1, function (x) any(is.na(x)))
+apply(test.i4r, 1, function (x) any(is.na(x)))
+# no rows in reverse are in Jaccard 
+any(!is.na(test.i4r$interaction.x))
+# I wonder if this is generally true?
+ # No - 
+# Attempt to recover weight to normalize 
+filter.pathway.edges <- function(query.edges, edge.file=bioplanetjaccardedges) {
+  sel.edges.forward <- edge.file %>% right_join(query.edges, by=c("source","target"))
+  # Test for reverse edges
+    query.edges.rev <- query.edges[, c(2,1,3,4)]
+    names(test.edges.rev) <- names(query.edges) 
+    sel.edges.rev <- edge.file %>% right_join(query.edges.rev, by=c("source","target"))
+    if (any(!is.na(sel.edges.rev$interaction.x))) {
+      sel.edges.rev <- sel.edges.rev[!is.na(sel.edges.rev$interaction.x),]
+      sel.edges <- rbind(sel.edges.forward, sel.edges.rev)
+    } else {sel.edges = sel.edges.forward}
+  if(dim(sel.edges)[1] == 0) {return(NA)} else {
+    # convert NA to zero
+    sel.edges[is.na(sel.edges)] <- 0
+    # Calculate normalized interaction
+    sel.edges$Weight <- sel.edges$Weight.y - sel.edges$Weight.x
+    sel.edges$interaction <- "normalized cluster evidence"
+    return(unique(sel.edges)) }
+}
+test.i4 <- filter.pathway.edges(test.edges, bioplanetjaccardedges)
+# THis works! ***
+# Apply to list of networks.
+pathway.net.list3 <- lapply(pathway.net.list2, filter.pathway.edges)
+# Calculate attributes to check
+net.edges3 <- sapply(pathway.net.list3, function(x) dim(x)[1])
+net.nodes3 <- sapply(pathway.net.list3, function(x) length(unique(c(x[,2], x[ ,1]))))
+net.atts3.df <- data.frame(threshold=thresh.vec2, nodes=net.nodes3, edges=net.edges3, density=unlist(density.list2))
+identical(net.atts.df, net.atts3.df)  # TRUE
+# Use the biggest network to examine the relationships between normalized Weight
+big.path.net <- pathway.net.list3[[68]]
+plot(big.path.net$Weight.x ~ big.path.net$Weight.y)
+summary(lm(big.path.net$Weight.x ~ big.path.net$Weight.y))
+# R-squared:  0.01322 
+# **** this is good, means that we are NOT just recapitulating relationships among pathways
+plot(big.path.net$Weight ~ big.path.net$Weight.y)
+summary(lm(big.path.net$Weight ~ big.path.net$Weight.y))
+# R-squared:  0.9693; the normalization didn't move the points very much.
+######>>>>-----
+# Plots for figure
+dev.new()
+plot(unlist(density.list2) ~ thresh.vec2, col="gray100", pch=16, xlab="Cluster Evidence Threshold", ylab="Pathway Network Density", cex.lab=1.25)
+net.nodes.index <- (net.nodes/10000)
+net.edges.index <- (net.edges/1000000)
+#symbols(unlist(density.list) ~ thresh.vec,  circles=log(net.nodes)/500, inches = FALSE, bg="deepskyblue", fg = "darkblue",  add=TRUE)
+# symbols(unlist(density.list) ~ thresh.vec,  circles=log(net.edges)/1000, inches = FALSE, bg="orange", fg = "red",  add=TRUE)
+symbols(unlist(density.list2) ~ thresh.vec2,  circles=net.nodes.index/5, inches = FALSE, bg="deepskyblue", fg = "darkblue",  add=TRUE)
+
+text(topallppi[, "allppibetween"], topallppi[, "ppibetween"], col="red", cex=0.8, labels=noquote(as.character(topallppi $Gene.Name)))
+text(topesslhubs[, "allppibetween"], topesslhubs[, "ppibetween"], col="black", cex=0.8, labels=noquote(as.character(topesslhubs$Gene.Name)))  
+
+bioplanetjaccard.g <- bioplanet.g
   
-  
-save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.adj.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetgenes, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
+save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.matrix.union, bioplanet.adj.matrix, bioplanet.jaccard.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetjaccard.g, bioplanetgenes, bioplanetjaccardedges, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, matrix.union, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, pathway.net.list2, density.list2, net.atts.df, filter.pathway.edges, pathway.net.list3, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 
 
 ##$####################paste for reuse: 
