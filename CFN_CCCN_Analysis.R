@@ -85,9 +85,10 @@ graph.cluster <- function(sites, network) {
   cfn_edges <- filter.edges.0(clust.cf$Gene.Name, gzalltgene.physical.cfn.merged)
 
   if (is.data.frame(cfn_edges)) {
-    all.edges <- rbind(cluster_edges, gene_pep)
-  } else {
     all.edges <- rbind(cluster_edges, gene_pep, cfn_edges)
+    
+  } else {
+    all.edges <- rbind(cluster_edges, gene_pep)
   }
 
   #Get node attributes
