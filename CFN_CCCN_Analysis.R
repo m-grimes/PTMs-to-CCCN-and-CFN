@@ -44,11 +44,14 @@ select.sites.w.max.cv <- function(df, first_rep = 3, num_rep, max_cv = 1) {
 }
 
 #Create the shortest paths sub-network of the CFN that connects a list of sites to a specified target.
-#This functions assumes a dataframe with a row for each selected site and a column called Gene.Name with the gene symbol for each site
-shortest.paths.to.target <- function(df, target) {
-  df_changed_genes <- unique(df$Gene.Name)
-  df_changed_genes2 <- df_changed_genes[df_changed_genes %in% gzallt.gene.key$Gene.Name]
-  df_paths <- composite.shortest.paths(genes1=c(target), df_changed_genes2, exclude="", network=gzalltgene.physical.cfn.merged)
+#This functions assumes a dataframe with a row for each selected site and a column called Gene.
+#Name with the gene symbol for each site
+shortest.paths.to.target <- function(df, target,excluded_gene= "") {
+  df_changed_genes <- unique(df$Gene.Name) #unique genes in the dataframe
+  df_changed_genes2 <- df_changed_genes[df_changed_genes %in% gzallt.gene.key$Gene.Name] #unique genes in the experimental dataset
+  df_paths <- composite.shortest.paths(genes1=c(target), 
+                                       df_changed_genes2, exclude=excluded_gene, 
+                                       network=gzalltgene.physical.cfn.merged)
   return(df_paths)
 }
 
