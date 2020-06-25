@@ -671,9 +671,9 @@ composite.shortest.paths <- function(genes1, genes2, network, exclude=NULL) {
   # loop
   for (i in 1:length(genes1)) {
     if (!(genes1[i] %in% netnodes)) next
-    if(genes1[i]==exclude) next
+    if(genes1[i] %in% exclude) next
     for (j in 1:length(genes2)){
-      if(genes2[j]==exclude) next
+      if(genes2[j] %in% exclude) next
       if (!(genes2[j] %in% netnodes)) next
       if (identical(genes1[i], genes2[j])) next
       int[[j]] <- connectNodes.all.RCy3.exclude(c(genes1[i], genes2[j]), edgefile=network, ig.graph= ig.graph,  exclude=exclude)
