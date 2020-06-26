@@ -463,43 +463,6 @@ sample_counting <- data.frame(edge_l,node_l,sample_order_l,total_edge_l,total_no
 rownames(sample_counting) <- gz_exp_15_df$merge
 sample_counting
 
-
-
-
-
-#ALK network for upregulated gene
-# H3122_ALK_SEPTM 
-H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
-
-graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
-
-#exclude MYH9
-ex_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = "MYH9")
-ex_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = "MYH9")
-ex_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = "MYH9")
-ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
-graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-
-#exclude MYH9 and MET
-ex_MYH9_MET_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = c("MYH9","MET"))
-ex_MYH9_MET_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = c("MYH9","MET"))
-ex_MYH9_MET_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = c("MYH9","MET"))
-ex_MYH9_MET_H3122_ALK_SEPTM <- my.intersect(ex_MYH9_MET_up_paths_1,ex_MYH9_MET_up_paths_2,ex_MYH9_MET_up_paths_3)
-graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
-
-exclusion <- my.intersect(ex_MYH9_MET_H3122_ALK_SEPTM,ex_H3122_ALK_SEPTM)
-graph.cfn.cccn (exclusion, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-graph.cfn.cccn (exclusion, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
 #H3122_ALK_SEPTM for greatly changed gene
 # H3122_ALK_SEPTM_all <- my.intersect(paths_1,paths_2,paths_3)
 # graph.cfn.cccn (H3122_ALK_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
@@ -536,6 +499,69 @@ all.ratio.styles()
 # setCorrEdgeAppearance(cccn4)
 # FixEdgeDprops.RCy32()
 # all.ratio.styles()
+
+
+#ALK network for upregulated gene
+# H3122_ALK_SEPTM 
+H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
+
+graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+
+#exclude MYH9
+ex_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = "MYH9")
+ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
+
+ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+ex_MYH9_H3122_ALK_SEPTM_CCCN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+FixEdgeDprops.RCy32()
+
+
+#exclude MYH9 and MET
+ex_MYH9_MET_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_H3122_ALK_SEPTM <- my.intersect(ex_MYH9_MET_up_paths_1,ex_MYH9_MET_up_paths_2,ex_MYH9_MET_up_paths_3)
+ex_MYH9_MET_H3122_ALK_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_network)
+FixEdgeDprops.RCy32()
+
+ex_MYH9_MET_H3122_ALK_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+FixEdgeDprops.RCy32()
+
+
+# H3122_ALK_MET_SEPTM 
+ALK_MET_ex_MYH9_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = c("ALK","MET"),excluded_gene = "MYH9")
+
+ex_MYH9_H3122_ALK_MET_SEPTM <- my.intersect(ALK_MET_ex_MYH9_up_paths_1,ALK_MET_ex_MYH9_up_paths_2,ALK_MET_ex_MYH9_up_paths_3)
+ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+ex_MYH9_H3122_ALK_MET_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+
+
 
 
 gz.cf[which(gz.cf$Gene.Name == "PKM"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
