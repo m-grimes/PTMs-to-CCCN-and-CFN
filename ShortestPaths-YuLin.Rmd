@@ -64,7 +64,62 @@ load(file=paste(data_path,"drug_effects.RData", sep=""))
     source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
 if (!cytoscapePing()=="You are connected to Cytoscape!") {
      print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+# Workaround for edge mapping problem in Cytoscape
+FixEdgeDprops.RCy32 <- function() {
+  setEdgeLineWidthDefault (3)
+  setEdgeColorDefault ( "#FFFFFF")  # white
+  setEdgeSelectionColorDefault (col2hex("chartreuse"))
+  edgecolors <- col2hex(c("red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "darkorange1"))
+  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2", "darkorange1"))
+  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+  edgeTypes <- c("pp", "PHOSPHORYLATION", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "ACETYLATION")
+  # 22 edgeTypes            
+  myarrows <- c ('Arrow', 'Arrow', 'Arrow','Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', "Arrow")
+  setEdgeTargetArrowMapping( 'shared interaction', edgeTypes, myarrows, default.shape='None')  
+  matchArrowColorToEdge('TRUE')
+  setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")
+  # A grey background helps highlight some of the edges
+  setBackgroundColorDefault("#949494") # grey 58
+  edgevalues <- getTableColumns('edge')
+  if (length(edgevalues[grep("pp", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("pp", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("PHOSPHORYLATION", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("PHOSPHORYLATION", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("phosphorylation", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("phosphorylation", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("ACETYLATION", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("ACETYLATION", edgevalues$'shared interaction'), 1], col2hex("darkorange1"))}
+}
 
+# Function to set edge appearance - revised to test for mapping problem
+setCorrEdgeAppearance <- function(edgefile) {
+  setEdgeLineWidthDefault (3)
+  setEdgeColorDefault ( "#FFFFFF")  # white
+  edgevalues <- getTableColumns('edge',c('Weight'))
+  edgevalues['Weight']<-abs(edgevalues['Weight'])
+  edgevalues['Weight']<-lapply(edgevalues['Weight'], function(x) log2(x * 10) + 2)
+  #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+  names(edgevalues)<-c('Width')
+  loadTableData(edgevalues, table = 'edge', table.key.column = 'SUID')
+  setEdgeLineWidthMapping('Width', mapping.type = 'passthrough', style.name = 'default')
+  setEdgeSelectionColorDefault ( "#FF69B4")  # hotpink
+  edgecolors <- col2hex(c("red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2"))
+  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2"))
+  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+  edgeTypes <- c("pp", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains") 
+  # 22 edgeTypes            
+  myarrows <- c ('Arrow', 'Arrow', 'Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None')
+  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+  matchArrowColorToEdge('TRUE')
+  # work around  misaligned mapping
+  test <- getTableColumns('edge',c('interaction', "shared interaction", "shared name"))
+  if (identical(test$interaction, test$`shared interaction`)) {
+    setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
+    edgeDprops.RCy32()
+  } else {
+    setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
+    FixEdgeDprops.RCy32() }
+} 
 ```
 
 #This chunk selects sites from an experiment with absolute fold-change greater than a specified value. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target). Then it computes and draws the union and intersection of the shortest paths networks and draws the networks. PC9/erlotinib is used as an example.  
@@ -88,14 +143,14 @@ paths_T2 <- shortest.paths.to.target(selected_sites_T2, target = "EGFR")
 
 #Find the union of shortest paths networks for the three SEPTM experiments and draw the network
 S_union <- my.union(paths_S1, paths_S2, paths_S3)
-union_network <- graph.cfn.cccn (S_union, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
+# union_network <- graph.cfn.cccn (S_union, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
 
 #Find the intersection of shortest paths networks for the three SEPTM experiments
 S_intersect <- my.intersect(paths_S1, paths_S2, paths_S3)
 # CFN= False -> CCCN network
-intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
+# intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
 
 ```  
 # Cell line are matched to the interested drug-target
@@ -306,7 +361,8 @@ ann_colors = list(Cell = c(H3122="#99CC66",STE.1="#CCCC99",H2228="#FFFF99",PC9="
 annotation<-data.frame(Cell,Drug,Target)
 rownames(annotation) <- rownames(ratio_dataframe)
 
-pheatmap::pheatmap(ratio_dataframe,annotation = annotation,annotation_colors = ann_colors)
+
+pheatmap::pheatmap(ratio_dataframe,annotation = annotation,annotation_colors = ann_colors,angle_col ="315")
 
 
 
@@ -403,24 +459,16 @@ for (i in sample_order_l){
 total_node_l <- as.numeric(total_node_l)
 
 
-sample_counting <- data.frame(edge_l,node_l,sample_order_l,total_edge_l,totoal_node_l)
+sample_counting <- data.frame(edge_l,node_l,sample_order_l,total_edge_l,total_node_l)
 rownames(sample_counting) <- gz_exp_15_df$merge
 sample_counting
 
-
-
-
-
-#ALK network
-# H3122_ALK_SEPTM
-H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
-graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-# PC9_SEPTM_Erlotinib_EGFR_2
-graph.cfn.cccn (up_paths_11, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
+#H3122_ALK_SEPTM for greatly changed gene
+# H3122_ALK_SEPTM_all <- my.intersect(paths_1,paths_2,paths_3)
+# graph.cfn.cccn (H3122_ALK_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+# graph.cfn.cccn (H3122_ALK_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# all.ratio.styles()
 
 # verification 1, for loop generate up_ss_i
 # up_ss11 <- select.sites.up.regulated(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
@@ -445,6 +493,82 @@ all.ratio.styles()
 
 
 ```
+
+```{r}
+# cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(cccn4)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+
+
+#ALK network for upregulated gene
+# H3122_ALK_SEPTM 
+H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
+
+graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
+graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+all.ratio.styles()
+
+#exclude MYH9
+ex_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = "MYH9")
+ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
+
+ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+ex_MYH9_H3122_ALK_SEPTM_CCCN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+FixEdgeDprops.RCy32()
+
+
+#exclude MYH9 and MET
+ex_MYH9_MET_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_H3122_ALK_SEPTM <- my.intersect(ex_MYH9_MET_up_paths_1,ex_MYH9_MET_up_paths_2,ex_MYH9_MET_up_paths_3)
+ex_MYH9_MET_H3122_ALK_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_network)
+FixEdgeDprops.RCy32()
+
+ex_MYH9_MET_H3122_ALK_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+FixEdgeDprops.RCy32()
+
+
+# H3122_ALK_MET_SEPTM 
+ALK_MET_ex_MYH9_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = c("ALK","MET"),excluded_gene = "MYH9")
+
+ex_MYH9_H3122_ALK_MET_SEPTM <- my.intersect(ALK_MET_ex_MYH9_up_paths_1,ALK_MET_ex_MYH9_up_paths_2,ALK_MET_ex_MYH9_up_paths_3)
+ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+ex_MYH9_H3122_ALK_MET_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CCCN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+
+
+
+
+
+gz.cf[which(gz.cf$Gene.Name == "PKM"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+
+
+```
+
 
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
@@ -503,296 +627,8 @@ nrow(gz_H3_CRI_keep2_paths)
 changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 all.ratio.styles()
 
-
 ```
 
-
-# Heatmap comparison of shortest paths network
-# Assumptions: In SPN, each nodes is a representative maker for the impact of drug (if no change, then no drug effect)
-# Based on this assumpation, a target-based comparison would make more biological sense and give more clue about the overlapping pahtways
-# target = MET/HGFR
-```{r}
-# MET_paths_i <- shortest.paths.to.target(ssi,target = "MET")
-for (i in 1:25){
-  assign(paste("MET_paths_",i, sep = ""), shortest.paths.to.target(get(paste("ss", i, sep="")), target = "MET"))
-}
-
-# MET_intercet is the intersection of 25 MET targeting samples
-for (i in 1:25){
-  MET_intercet <- my.intersect(get(paste("MET_paths_",i,sep = "")))
-}
-
-MET_Network <- graph.cfn.cccn (MET_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-# MET_i_nrow_ratio <- nrow(MET_paths_i)/nrow(MET_intercet)
-for (i in 1:25){
-  assign(paste("MET_",i,"_nrow_ratio", sep = ""),nrow(get(paste("MET_paths_",i,sep = "")))/nrow(MET_intercet))
-}
-
-# MET_ratios <- list(MET_i_nrow_ratio)
-MET_ratios <- list()
-for (i in 1:25){
-  assign("MET_ratios", append(MET_ratios,get(paste("MET_",i,"_nrow_ratio", sep = ""))))
-}
-
-
-
-#creatign a dataframe to generate the heatmap
-MET_dataframe <- data.frame(MET_ratios)
-colnames(MET_dataframe) <- cell_line
-write.table(MET_dataframe,"MET.txt")
-MET <-read.csv("MET.csv")
-rownames(MET) <- cell_line
-colnames(MET) <- cell_line
-MET <- MET[2:26]
-pheatmap::pheatmap(MET)
-
-```
-# Paried/ same target/ shortest path analysis
-# target = MET
-```{r}
-
-# pairwise comparison in for single target function
-
-# MET_Uni_i_j <- my.union(paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("MET_Uni",i,j,sep = "_"), my.union(get(paste("MET_paths_",i,sep = "")),get(paste("MET_paths_",j,sep = ""))))
-   }
-}
-
-
-
-# MET_Inters_i_j <- my.intersect(MET_paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("MET_Inters",i,j,sep = "_"), my.intersect(get(paste("MET_paths_",i,sep = "")),get(paste("MET_paths_",j,sep = ""))))
-   }
-}
-
-# The MET_paired_ratio_i_j = nrow(MET_Inters_i_j)/nrow(MET_Uni_i_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("MET_paired_ratio",i,j,sep = "_"), nrow(get(paste("MET_Inters",i,j,sep = "_")))/nrow(get(paste("MET_Uni",i,j,sep = "_"))))
-   }
-}
-
-#
-MET_paired_ratio_df <- list()
-for (i in 1:25){
-  for (j in 1:25){
-    assign("MET_paired_ratio_df",append(MET_paired_ratio_df,get(paste("MET_paired_ratio",i,j,sep = "_"))))
-    }
-}
-
-write.table(MET_paired_ratio_df, "MET_paired_ratio_df.txt")
-
-
-MET_ratio_dataframe <- read.csv("MET_paired_ratio_df.csv",header = FALSE)
-
-sample_25 <- list()
-for (i in 1:25){
-  assign("sample_25",append(sample_25,paste("ss",i,sep = "")))
-}
-
-colnames(MET_ratio_dataframe) <- cell_line
-rownames(MET_ratio_dataframe) <- cell_line
-pheatmap::pheatmap(MET_ratio_dataframe)
-```
-
-```{r}
-#nod number counting on MET
-
-```
-
-
-
-# target = EGFR
-```{r}
-# EGFR_paths_i <- shortest.paths.to.target(ssi,target = "EGFR")
-for (i in 1:25){
-  assign(paste("EGFR_paths_",i, sep = ""), shortest.paths.to.target(get(paste("ss", i, sep="")), target = "EGFR"))
-}
-
-# EGFR_intercet is the intersection of 25 EGFR targeting samples
-for (i in 1:25){
-  EGFR_intercet <- my.intersect(get(paste("EGFR_paths_",i,sep = "")))
-}
-
-EGFR_Network <- graph.cfn.cccn (EGFR_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-# EGFR_i_nrow_ratio <- nrow(EGFR_paths_i)/nrow(EGFR_intercet)
-for (i in 1:25){
-  assign(paste("EGFR_",i,"_nrow_ratio", sep = ""),nrow(get(paste("EGFR_paths_",i,sep = "")))/nrow(EGFR_intercet))
-}
-
-# EGFR_ratios <- list(EGFR_i_nrow_ratio)
-EGFR_ratios <- list()
-for (i in 1:25){
-  assign("EGFR_ratios", append(EGFR_ratios,get(paste("EGFR_",i,"_nrow_ratio", sep = ""))))
-}
-
-
-
-#creatign a dataframe to generate the heatmap
-EGFR_dataframe <- data.frame(EGFR_ratios)
-colnames(EGFR_dataframe) <- cell_line
-write.table(EGFR_dataframe,"EGFR.txt")
-EGFR <-read.csv("EGFR.csv")
-rownames(EGFR) <- cell_line
-colnames(EGFR) <- cell_line
-EGFR <- EGFR[2:26]
-pheatmap::pheatmap(EGFR)
-
-```
-# Paried/ same target/ shortest path analysis
-# target = EGFR
-
-```{r}
-
-# EGFR_Uni_i_j <- my.union(paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("EGFR_Uni",i,j,sep = "_"), my.union(get(paste("EGFR_paths_",i,sep = "")),get(paste("EGFR_paths_",j,sep = ""))))
-   }
-}
-
-
-# EGFR_Inters_i_j <- my.intersect(EGFR_paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("EGFR_Inters",i,j,sep = "_"), my.intersect(get(paste("EGFR_paths_",i,sep = "")),get(paste("EGFR_paths_",j,sep = ""))))
-   }
-}
-
-# The EGFR_paired_ratio_i_j = nrow(EGFR_Inters_i_j)/nrow(EGFR_Uni_i_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("EGFR_paired_ratio",i,j,sep = "_"), nrow(get(paste("EGFR_Inters",i,j,sep = "_")))/nrow(get(paste("EGFR_Uni",i,j,sep = "_"))))
-   }
-}
-
-
-EGFR_paired_ratio_df <- list()
-for (i in 1:25){
-  for (j in 1:25){
-    assign("EGFR_paired_ratio_df",append(EGFR_paired_ratio_df,get(paste("EGFR_paired_ratio",i,j,sep = "_"))))
-    }
-}
-
-write.table(EGFR_paired_ratio_df, "EGFR_paired_ratio_df.txt")
-
-EGFR_ratio_dataframe <- read.csv("EGFR_paired_ratio_df.csv",header = FALSE)
-colnames(EGFR_ratio_dataframe) <- sample_25
-rownames(EGFR_ratio_dataframe) <- sample_25
-pheatmap::pheatmap(EGFR_ratio_dataframe)
-```
-
-
-
-# nrow(ALK_paths_i)/nrow(intersection of 25 samples)
-```{r target = ALK}
-# ALK_paths_i <- shortest.paths.to.target(ssi,target = "ALK)
-for (i in 1:25){
-  assign(paste("ALK_paths_",i,sep = ""),shortest.paths.to.target(get(paste("ss",i,sep = "")),target = "ALK"))
-}
-
-# ALK_intercet is the intersection of 25 ALK targeting samples
-for (i in 1:25){
-  ALK_intercet <- my.intersect(get(paste("ALK_paths_",i,sep = "")))
-}
-
-# ALK_Network <- graph.cfn.cccn (ALK_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-# all.ratio.styles()
-
-# ALK_i_nrow_ratio <- nrow(ALK_paths_i)/nrow(ALK_intercet)
-for (i in 1:25){
-  assign(paste("ALK_",i,"_nrow_ratio", sep = ""),nrow(get(paste("ALK_paths_",i,sep = "")))/nrow(ALK_intercet))
-}
-
-# ALK_ratios <- list(ALK_i_nrow_ratio)
-ALK_ratios <- list()
-
-for (i in 1:25){
-  assign("ALK_ratios", append(ALK_ratios,get(paste("ALK_",i,"_nrow_ratio", sep = ""))))
-}  
-  
-
-ALK_Network <- graph.cfn.cccn (ALK_intercet, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-
-
-#creatign a dataframe to generate the heatmap
-ALK_dataframe <- data.frame(ALK_ratios)
-colnames(ALK_dataframe) <- cell_line
-write.table(ALK_dataframe,"ALK.txt")
-ALK <-read.csv("ALK.csv")
-rownames(ALK) <- cell_line
-colnames(ALK) <- cell_line
-ALK <- ALK[2:26]
-pheatmap::pheatmap(ALK)
-
-```
-# TARGET = ALK
-
-```{r}
-# ALK_Uni_i_j <- my.union(paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("ALK_Uni",i,j,sep = "_"), my.union(get(paste("ALK_paths_",i,sep = "")),get(paste("ALK_paths_",j,sep = ""))))
-   }
-}
-
-
-
-# ALK_Inters_i_j <- my.intersect(ALK_paths_i,paths_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("ALK_Inters",i,j,sep = "_"), my.intersect(get(paste("ALK_paths_",i,sep = "")),get(paste("ALK_paths_",j,sep = ""))))
-   }
-}
-
-# The ALK_paired_ratio_i_j = nrow(ALK_Inters_i_j)/nrow(ALK_Uni_i_j)
-for (i in 1:25){
-  for (j in 1:25){
-    assign(paste("ALK_paired_ratio",i,j,sep = "_"), nrow(get(paste("ALK_Inters",i,j,sep = "_")))/nrow(get(paste("ALK_Uni",i,j,sep = "_"))))
-   }
-}
-
-#
-ALK_paired_ratio_df <- list()
-for (i in 1:25){
-  for (j in 1:25){
-    assign("ALK_paired_ratio_df",append(ALK_paired_ratio_df,get(paste("ALK_paired_ratio",i,j,sep = "_"))))
-    }
-}
-
-write.table(ALK_paired_ratio_df, "ALK_paired_ratio_df.txt")
-
-
-
-ALK_ratio_dataframe <- read.csv("ALK_paired_ratio_df.csv",header = FALSE)
-
-colnames(ALK_ratio_dataframe) <- cell_line
-rownames(ALK_ratio_dataframe) <- cell_line
-pheatmap::pheatmap(ALK_ratio_dataframe)
-```
-
-
-
-
-# Here matrix that composed of target(x) and cell line(y)
-
-```{r}
-General_matrix <- data.frame(met = c(MET_ratios)
-                             , egfr = c(EGFR_ratios)
-                             , alk = c(ALK_ratios))
-General_matrix <- t(General_matrix)
-colnames(General_matrix) <- cell_line
-heatmap(General_matrix)
-```
 
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 

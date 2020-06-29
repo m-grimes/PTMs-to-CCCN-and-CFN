@@ -47,8 +47,8 @@ cytoscapeVersionInfo ()
 ```{r load data objects and functions}
  options(stringsAsFactors=FALSE)
 options(stringsAsFactors=FALSE)
-data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
-code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+data_path <- "/Applications/study/Rdata/"
+code_path <- "/Users/huangchuran/PTMs-to-CCCN-and-CFN/"
 load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
 load(file=paste(data_path, "TenCell.RData", sep=""))
@@ -101,14 +101,14 @@ The SEPTM/PC9/Erlotinib/Replicate #1 will be used as an example. The ratio data 
 
 ```{r process_sig_site_data}
 
-#Select the sites where PC9SEPTM.E1.ratio is at least 2.25-fold
-selected_sites <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
+#Select the sites where PC9SEPTM.E3.ratio is at least 2.25-fold
+selected_sites <- select.sites.w.min.value(gz.cf, "H1781_AfatinibRatio", min_value = 2.25)
 
 #The table is a mixture of values for sites and values for protein (average values for all sites for that protein). We only 
 #want the sites. The Node.ID column has "gene" for protein averages and "peptide" for sites. Select the rows where Node.ID
 #is peptide. Then select the id column (which has the name of the site) and the PC9SEPTM.E1.ratio column. Finally, rename the id #column to be "Site" to allow merging with the CCCN_sites table that has the cluster information.
 selected_sites <- selected_sites[ which(selected_sites$Node.ID == 'peptide'), ]
-desired_cols <- c("id", "PC9SEPTM.E1.ratio")
+desired_cols <- c("id", "H1781_AfatinibRatio")
 selected_sites <- selected_sites[desired_cols]
 colnames(selected_sites)[1] <- "Site"
 
@@ -142,7 +142,7 @@ fisher_table$SelectedToAllRatio <- fisher_table$SelectedNumInCluster/fisher_tabl
 fisher_table <- fisher_table[order(fisher_table$corr_p_value),]
 
 #Write the results to a file
-write.table(fisher_table, file = paste(data_path, "PC9SEPTM.E1_cluster_enrichment.txt", sep = ""), sep = "\t", quote = FALSE, col.names = NA)
+write.table(fisher_table, file = paste(data_path, "H1781_Afatinib_cluster_enrichment.txt", sep = ""), sep = "\t", quote = FALSE, col.names = NA)
 
 ```
 
