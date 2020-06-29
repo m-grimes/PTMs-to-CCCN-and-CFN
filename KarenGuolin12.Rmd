@@ -545,8 +545,22 @@ drugsthataffectgenes <- lapply(drugaffected, names)
 cat(capture.output(print(drugaffectedgenes), file="drugaffectedgemnes.txt"))
 cat(capture.output(print(drugsthataffectgenes), file="drugsthataffectPTMs.txt"))
 
-
 ```
+
+
+Try to plot individual clusters from the CCCN with and without CFN
+```{r Plot Clusters}
+#Load the file with the graphing function
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Plot sites from cluster 109.115.27
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "109.115.27"),]
+graph.cluster(cluster_sites$Site, gzallt.network.all)
+#all.ratio.styles()
 
 ```
 
