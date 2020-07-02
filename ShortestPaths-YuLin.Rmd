@@ -516,6 +516,8 @@ ex_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene =
 ex_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = "MYH9")
 ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
 
+
+
 ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
 FixEdgeDprops.RCy32()
@@ -550,8 +552,8 @@ ALK_MET_ex_MYH9_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = c("ALK",
 ALK_MET_ex_MYH9_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = c("ALK","MET"),excluded_gene = "MYH9")
 
 ex_MYH9_H3122_ALK_MET_SEPTM <- my.intersect(ALK_MET_ex_MYH9_up_paths_1,ALK_MET_ex_MYH9_up_paths_2,ALK_MET_ex_MYH9_up_paths_3)
-ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CFN)
+ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ALK_MET_ex_MYH9_up_paths_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ALK_MET_ex_MYH9_up_paths_1)
 FixEdgeDprops.RCy32()
 all.ratio.styles()
 
@@ -564,12 +566,84 @@ all.ratio.styles()
 
 
 
-gz.cf[which(gz.cf$Gene.Name == "PKM"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+gz.cf[which(gz.cf$Gene.Name == "ALK"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+
+
+```
+#2.25 fold change all , this is the case to study H3122 Criz and ALK/MET 
+```{r}
+#gene appearance count, counts the occurrence of each gene in a shortest path network in an ordered table
+
+genes_counts <- function(...){
+  df <- rbind(...)
+  sou <- as.vector(df$source)
+  tar <- as.vector(df$target)
+  l <- c(sou,tar)
+  tab <- table(l)
+  tab <- as.data.frame(tab)
+  tab <- tab[order(tab[,2],decreasing = TRUE),]
+  return(tab)
+}
+# as outersect
+my.outersect <- function(...){
+  dfs <- rbind(...)
+  dfs$merge <- paste(dfs$source,dfs$target,sep = "_")
+  dup <- dfs[duplicated(dfs$merge),]
+  out <- dfs[which(!(dfs$merge %in% dup$merge)),]
+  out <- out[,1:4]
+  return(out)
+}
+
+# H3122_ALK_MET_SEPTM 
+# ALK MET
+ALK_MET_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET"),excluded_gene = "MYH9") #498 nodes/ 454 nodes in ex
+ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET")) #475 nodes
+ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET")) #485 nodes
+
+# ALK MET EGFR
+ALK_MET_EGFR_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET","EGFR")) #526 nodes
+ALK_MET_EGFR_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET","EGFR")) #497 nodes
+ALK_MET_EGFR_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET","EGFR")) #507 nodes
+
+
+# ex_MYH9_H3122_ALK_MET_SEPTM_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3)
+# ex_MYH9_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_all_CFN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+graph.cfn.cccn (o_inter, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+
+
+o1<- my.outersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2)
+o2 <- my.outersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_3)
+o_inter <- my.intersect(o1,o2)
+
+# g1 <- graph.cfn.cccn (o_inter, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(g1)
+FixEdgeDprops.RCy32()
+# all.ratio.styles()
+
+genes_counts(o_inter)
+
+
 
 
 ```
 
+```{r}
+#gene appearance count, counts the occurrence of each gene in a shortest path network in an ordered table
 
+genes_counts <- function(...){
+  df <- rbind(...)
+  sou <- as.vector(df$source)
+  tar <- as.vector(df$target)
+  l <- c(sou,tar)
+  tab <- table(l)
+  tab <- as.data.frame(tab)
+  tab <- tab[order(tab[,2],decreasing = TRUE),]
+  return(tab)
+}
+```
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
 
