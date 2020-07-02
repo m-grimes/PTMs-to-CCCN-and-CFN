@@ -99,8 +99,8 @@ graph.cluster <- function(sites, network) {
   
   #Plot the network
   cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, all.edges, title=paste("CFN plus CCCN", (getNetworkCount()+1)), collection = "Interactions") 
-  setNodeMapping(cccn.cf)
-  setCorrEdgeAppearance(cfn.cccn.edges) 
+  setNodeMapping(all.cf)
+  setCorrEdgeAppearance(all.edges) 
   layoutNetwork("force-directed") 
 
 }
