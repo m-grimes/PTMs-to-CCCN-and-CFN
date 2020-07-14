@@ -102,3 +102,19 @@ for(i in 1:length(eu.sp.sed.gzallt))	{
 ######################
 # Are clusters which return similar pathays located in the same region on UMAP embeddings?
 #
+
+######################
+# plot groups in 3D
+load(file="/Users/_mark_/Archive/Terra_Byte/R_Archive_2/_LINCS/GZTenCellMatrices2.RData")
+rownames(sed.gzallt.tsne) <- rownames(gzallt.dist)
+sedcolors <- sample(rainbow(length(eu.sp.sed.gzallt)))
+plot3d(sed.gzallt.tsne[rownames(sed.gzallt.tsne) %in% unlist(eu.sp.sed.gzallt),], col="grey88", axes=F, box=F, xlab="", ylab="", zlab="")
+# Loop to color clusters
+for (i in 1:length(eu.sp.sed.gzallt)) {
+  #points3d(sed.tsne[eu.sp.sed.lfSYratios[[i]]], radius=0.8, col=sedcolors[i], add=T)
+  tp <- which(rownames(sed.gzallt.tsne) %in% eu.sp.sed.gzallt[[i]])
+  plot3d(sed.gzallt.tsne[tp,], type="s", radius=1, col=sedcolors[i], add=TRUE)		
+}
+# Took a screenshot.
+# Note high resolution image can be saved
+# https://stackoverflow.com/questions/38907514/saving-a-high-resolution-image-in-r
