@@ -48,7 +48,8 @@ cytoscapeVersionInfo ()
 
 ---
 ```{r load data objects and functions}
- options(stringsAsFactors=FALSE)
+Sys.setenv(LANG="en")
+options(stringsAsFactors=FALSE)
 options(stringsAsFactors=FALSE)
 data_path <- "C:/Users/yulin/Desktop/Multi-PTM Analysis-Summer Students/RDataFiles/"
 code_path <- "C:/Users/yulin/Documents/Bioinformatics/SUMMER_GIT/PTMs-to-CCCN-and-CFN5_19/"
@@ -335,6 +336,7 @@ sample_15 <- c("ss1",
 "ss16",
 "ss25")
 
+
 gz_exp_15_df <- gz_experiments_df[sample_order_l,]
 gz_exp_15_df <- gz_exp_15_df[,2:5]
 target_l <- c("ALK","ALK","ALK","ALK","ALK","ALK","ALK",
@@ -385,6 +387,10 @@ for (i in sample_order_l){
     assign("NLI", append(NLI,node_number_counting(get(paste("Inters",i,j,sep = "_")))))
   }
 }
+```
+
+
+```{r}
 
 NLU <- as.numeric(NLU)
 NLI <- as.numeric(NLI)
@@ -505,10 +511,10 @@ sample_counting
 # H3122_ALK_SEPTM 
 H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
 
-graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-all.ratio.styles()
-graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
+# graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+# graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# all.ratio.styles()
 
 #exclude MYH9
 ex_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = "MYH9")
@@ -518,16 +524,16 @@ ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
 
 
 
-ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
-
-ex_MYH9_H3122_ALK_SEPTM_CCCN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CCCN)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
-FixEdgeDprops.RCy32()
+# ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# 
+# ex_MYH9_H3122_ALK_SEPTM_CCCN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# FixEdgeDprops.RCy32()
 
 
 #exclude MYH9 and MET
@@ -535,15 +541,15 @@ ex_MYH9_MET_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",exclud
 ex_MYH9_MET_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = c("MYH9","MET"))
 ex_MYH9_MET_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = c("MYH9","MET"))
 ex_MYH9_MET_H3122_ALK_SEPTM <- my.intersect(ex_MYH9_MET_up_paths_1,ex_MYH9_MET_up_paths_2,ex_MYH9_MET_up_paths_3)
-ex_MYH9_MET_H3122_ALK_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_network)
-FixEdgeDprops.RCy32()
-
-ex_MYH9_MET_H3122_ALK_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_CCCN)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
-FixEdgeDprops.RCy32()
+# ex_MYH9_MET_H3122_ALK_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_network)
+# FixEdgeDprops.RCy32()
+# 
+# ex_MYH9_MET_H3122_ALK_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# FixEdgeDprops.RCy32()
 
 
 # H3122_ALK_MET_SEPTM 
@@ -552,15 +558,15 @@ ALK_MET_ex_MYH9_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = c("ALK",
 ALK_MET_ex_MYH9_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = c("ALK","MET"),excluded_gene = "MYH9")
 
 ex_MYH9_H3122_ALK_MET_SEPTM <- my.intersect(ALK_MET_ex_MYH9_up_paths_1,ALK_MET_ex_MYH9_up_paths_2,ALK_MET_ex_MYH9_up_paths_3)
-ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ALK_MET_ex_MYH9_up_paths_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ALK_MET_ex_MYH9_up_paths_1)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
-
-ex_MYH9_H3122_ALK_MET_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CCCN)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
+# ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ALK_MET_ex_MYH9_up_paths_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ALK_MET_ex_MYH9_up_paths_1)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# 
+# ex_MYH9_H3122_ALK_MET_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
 
 
 
@@ -596,53 +602,164 @@ my.outersect <- function(...){
 
 # H3122_ALK_MET_SEPTM 
 # ALK MET
-ALK_MET_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET"),excluded_gene = "MYH9") #498 nodes/ 454 nodes in ex
-ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET")) #475 nodes
-ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET")) #485 nodes
+ALK_MET_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN"))
+ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN")) 
+ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN"))
+ALK_MET_ex_MYH9_paths_4 <- shortest.paths.to.target(ss4,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2","ZDHHC5"))
+ALK_MET_ex_MYH9_paths_5 <- shortest.paths.to.target(ss5,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2"))
 
-# ALK MET EGFR
-ALK_MET_EGFR_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET","EGFR")) #526 nodes
-ALK_MET_EGFR_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET","EGFR")) #497 nodes
-ALK_MET_EGFR_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET","EGFR")) #507 nodes
-
-
-# ex_MYH9_H3122_ALK_MET_SEPTM_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3)
-# ex_MYH9_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_all_CFN)
-# FixEdgeDprops.RCy32()
-# all.ratio.styles()
-graph.cfn.cccn (o_inter, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
 
 
-o1<- my.outersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2)
-o2 <- my.outersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_3)
-o_inter <- my.intersect(o1,o2)
-
-# g1 <- graph.cfn.cccn (o_inter, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-# setCorrEdgeAppearance(g1)
+ex_H3122_ALK_MET_SEPTM_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3)
+ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_H3122_ALK_MET_SEPTM_all_CFN)
 FixEdgeDprops.RCy32()
-# all.ratio.styles()
+setVisualStyle("H3122SEPTM.C2.ratio Style")
 
-genes_counts(o_inter)
+ex_H3122_ALK_MET_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3,ALK_MET_ex_MYH9_paths_4,ALK_MET_ex_MYH9_paths_5)
+all.ratio.styles()
+ex_H3122_ALK_MET_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+setCorrEdgeAppearance(ex_H3122_ALK_MET_all_CFN)
+FixEdgeDprops.RCy32()
 
+
+```
+# eliminate rowsum()==0 in gz.cf and create a new variable called "gz.cf_trim1"
+# distinguish the oncogenic or tumor-supress role of the selected gene or both (some genes may have dual fucntion).
+# The oncogene comes from the source Network of Cancer Genes database(http://ncg.kcl.ac.uk/download.php).List of 2372 cancer genes and supporting literature
+# The tumor suppressor genes comes from the Tumor Suppressor Gene database (https://bioinfo.uth.edu/TSGene/download.cgi?csrt=7572166880112831892). All the 1217 human tumor suppressor genes with basic annotations
+```{r}
+# the function that collects the nodes in shortest pathway edgefile
+# extract.gene.names() functions finds out the gene in edgefile
+
+
+gz.cf <- gz.cf[rowSums(gz.cf[,17:41]) != 0,]
+onco_df <- read.csv(file = "NCG6_cancergenes.tsv", sep = '\t') # read.table does not function well
+TSG_df <- read.csv(file = "Human_TSGs.txt",sep = '\t')
+
+onco_c <- unique(c(onco_df$symbol))
+TSG_c <- unique(c(TSG_df$GeneSymbol))
+dual_c <- intersect(onco_c,TSG_c)
+
+# cancer colum: 1= onco, 2= TSG, 3= 1 and 2, 0 = nothing special,
+gz.cf$cancer <- 0
+gz.cf[which(gz.cf$Gene.Name %in% onco_c),]$cancer <- 1
+gz.cf[which(gz.cf$Gene.Name %in% TSG_c),]$cancer <- 2
+gz.cf[which(gz.cf$Gene.Name %in% dual_c),]$cancer <- 3
+
+
+# I specifically would like to look into the those dual genes and see the fold change in these genes
+dual_genes_gz.cf <- gz.cf[gz.cf$cancer == 3, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+dual_genes_gz.cf <- dual_genes_gz.cf[rowSums(dual_genes_gz.cf[,3:5])!=0,]
+length(unique(dual_genes_gz.cf$Gene.Name))
+dual_genes_gz.cf
+
+onco_genes_gz.cf <- gz.cf[gz.cf$cancer == 1, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+onco_genes_gz.cf <- onco_genes_gz.cf[rowSums(onco_genes_gz.cf[,3:5])!=0,]
+length(unique(onco_genes_gz.cf$Gene.Name))
+
+
+
+TS_genes_gz.cf <- gz.cf[gz.cf$cancer == 2, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+TS_genes_gz.cf <- TS_genes_gz.cf[rowSums(TS_genes_gz.cf[,3:5])!=0,]
+length(unique(TS_genes_gz.cf$Gene.Name))
 
 
 
 ```
 
 ```{r}
-#gene appearance count, counts the occurrence of each gene in a shortest path network in an ordered table
+# graph of cancer labeled network of H3122 SEPTM1:3
+cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE,pruned = FALSE)
+setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+setVisualStyle("H3122SEPTM.C2.ratio Style")
+FixEdgeDprops.RCy32()
 
-genes_counts <- function(...){
-  df <- rbind(...)
-  sou <- as.vector(df$source)
-  tar <- as.vector(df$target)
-  l <- c(sou,tar)
-  tab <- table(l)
-  tab <- as.data.frame(tab)
-  tab <- tab[order(tab[,2],decreasing = TRUE),]
-  return(tab)
+```
+
+
+# graphing strategy https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6880260/.
+
+```{r}
+# function to filter networks to include only selected nodes and those with edges to them
+filter.edges.0 <- function(nodenames, edge.file) {
+  nodenames <-as.character(nodenames)
+  a = as.character(edge.file[,1])
+  b = as.character(edge.file[,2])
+  edgefile.nodes <- unique(c(a,b))
+  # show pruned nodes (turned off)
+  # flub <- setdiff(edgefile.nodes, nodenames) 
+  # if (length(flub) >= 1) { 
+  # cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }	
+  sel.edges <- edge.file[edge.file[,1] %in% nodenames & edge.file[,2] %in% nodenames,]
+  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
 }
+# 1) upregulated oncogene and downregulated TSG neighbour/ downregulated oncogene and upregulated TSG neighbour pair
+
+
+```
+
+```{r}
+# Brute force
+# ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2[285:288,],target = c("ALK","MET"),excluded_gene = "MYH9")
+# ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3[345:348,],target = c("ALK","MET"),excluded_gene = "MYH9")
+# ss2[285:288,]$Gene.Name
+# ss3[345:348,]$Gene.Name
+# # Two genes "GSK3B" "GSN" are found to be the disrupting genes
+# gz.cf[which(gz.cf$Gene.Name == "GSK3B"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+# gz.cf[which(gz.cf$Gene.Name == "GSN"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+# 
+# "GSK3B" %in% paths_2$source
+# "GSK3B" %in% paths_2$target
+# 
+# "GSN" %in% paths_2$source
+# "GSN" %in% paths_2$target
+# gz.cf[which(gz.cf$Gene.Name == "EPB41L2"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio","H3122_Crizotinib.1Ratio","H3122CrizotinibRatio")]
+
+ALK_MET_ex_MYH9_paths_4 <- shortest.paths.to.target(ss4,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2","ZDHHC5"))
+ALK_MET_ex_MYH9_paths_5 <- shortest.paths.to.target(ss5,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2"))
+
+```
+
+
+```{r}
+# 1) upregulated oncogene and downregulated TSG neighbour/ downregulated oncogene and upregulated TSG neighbour pair
+# gzalltgene.physical.cfn
+#pick out the rows that at least one of the two genes are oncogenes. And same for TSG.
+gzalltgene.physical.cfn.onco <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% onco_c)|(gzalltgene.physical.cfn$Gene.2 %in% onco_c)),]
+gzalltgene.physical.cfn.TSG <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% TSG_c)|(gzalltgene.physical.cfn$Gene.2 %in% TSG_c)),]
+
+gzalltgene.physical.cfn.onco_TSG <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% onco_c)&(gzalltgene.physical.cfn$Gene.2 %in% TSG_c)),]
+gzalltgene.physical.cfn.TSG_onco <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% TSG_c)&(gzalltgene.physical.cfn$Gene.2 %in% onco_c)),]
+onco_TSG.gzalltgene.physical.cfn <- rbind(gzalltgene.physical.cfn.onco_TSG,gzalltgene.physical.cfn.TSG_onco)
+# colnames(onco_TSG.gzalltgene.physical.cfn)<- colnames(ex_MYH9_H3122_ALK_MET_SEPTM_all)
+
+# look into the gene correlation table gz.cf, find the correlation of these two genes in H3122SEPTM,if the multiplication of two numbers are positive, then it would be interesting, which is paired oncogene-TSG are both upregulated or downregulated
+
+interesting_pairs <- data.frame()
+colnames(interesting_pairs) <- colnames(interesting_pairs)
+
+interestin_l <- list()
+for(i in nrow(onco_TSG.gzalltgene.physical.cfn)){
+  if((gz.cf[which(gz.cf$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.1),]$H3122SEPTM.C2.ratio)*
+      (gz.cf[which(gz.cf$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.2),]$H3122SEPTM.C2.ratio)<0){
+    print(i)
+    append(interestin_l,i)
+  }
+}
+
+
+# cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (onco_TSG.gzalltgene.physical.cfn, only.cfn=TRUE,pruned = FALSE)
+# setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# 
+# onco_TSG_genes <- unique(c(onco_TSG.gzalltgene.physical.cfn$Gene.1,onco_TSG.gzalltgene.physical.cfn$Gene.2))
+# onco_TSG_shortest.path <-  composite.shortest.paths(onco_TSG_genes,onco_TSG_genes,gzalltgene.physical.cfn)
+
 ```
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
