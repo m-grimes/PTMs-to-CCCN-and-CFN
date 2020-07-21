@@ -22,6 +22,7 @@ Use 'BiocManager::install' instead.
 # Try the latest version of RCy3 by running:
     # install.packages("BiocManager")
     #   BiocManager::install("RCy3")
+Sys.setenv(LANG="en")
 library(devtools)
 library(RCy3)
 library(plyr)
@@ -737,19 +738,7 @@ gzalltgene.physical.cfn.TSG_onco <- gzalltgene.physical.cfn[which((gzalltgene.ph
 onco_TSG.gzalltgene.physical.cfn <- rbind(gzalltgene.physical.cfn.onco_TSG,gzalltgene.physical.cfn.TSG_onco)
 # colnames(onco_TSG.gzalltgene.physical.cfn)<- colnames(ex_MYH9_H3122_ALK_MET_SEPTM_all)
 
-# look into the gene correlation table gz.cf, find the correlation of these two genes in H3122SEPTM,if the multiplication of two numbers are positive, then it would be interesting, which is paired oncogene-TSG are both upregulated or downregulated
 
-interesting_pairs <- data.frame()
-colnames(interesting_pairs) <- colnames(interesting_pairs)
-
-interestin_l <- list()
-for(i in nrow(onco_TSG.gzalltgene.physical.cfn)){
-  if((gz.cf[which(gz.cf$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.1),]$H3122SEPTM.C2.ratio)*
-      (gz.cf[which(gz.cf$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.2),]$H3122SEPTM.C2.ratio)<0){
-    print(i)
-    append(interestin_l,i)
-  }
-}
 
 
 # cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (onco_TSG.gzalltgene.physical.cfn, only.cfn=TRUE,pruned = FALSE)
@@ -761,6 +750,49 @@ for(i in nrow(onco_TSG.gzalltgene.physical.cfn)){
 # onco_TSG_shortest.path <-  composite.shortest.paths(onco_TSG_genes,onco_TSG_genes,gzalltgene.physical.cfn)
 
 ```
+
+# look into the gene correlation table gz.cf, find the correlation of these two genes in H3122SEPTM,if the multiplication of two numbers are positive, then it would be interesting, which is paired oncogene-TSG are both upregulated or downregulated
+```{r}
+#nrow(onco_TSG.gzalltgene.physical.cfn)
+interesting_rows <- c()
+for(i in c(1:369,372:460,463:853,860:922)){
+  if((gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.1),]$H3122SEPTM.C2.ratio)*
+      (gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.2),]$H3122SEPTM.C2.ratio)<0){
+    print(i)
+    interesting_rows <- c(interesting_rows,i)
+  }
+}
+# it is quite weired that some of the genes in gzalltgene.physical.cfn cannot be found in gz.cf
+nrow(gz.cf_mody1) #2689
+nrow(onco_TSG.gzalltgene.physical.cfn)#922
+```
+
+
+# in order to have a easier interpretation of the gz.cf file, I need to create a gz.cf_mody1, in the gz.cf_mody1, only the summary gene name (no PTM sites) would be included, and the cell line correlation would be the highest number among the column (same Gene.Name). 
+# BiocManager::install(version = "3.11")gz.cf_mody1
+```{r}
+# install.packages("remotes")
+# remotes::install_github("snandi/RFunctionsSN")
+# library(RFunctionsSN)
+
+gz.cf_mody1 <- gz.cf[1,]
+
+unique_gene_gz.cf_Gene.Name <- c(unique(gz.cf$Gene.Name))
+for (gene in unique_gene_gz.cf_Gene.Name){
+  print(gene)
+  same_gene_sub_gz.cf<- gz.cf[which(gz.cf$Gene.Name == gene),]
+  cell_correlation <- colMax(same_gene_sub_gz.cf[,17:41])
+  gz.cf_mod_row <- same_gene_sub_gz.cf[1,]
+  gz.cf_mod_row[,17:41] <- cell_correlation
+  gz.cf_mody1 <- rbind(gz.cf_mody1,gz.cf_mod_row)
+}
+gz.cf_mody1 <- gz.cf_mody1[-1,]
+
+
+```
+
+
+
 
 # This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
 
