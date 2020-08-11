@@ -19,9 +19,9 @@ Use 'BiocManager::install' instead.
 # source("http://www.bioconductor.org/biocLite.R")
 # biocLite("RCy3")
 # biocLite("BiocStyle")
-# Try the latest version of RCy3 by running:
-    # install.packages("BiocManager")
-    #   BiocManager::install("RCy3")
+# #Try the latest version of RCy3 by running:
+# install.packages("BiocManager")
+#   BiocManager::install("RCy3")
 Sys.setenv(LANG="en")
 library(devtools)
 library(RCy3)
@@ -52,8 +52,8 @@ cytoscapeVersionInfo ()
 Sys.setenv(LANG="en")
 options(stringsAsFactors=FALSE)
 options(stringsAsFactors=FALSE)
-data_path <- "C:/Users/yulin/Desktop/Multi-PTM Analysis-Summer Students/RDataFiles/"
-code_path <- "C:/Users/yulin/Documents/Bioinformatics/SUMMER_GIT/PTMs-to-CCCN-and-CFN5_19/"
+data_path <- "D:/Shortest_path_network/RDataFiles-20200721T045131Z-001/RDataFiles/"
+code_path <- "D:/Shortest_path_network/PTMs-to-CCCN-and-CFN/"
 load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
 load(file=paste(data_path, "TenCell.RData", sep=""))
@@ -609,20 +609,20 @@ ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET"),
 ALK_MET_ex_MYH9_paths_4 <- shortest.paths.to.target(ss4,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2","ZDHHC5"))
 ALK_MET_ex_MYH9_paths_5 <- shortest.paths.to.target(ss5,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2"))
 
-all.ratio.styles()
+
 
 
 ex_H3122_ALK_MET_SEPTM_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3)
-ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ex_H3122_ALK_MET_SEPTM_all_CFN)
-FixEdgeDprops.RCy32()
-setVisualStyle("H3122SEPTM.C2.ratio Style")
+# ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_H3122_ALK_MET_SEPTM_all_CFN)
+# FixEdgeDprops.RCy32()
+# setVisualStyle("H3122SEPTM.C2.ratio Style")
 
 ex_H3122_ALK_MET_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3,ALK_MET_ex_MYH9_paths_4,ALK_MET_ex_MYH9_paths_5)
-all.ratio.styles()
-ex_H3122_ALK_MET_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-setCorrEdgeAppearance(ex_H3122_ALK_MET_all_CFN)
-FixEdgeDprops.RCy32()
+
+# ex_H3122_ALK_MET_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_H3122_ALK_MET_all_CFN)
+# FixEdgeDprops.RCy32()
 
 
 ```
@@ -635,7 +635,6 @@ FixEdgeDprops.RCy32()
 # extract.gene.names() functions finds out the gene in edgefile
 
 
-gz.cf <- gz.cf[rowSums(gz.cf[,17:41]) != 0,]
 onco_df <- read.csv(file = "NCG6_cancergenes.tsv", sep = '\t') # read.table does not function well
 TSG_df <- read.csv(file = "Human_TSGs.txt",sep = '\t')
 
@@ -667,17 +666,6 @@ TS_genes_gz.cf <- TS_genes_gz.cf[rowSums(TS_genes_gz.cf[,3:5])!=0,]
 length(unique(TS_genes_gz.cf$Gene.Name))
 
 
-
-```
-
-```{r}
-# graph of cancer labeled network of H3122 SEPTM1:3
-cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE,pruned = FALSE)
-setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
-FixEdgeDprops.RCy32()
-all.ratio.styles()
-setVisualStyle("H3122SEPTM.C2.ratio Style")
-FixEdgeDprops.RCy32()
 
 ```
 
@@ -736,26 +724,47 @@ gzalltgene.physical.cfn.TSG <- gzalltgene.physical.cfn[which((gzalltgene.physica
 gzalltgene.physical.cfn.onco_TSG <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% onco_c)&(gzalltgene.physical.cfn$Gene.2 %in% TSG_c)),]
 gzalltgene.physical.cfn.TSG_onco <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% TSG_c)&(gzalltgene.physical.cfn$Gene.2 %in% onco_c)),]
 onco_TSG.gzalltgene.physical.cfn <- rbind(gzalltgene.physical.cfn.onco_TSG,gzalltgene.physical.cfn.TSG_onco)
-# colnames(onco_TSG.gzalltgene.physical.cfn)<- colnames(ex_MYH9_H3122_ALK_MET_SEPTM_all)
+colnames(onco_TSG.gzalltgene.physical.cfn)<- colnames(ex_H3122_ALK_MET_SEPTM_all)
 
-
-
-
-# cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (onco_TSG.gzalltgene.physical.cfn, only.cfn=TRUE,pruned = FALSE)
-# setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
-# FixEdgeDprops.RCy32()
-# all.ratio.styles()
+cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (onco_TSG.gzalltgene.physical.cfn, only.cfn=FALSE,pruned = FALSE)
+setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
 # 
 # onco_TSG_genes <- unique(c(onco_TSG.gzalltgene.physical.cfn$Gene.1,onco_TSG.gzalltgene.physical.cfn$Gene.2))
 # onco_TSG_shortest.path <-  composite.shortest.paths(onco_TSG_genes,onco_TSG_genes,gzalltgene.physical.cfn)
 
 ```
 
+
+# in order to have a easier interpretation of the gz.cf file, I need to create a gz.cf_mody1, in the gz.cf_mody1, only the summary gene name (no PTM sites) would be included, and the cell line correlation would be the highest number among the column (same Gene.Name). 
+# BiocManager::install(version = "3.11")gz.cf_mody1
+```{r}
+# install.packages("remotes")
+# remotes::install_github("snandi/RFunctionsSN")
+#library(RFunctionsSN)
+library(gensvm)
+
+gz.cf_mody1 <- gz.cf[1,]
+
+unique_gene_gz.cf_Gene.Name <- c(unique(gz.cf$Gene.Name))
+for (gene in unique_gene_gz.cf_Gene.Name){
+  same_gene_sub_gz.cf<- gz.cf[which(gz.cf$Gene.Name == gene),]
+  cell_correlation <- gensvm.maxabs.scale(same_gene_sub_gz.cf[,17:41])
+  gz.cf_mod_row <- same_gene_sub_gz.cf[1,]
+  gz.cf_mod_row[,17:41] <- cell_correlation
+  gz.cf_mody1 <- rbind(gz.cf_mody1,gz.cf_mod_row)
+}
+gz.cf_mody1 <- gz.cf_mody1[-1,]
+
+
+```
+
 # look into the gene correlation table gz.cf, find the correlation of these two genes in H3122SEPTM,if the multiplication of two numbers are positive, then it would be interesting, which is paired oncogene-TSG are both upregulated or downregulated
 ```{r}
-#nrow(onco_TSG.gzalltgene.physical.cfn)
+#nrow(onco_TSG.gzalltgene.physical.cfn) c(1:369,372:460,463:853,860:922)
 interesting_rows <- c()
-for(i in c(1:369,372:460,463:853,860:922)){
+for(i in 1:922){
   if((gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.1),]$H3122SEPTM.C2.ratio)*
       (gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.2),]$H3122SEPTM.C2.ratio)<0){
     print(i)
@@ -765,31 +774,49 @@ for(i in c(1:369,372:460,463:853,860:922)){
 # it is quite weired that some of the genes in gzalltgene.physical.cfn cannot be found in gz.cf
 nrow(gz.cf_mody1) #2689
 nrow(onco_TSG.gzalltgene.physical.cfn)#922
+
+f1<- onco_TSG.gzalltgene.physical.cfn[interesting_rows,]
+colnames(f1) <- colnames(ex_H3122_ALK_MET_SEPTM_all)
+graph.f1 <- graph.cfn.cccn(f1, ld=FALSE, gz=TRUE, only.cfn=TRUE,pruned = FALSE)
 ```
 
-
-# in order to have a easier interpretation of the gz.cf file, I need to create a gz.cf_mody1, in the gz.cf_mody1, only the summary gene name (no PTM sites) would be included, and the cell line correlation would be the highest number among the column (same Gene.Name). 
-# BiocManager::install(version = "3.11")gz.cf_mody1
+Genral heatmap of genes vs cell line
 ```{r}
-# install.packages("remotes")
-# remotes::install_github("snandi/RFunctionsSN")
-# library(RFunctionsSN)
+library(reshape2)
 
-gz.cf_mody1 <- gz.cf[1,]
+experiments_c <- c(colnames(gz.cf)[17:41])
 
-unique_gene_gz.cf_Gene.Name <- c(unique(gz.cf$Gene.Name))
-for (gene in unique_gene_gz.cf_Gene.Name){
-  print(gene)
-  same_gene_sub_gz.cf<- gz.cf[which(gz.cf$Gene.Name == gene),]
-  cell_correlation <- colMax(same_gene_sub_gz.cf[,17:41])
-  gz.cf_mod_row <- same_gene_sub_gz.cf[1,]
-  gz.cf_mod_row[,17:41] <- cell_correlation
-  gz.cf_mody1 <- rbind(gz.cf_mody1,gz.cf_mod_row)
+#create DF1:DF25
+
+for (i in 1:25){
+  assign(paste("DF",i,sep = ""),data.frame("Genes" = gz.cf$Gene.Name,
+                                            "Cells" = replicate(9701,experiments_c[i]),
+                                            "Correlations" = gz.cf[17:41][i]))
 }
-gz.cf_mody1 <- gz.cf_mody1[-1,]
 
+# c("Genes","Cells","Correlations")
+gene_cell_ls <- list(DF1,DF2,DF3,DF4,DF5,DF6,DF7,DF8,DF9,DF10,
+                     DF11,DF12,DF13,DF14,DF15,DF16,DF17,DF18,DF19,DF20,
+                     DF21,DF22,DF23,DF24,DF25)
+
+for (i in gene_cell_ls){
+  print(colnames(i))
+  colnames(i) <- c("Genes","Cells","Correlations")
+  print(colnames(i))
+}
+
+
+# p <- ggplot(gene_cell_df, aes(x=Genes,y=Cells))
+# p
 
 ```
+
+
+
+
+
+
+
 
 
 
