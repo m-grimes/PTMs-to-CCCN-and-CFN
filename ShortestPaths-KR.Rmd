@@ -52,9 +52,9 @@ cytoscapeVersionInfo ()
 options(stringsAsFactors=FALSE)
 data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
 code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
-load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+load(file=paste(data_path, "KGFunDataObjects-3.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
-load(file=paste(data_path, "TenCell.RData", sep=""))
+load(file=paste(data_path, "TenCell-TKI.RData", sep=""))
 load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
 load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
 load(file=paste(data_path,"drug_effects.RData", sep=""))
