@@ -804,7 +804,8 @@ zymes.gzclusters.bioplanet.common <- list.common(zymes.gzclusters.common, zymes.
 # Write this file for inspection
 zymes.crosstalk.filename <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "ClusterBioplanetEnzymeIntersect.txt", sep="")
 sink(zymes.crosstalk.filename); print(zymes.gzclusters.bioplanet.common); sink()
-#
+# What enzymes are most represented?
+
 # Some more interesting pathways to investigate
 bioplanet["CARM1 transcriptional regulation by protein methylation"]
 bioplanet["ERBB1 downstream pathway"]
