@@ -12,7 +12,7 @@
 localpath = getwd()	
 comp_path <- unlist(strsplit(localpath, "Dropbox"))[[1]]
 
-source("/Users/_mark_/Dropbox/_Work/R_/MG_packages.R")
+source(paste(comp_path, "/Dropbox/_Work/R_/MG_packages.R", sep=""))
 # load work
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
@@ -556,17 +556,20 @@ net.atts3.df <- data.frame(threshold=thresh.vec2, nodes=net.nodes3, edges=net.ed
 identical(net.atts.df, net.atts3.df)  # TRUE
 # Use the biggest network to examine the relationships between normalized Weight
 big.path.net <- pathway.net.list3[[68]]
-plot(big.path.net$Weight.x ~ big.path.net$Weight.y)
-summary(lm(big.path.net$Weight.x ~ big.path.net$Weight.y))
-# R-squared:  0.01322 
+#plot(big.path.net$Weight.x ~ big.path.net$Weight.y)
+#summary(lm(big.path.net$Weight.x ~ big.path.net$Weight.y))
+# Rename
+names(big.path.net) <- c("source", "target" , "Weight.bp", "bp.interaction", "clust.interaction", "Weight.clust", "Weight", "interaction" )
+#
+plot(big.path.net$Weight.bp ~ big.path.net$Weight.clust)
+summary(lm(big.path.net$Weight.bp ~ big.path.net$Weight.clust))# R-squared:  0.01322 
 # **** this is good, means that we are NOT just recapitulating relationships among pathways
-plot(big.path.net$Weight ~ big.path.net$Weight.y)
-summary(lm(big.path.net$Weight ~ big.path.net$Weight.y))
+plot(big.path.net$Weight ~ big.path.net$Weight.clust)
+summary(lm(big.path.net$Weight ~ big.path.net$Weight.clust))
 # R-squared:  0.9693; the normalization didn't move the points very much.
 
 
 big.path.net <- big.path.net[order(big.path.net$Weight, decreasing=TRUE),]
-names(big.path.net) <- c("source", "target" , "Weight.bp", "bp.interaction", "clust.interaction", "Weight.clust", "Weight", "interaction" )
 hist(big.path.net$Weight, breaks=100, col="turquoise", ylim=c(0,200))
 dim(big.path.net[big.path.net$Weight>4,])
 # 90
@@ -858,3 +861,29 @@ genenames <- extract.gene.names.RCy3(alkep300)
 alkep300.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
 # Note: this contains PTMs. If you want only the CFN (gene nodes) use:
 alkep300.gene.cf <- alkep300.cf[which(alkep300.cf$Node.ID=="gene"),]
+
+# overlap between ldgenes and gzallt genes >>
+gzphysicalgenes <- extract.gene.names.RCy3(gzalltgene.physical.cfn.merged)
+ldphysicalgenes <- extract.gene.names.RCy3(ldgene.physical.cfn.merged)
+setdiff(gzphysicalgenes, ldphysicalgenes)
+setdiff(ldphysicalgenes, gzphysicalgenes)
+outersect(ldphysicalgenes, gzphysicalgenes)
+setdiff(V(gzalltgene.physical.cfn.merged.g),V(ldgene.physical.cfn.merged.g))
+setdiff(V(ldgene.physical.cfn.merged.g),V(gzalltgene.physical.cfn.merged.g))
+head(V(ldgene.physical.cfn.merged.g))
+head(V(gzalltgene.physical.cfn.merged.g))
+length(ldphysicalgenes)
+length(gzphysicalgenes)
+class(V(gzalltgene.physical.cfn.merged.g))
+gzigraphgenes <- unlist(V(gzalltgene.physical.cfn.merged.g))
+ldigraphgenes <- unlist(V(ldgene.physical.cfn.merged.g))
+as.character(ldigraphgenes)
+as.vector(ldigraphgenes)
+class(ldigraphgenes)
+# ?V: A vertex sequence is just what the name says it is: a sequence of vertices.Return: A vertex sequence containing all vertices, in the order of their numeric vertex ids.
+difference(gzigraphgenes, ldigraphgenes)
+difference(ldigraphgenes, gzigraphgenes)
+gzva <- unlist(vertex_attr(gzalltgene.physical.cfn.merged.g))
+ldva <- unlist(vertex_attr(ldgene.physical.cfn.merged.g))
+setdiff(gzva, ldva)
+setdiff(ldva, gzva)
