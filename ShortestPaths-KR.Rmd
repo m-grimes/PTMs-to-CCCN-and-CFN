@@ -31,7 +31,6 @@ library(gplots)
 library(igraph)
 library(knitr)
 library("BiocStyle")
-options(stringsAsFactors=FALSE)
 #
 # There are several resources available:
 browseVignettes('RCy3')

@@ -644,6 +644,48 @@ graph.cfn.cccn <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=T
   if (only.cfn==FALSE) return(cfn.cccn.edges)
 }
 
+#Same as graph.cfn.cccn except you can specify a custom title for the network
+graph.cfn.cccn.title <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE, custom.title = "default") {
+  genenames <- extract.gene.names(edgefile)
+  if(pruned==TRUE) {gz.cf <- gz.cf.pruned}
+  if (gz==TRUE) {
+    cccn <- gzallt.cccnplus
+    cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+  }
+  if (ld==TRUE) {
+    cccn <- ld.cccnplus
+    cccn.cf <- ld.cf[ld.cf$Gene.Name %in% genenames,]
+  }
+  if (only.cfn==TRUE) {
+    if (custom.title == "defualt") {
+        custom.title <- paste("CFN", (getNetworkCount()+1))
+    }
+    cfn.cf <- cccn.cf[which(cccn.cf$Node.ID=="gene"),]
+    gene.suid <- createNetworkFromDataFrames(cfn.cf, edgefile, title=custom.title, collection = "Interactions")
+    setNodeMapping(cfn.cf)
+    setCorrEdgeAppearance(edgefile)     
+  }
+  if (only.cfn==FALSE) {
+    if (custom.title == "default") {
+      custom.title <- paste("CFN plus CCCN", (getNetworkCount()+1))
+    }
+    netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+    # make gene-peptide edges
+    net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+    # remove gene-gene interactions
+    net.gpe <- remove.autophos.RCy3(net.gpe)
+    ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+    cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+    if (gz==TRUE) {all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+    if (ld==TRUE) {all.cf <- ld.cf[ld.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+    cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title=custom.title, collection = "Interactions") 
+    setNodeMapping(cccn.cf)
+    setCorrEdgeAppearance(cfn.cccn.edges) 
+  }
+  layoutNetwork("force-directed") 
+  if (only.cfn==FALSE) return(cfn.cccn.edges)
+}
+
 all.ratio.styles <- function(ratiocols=NULL) {
   nodevalues <- getTableColumns('node')
   if(length(ratiocols)==0) {
