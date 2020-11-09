@@ -55,7 +55,7 @@ calculate.pathways.per.gene <- function(gene, pathwaylist) {
 # OKay go for it!
 bioplanetgenes$no.pathways <- sapply(bioplanetgenes$Gene.Name, calculate.pathways.per.gene, pathwaylist=bioplanet)
 # This still took over an hour!
-hist(bioplanetgenes$no.pathways, breaks=100, col="aquamarine", ylim=c(0,200))
+hist(as.numeric(bioplanetgenes$no.pathways), breaks=100, col="aquamarine")
 head(bioplanetgenes[order(bioplanetgenes$number.of.pathways, decreasing=TRUE),], 30)
 # Behold the usual suspects. 
 # Use correct columns (after tests)
@@ -633,6 +633,25 @@ layoutNetwork("genemania-force-directed")
 intersect(bioplanet[["Protein processing in the endoplasmic reticulum"]], bioplanet[["Developmental biology"]]) 
 # [1] "HSP90AA1" "HSP90AB1"  **!
 #
+# Tweak settings
+selected.pathway.edges3 <- big.path.net[big.path.net$Weight.clust > 1.1 & big.path.net$Weight.bp < 0.01,]
+# 318 pathway interactions at this setting
+# Graph
+spe.nodes3 <- data.frame(id=unique(c(selected.pathway.edges3$source, selected.pathway.edges3$target)))
+look3.suid <- createNetworkFromDataFrames(spe.nodes3, selected.pathway.edges3[ c("source", "target", "Weight", "interaction")], title="Pathway Interactions, Weight > 1.1; Weight.bp < 0.01", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+print(unlist(spe.nodes3$id))
+# Think about intersection with clusters from:
+selected.pathway.edges4 <- big.path.net[big.path.net$Weight.clust > 1 & big.path.net$Weight.bp < 1,]
+# 1045 pathway interactions at this setting
+# Graph
+spe.nodes4 <- data.frame(id=unique(c(selected.pathway.edges4$source, selected.pathway.edges4$target)))
+look4.suid <- createNetworkFromDataFrames(spe.nodes4, selected.pathway.edges4[ c("source", "target", "Weight", "interaction")], title="Pathway Interactions, Weight > 1; Weight.bp < 1", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+# EAxon Guidance Pathway
+# zymes.bioplanet.common, zymes.gzclusters.bioplanet.common, zymes.gzclusters.common, zymes.list 
+#
+
 # Explore example from BioPlanetTest for links between EGFR and FASN
 a <- "Signaling by EGFR in cancer"
 b <- "Fatty acid, triacylglycerol, and ketone body metabolism"
@@ -808,7 +827,7 @@ zymes.gzclusters.bioplanet.common <- list.common(zymes.gzclusters.common, zymes.
 zymes.crosstalk.filename <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "ClusterBioplanetEnzymeIntersect.txt", sep="")
 sink(zymes.crosstalk.filename); print(zymes.gzclusters.bioplanet.common); sink()
 # What enzymes are most represented?
-
+gene.clist["38.104.92"] # FYN YES1 SRC PTPRK PLCG1
 # Some more interesting pathways to investigate
 bioplanet["CARM1 transcriptional regulation by protein methylation"]
 bioplanet["ERBB1 downstream pathway"]
