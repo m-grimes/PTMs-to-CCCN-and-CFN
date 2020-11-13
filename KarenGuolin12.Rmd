@@ -32,7 +32,7 @@ library(igraph)
 library(knitr)
 library("BiocStyle")
 options(stringsAsFactors=FALSE)
-#
+# 
 # There are several resources available:
 browseVignettes('RCy3')
 # https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
@@ -50,8 +50,8 @@ cytoscapeVersionInfo ()
 ```{r load data objects and functions}
  options(stringsAsFactors=FALSE)
 options(stringsAsFactors=FALSE)
-data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
-code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+data_path <- "/Applications/study/Rdata/"
+code_path <- "/Users/huangchuran/PTMs-to-CCCN-and-CFN/"
 load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
 load(file=paste(data_path, "TenCell.RData", sep=""))
@@ -468,7 +468,7 @@ fasnep300.cccn3 <- graph.cfn.cccn (filter.edges.1(c("FASN", "EP300"), ld.network
 # For the ratio styles to work in this case (no "ratio" in column names), examine names:
     nodevalues <- getTableColumns('node')
 print(names(nodevalues))
-all.ratio.styles( ratiocols=c(21:52))
+all.ratio.styles()
 ########################################_____________________________________________________
 # ________________________
 # New: Bioplanet
@@ -545,8 +545,22 @@ drugsthataffectgenes <- lapply(drugaffected, names)
 cat(capture.output(print(drugaffectedgenes), file="drugaffectedgemnes.txt"))
 cat(capture.output(print(drugsthataffectgenes), file="drugsthataffectPTMs.txt"))
 
-
 ```
+
+
+Try to plot individual clusters from the CCCN with and without CFN
+```{r Plot Clusters}
+#Load the file with the graphing function
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Plot sites from cluster 109.115.27
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "109.115.27"),]
+graph.cluster(cluster_sites$Site, gzallt.network.all)
+all.ratio.styles()
 
 ```
 

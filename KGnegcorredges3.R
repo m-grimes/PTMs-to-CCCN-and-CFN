@@ -4,7 +4,7 @@
 # Mark Grimes
 
 # Examine negative correlation between different PTMs on the same protein
-
+# source("/Users/_mark_/Dropbox/_Work/R_/MG_packages.R")
 ################################################################################################
 # Save previous version
 pepcorredges.dual.neg.v1 <- pepcorredges.dual.neg

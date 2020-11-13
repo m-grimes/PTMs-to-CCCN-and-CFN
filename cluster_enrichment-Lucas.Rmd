@@ -1,0 +1,148 @@
+---
+title: "cluster_enrichment-Lucas"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+# SEPTM plus ten cell line data
+# May 19, 2020
+# Mark Grimes, Karen Ross, Churan Huang
+---
+# Note: Cytoscape 3.7.1 or greater is required. Start Cytoscape and make sure cyREST is activated before running this script.
+# This loads MGs packages and functions and lists the data objects from the new data:
+```{r}
+# # ------------------------------------------------------------------------
+# Use BiocManager to install Bioconductor packages. For example,
+    # install.packages("BiocManager")
+    # BiocManager::install("RCy3")
+library(devtools)
+library(RCy3)
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(gplots)
+library(igraph)
+library(knitr)
+library("BiocStyle")
+options(stringsAsFactors=FALSE)
+#
+# There are several resources available:
+browseVignettes('RCy3')
+# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
+# 
+
+# Note: Start Cytoscape
+# ------------------------------------------------------------------------
+cytoscapePing ()
+cytoscapeVersionInfo ()
+
+```
+---
+
+---
+```{r load data objects and functions}
+ options(stringsAsFactors=FALSE)
+options(stringsAsFactors=FALSE)
+data_path <- "/Applications/study/Rdata/"
+code_path <- "/Users/huangchuran/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+load(file=paste(data_path, "TenCell.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+load(file=paste(data_path,"drug_effects.RData", sep=""))
+
+	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+    source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+if (!cytoscapePing()=="You are connected to Cytoscape!") {
+     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+
+```
+
+## Count the number of sites in each cluster
+Here we will compute the number of sites in each cluster in the CCCN. This data will be used as the "background" for enrichment analysis. To do this, we will use the file sites_by_cluster.txt that lists each site in the CCCN in one column and the cluster it belongs to in a second column. We will use the count function in the plyr package to count the number of rows (sites) for each cluster. (This function will create a new dataframe with one column containing the cluster names and the second column containing the number of rows (sites) for each cluster. Then, for each cluster calculate the number of sites not in the CCCN that are not in the cluster--the will be the total sites in the CCCN minus the number of sites in the cluster. 
+```{r tally_clusters}
+
+#Load the file with the cluster assignments for each site
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Tally the number of sites in each cluster
+all_tally <- plyr::count(CCCN_sites, var = "Cluster")
+colnames(all_tally)[2] <- "AllNumInCluster"
+
+
+#Now calculate the number of unique sites that are not in each family. First find the total number of sites. Then
+#substract the number in each cluster from the total to find the number not in each cluster
+num_sites <- nrow(CCCN_sites)
+all_tally$AllNumOutCluster <- num_sites - all_tally$AllNumInCluster
+
+```
+
+## Cluster Enrichment Analysis
+
+For each experiment (drug/cell-line/replicate combo):
+
+1. Get the list of significantly changed sites
+
+2. Map the sites to clusters
+
+3. Using the same methods as for the all site data, tally the number of sites in the experimental data in each cluster. Then caluclate the number of sites that are not in each cluster.
+
+4. Perform a one-sided Fisher test to look for clusters with more significantly changed sites than expected by chance. To improve the statistical power (limit the number of tests), only do the analysis on clusters that have at least three significantly changed sites. 
+
+The SEPTM/PC9/Erlotinib/Replicate #1 will be used as an example. The ratio data for this experiment can be found in the  PC9SEPTM.E1.ratio column of gz.cf.
+
+```{r process_sig_site_data}
+
+#Select the sites where PC9SEPTM.E3.ratio is at least 2.25-fold
+selected_sites <- select.sites.w.min.value(gz.cf, "H1781_AfatinibRatio", min_value = 2.25)
+
+#The table is a mixture of values for sites and values for protein (average values for all sites for that protein). We only 
+#want the sites. The Node.ID column has "gene" for protein averages and "peptide" for sites. Select the rows where Node.ID
+#is peptide. Then select the id column (which has the name of the site) and the PC9SEPTM.E1.ratio column. Finally, rename the id #column to be "Site" to allow merging with the CCCN_sites table that has the cluster information.
+selected_sites <- selected_sites[ which(selected_sites$Node.ID == 'peptide'), ]
+desired_cols <- c("id", "H1781_AfatinibRatio")
+selected_sites <- selected_sites[desired_cols]
+colnames(selected_sites)[1] <- "Site"
+
+#To map the selected sites to clusters do a merge of the selected_sites to the CCCN_sites table. Note that some of the selected #sites do not map to a cluster, so the number of rows in the merged table is less than the number in the selected sites table
+mapped_sites <- merge(CCCN_sites, selected_sites, by = "Site")
+
+#Calculate the number of selected sites in each cluster
+selected_tally <- plyr::count(mapped_sites, var = "Cluster")
+colnames(selected_tally)[2] <- "SelectedNumInCluster"
+
+#Calculate the number of selected sites not in each cluster. 
+num_selected_sites <- nrow(mapped_sites)
+selected_tally$SelectedNumOutCluster <- num_selected_sites - selected_tally$SelectedNumInCluster
+
+#Merge the data for all clusters and the data for the selected clusters to make a table with all data needed for the
+#Fisher test. Set the row names to be the cluster ID's. Remove rows where the number of selected sites in a cluster
+#is less than 3 because this is unlikely to give a significant result and will just drive up the number of tests
+fisher_table <- merge(selected_tally, all_tally, by = "Cluster")
+rownames(fisher_table) <- fisher_table$Cluster
+fisher_table$Cluster <- NULL
+fisher_table <- fisher_table[ which(fisher_table$SelectedNumInCluster >= 3),]
+
+#Perform the Fisher Test and the Benjimini-Hochberg multiple testing correction
+fisher_table$p_value <- apply(fisher_table,1, function(x) fisher.test(matrix(x,nr=2), alternative = "greater")$p.value)
+fisher_table$corr_p_value <- p.adjust(fisher_table$p_value, method = "BH")
+
+#Add a column with the ratio of selected sites to the ratio of total sites for each cluster
+fisher_table$SelectedToAllRatio <- fisher_table$SelectedNumInCluster/fisher_table$AllNumInCluster
+
+#Sort by corrected p-value
+fisher_table <- fisher_table[order(fisher_table$corr_p_value),]
+
+#Write the results to a file
+write.table(fisher_table, file = paste(data_path, "H1781_Afatinib_cluster_enrichment.txt", sep = ""), sep = "\t", quote = FALSE, col.names = NA)
+
+```
+
