@@ -73,14 +73,10 @@ coreSimilarity<-function(g1, g2,verbose=T){
 }
 
 # example usage
-g1 <- graph_from_literal( Alice-Bob-Cecil-Alice, Daniel-Cecil-Eugene,Cecil-Gordon )
-g2 <- graph_from_literal( Alice-Cuneyt-Cecil-Alice, Daniel-Cecil-Eugene,Cecil-Cemil )
-g3 <- graph_from_literal( Alice-Cuneyt)
-sim<-coreSimilarity(g2,g1,verbose=T)
+#g1 <- graph_from_literal( Alice-Bob-Cecil-Alice, Daniel-Cecil-Eugene,Cecil-Gordon )
+#g2 <- graph_from_literal( Alice-Cuneyt-Cecil-Alice, Daniel-Cecil-Eugene,Cecil-Cemil )
+#g3 <- graph_from_literal( Alice-Cuneyt)
+#sim<-coreSimilarity(g2,g1,verbose=T)
 
 
-PPIdata<-load("C:/Users/akkar/Dropbox/Academic/Manitoba/Biological networks/data/GZ_PPI_Networks2.RData") 
-#gzall<-(gzalltgene.cfn.g)
-g1<-gzalltgene.physical.cfn.merged.g
-g2<-ldgene.physical.cfn.merged.g
-sim<-coreSimilarity(g2,g1,verbose=T)
+
