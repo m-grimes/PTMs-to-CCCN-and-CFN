@@ -9,8 +9,9 @@
 # Retrive PPI edges from several sources.
 #_______________________________________________________________
 #
+source("/Users/_mark_/Dropbox/_Work/R_/MG_packages.R")
 # load work
-load(file=paste("_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 # load("/Users/_mark_/Dropbox/_Work/R_/_LINCS/Bin_Curated_Data/ld_lim_PMD.RData")
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 #_______________________________________________________________
@@ -221,8 +222,8 @@ get.GM.edgefile <- function (gmfilename, nodenames) {
 }
 # This function replaces some old gene names and fixes the problem that Excel converts gene names to dates (avoid Excel!).
 get.gene <- function(cell) {  
-     fixgenes = c("CDC2", "2-Sep", "3-Sep", "4-Sep", "5-Sep", "7-Sep", "8-Sep", "9-Sep", "10-Sep", "11-Sep", "15-Sep", "6-Sep", "1-Oct", "2-Oct", "3-Oct", "4-Oct", "6-Oct", "7-Oct", "11-Oct", "1-Mar", "2-Mar", "3-Mar", "4-Mar", "5-Mar", "6-Mar", "7-Mar", "8-Mar", "9-Mar", "10-Mar", "11-Mar", "C11orf58", 'C17orf57', 'C3orf10',  'C7orf51', "C11orf59", "C4orf16")
-     corrects = c("CDK1", "SEPT2", "SEPT3", "SEPT4", "SEPT5", "SEPT7", "SEPT8", "SEPT9", "SEPT10", "SEPT11", "SEPT15", "SEPT6", "POU2F1", "POU2F2", "POU5F1", "POU5F1", "POU3F1", "POU3F2", "POU2F3", "MARCH1", "MARCH2", "MARCH3", "MARCH4", "MARCH5", "MARCH6", "MARCH7", "MARCH8", "MARCH9", "MARCH10", "MARCH11", "SMAP", "EFCAB13", "BRK1", "NYAP1", "LAMTOR1", 'AP1AR')
+  fixgenes = c("CDC2", "1-Sep", "2-Sep", "3-Sep", "4-Sep", "5-Sep", "7-Sep", "8-Sep", "9-Sep", "10-Sep", "11-Sep", "15-Sep", "6-Sep", "1-Oct", "2-Oct", "3-Oct", "4-Oct", "6-Oct", "7-Oct", "11-Oct", "1-Mar", "2-Mar", "3-Mar", "4-Mar", "5-Mar", "6-Mar", "7-Mar", "8-Mar", "9-Mar", "10-Mar", "11-Mar", "C11orf58", 'C17orf57', 'C3orf10',  'C7orf51', "C11orf59", "C4orf16", "1-Dec")
+  corrects = c("CDK1", "SEPT1", "SEPT2", "SEPT3", "SEPT4", "SEPT5", "SEPT7", "SEPT8", "SEPT9", "SEPT10", "SEPT11", "SEPT15", "SEPT6", "POU2F1", "POU2F2", "POU5F1", "POU5F1", "POU3F1", "POU3F2", "POU2F3", "MARCH1", "MARCH2", "MARCH3", "MARCH4", "MARCH5", "MARCH6", "MARCH7", "MARCH8", "MARCH9", "MARCH10", "MARCH11", "SMAP", "EFCAB13", "BRK1", "NYAP1", "LAMTOR1", 'AP1AR', "DEC1")
      x<-unlist(strsplit(as.character(cell), ";"))	
      for (i in 1:length(fixgenes)) {
           if (x[1] == fixgenes[i]) {
@@ -526,7 +527,7 @@ gzallt.physical.network <- rbind(gzalltgene.physical.cfn.merged, gzallt.gpe.prun
 # 86421 edges
 gzallt.physical.network <- edgeType.to.interaction(gzallt.physical.network)
 
-save(ldgenes, gzallgenes, combinedgenes, combined.str, combined.str.edges, combined.str.ids, combined.str.net, combined.GM.net, combined.GM.edges, combined.pc.edges, combined.bp.edges, combined.enzsub.edges, combined.all.ppi, combined.all.ppi.g, gzallt.key, gzallt.cccnplus, gzalltgene.cfn, gzalltgene.cfn.g, gzallt.gene.key, gzallt.network, gzallt.network.all, gzallt.physical.network, gzalltgene.physical.cfn.merged, gzalltgene.physical.cfn.merged.g, gzallt.cccnplus, gzalltgene.ave.ratios, gz.cfn, gzallt.network.all, gzallt.all.cf, gzallt.all.cf.pruned, gzalltgene.cf, gzalltgene.all.cf, gzalltgene.all.cf.pruned, gz.cf, gz.cf.pruned, ld.gene.key, ld.gene.cccn.g, ldgene.cfn, ldgene.cfn.g, gzgene.cfn.netatts, ldgene.cfn.netatts, compare.nettatts, ldgene.physical.cfn, gzalltgene.physical.cfn, overlap.cfn, overlap.cfn2, ldgene.physical.cfn.g, gzalltgene.physical.cfn.g, overlap.cfn2.g, gzalltgene.cfn.rcy3, gzalltgene.physical.cfn.rcy3, ldgene.cfn.rcy3, ldgene.physical.cfn.rcy3, overlap.cfn2.rcy3, ldgene.physical.cfn.merged, ldgene.physical.cfn.merged.g, overlap.cfn2.merged, overlap.cfn2.merged.g,  keggpath, wikipath, bioplanet, file=paste("_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
+# save(ldgenes, gzallgenes, combinedgenes, combined.str, combined.str.edges, combined.str.ids, combined.str.net, combined.GM.net, combined.GM.edges, combined.pc.edges, combined.bp.edges, combined.enzsub.edges, combined.all.ppi, combined.all.ppi.g, gzallt.key, gzallt.cccnplus, gzalltgene.cfn, gzalltgene.cfn.g, gzallt.gene.key, gzallt.network, gzallt.network.all, gzallt.physical.network, gzalltgene.physical.cfn.merged, gzalltgene.physical.cfn.merged.g, gzallt.cccnplus, gzalltgene.ave.ratios, gz.cfn, gzallt.network.all, gzallt.all.cf, gzallt.all.cf.pruned, gzalltgene.cf, gzalltgene.all.cf, gzalltgene.all.cf.pruned, gz.cf, gz.cf.pruned, ld.gene.key, ld.gene.cccn.g, ldgene.cfn, ldgene.cfn.g, gzgene.cfn.netatts, ldgene.cfn.netatts, compare.nettatts, ldgene.physical.cfn, gzalltgene.physical.cfn, overlap.cfn, overlap.cfn2, ldgene.physical.cfn.g, gzalltgene.physical.cfn.g, overlap.cfn2.g, gzalltgene.cfn.rcy3, gzalltgene.physical.cfn.rcy3, ldgene.cfn.rcy3, ldgene.physical.cfn.rcy3, overlap.cfn2.rcy3, ldgene.physical.cfn.merged, ldgene.physical.cfn.merged.g, overlap.cfn2.merged, overlap.cfn2.merged.g,  keggpath, wikipath, bioplanet, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 
 
 
@@ -586,11 +587,16 @@ ros1ep300 <- connectNodes.all.RCy3.exclude(c("ROS1", "EP300"), ig.graph=gzalltge
 # Pathways
         # 
  #       KEGG_2019_Human.txt, WikiPathways_2019_Human.txt
-        # New: bioplanet_pathway.csv
-bioplanetname <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/",  "bioplanet_pathway.csv", sep="")
+        # New: bioplanet_pathway.csv; bioplanet_pathway_May2020.csv
+bioplanetname <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/",  "bioplanet_pathway_May2020.csv", sep="")
 bioplanet <- read.csv(bioplanetname, stringsAsFactors = F)
 dim(bioplanet)
 # 74148     4
+head(bioplanet[order(bioplanet$GENE_SYMBOL),],20)
+# Get rid of excel goo
+bioplanet$GENE_SYMBOL <- sapply(bioplanet$GENE_SYMBOL, get.gene)
+head(bioplanet[order(bioplanet$GENE_SYMBOL),],20)
+# Okay
 length(unique(bioplanet$PATHWAY_ID))
 # 1658
 # Separtate into a list as for kegg and wikipath
@@ -637,11 +643,5 @@ test <- composite.shortest.paths(genes1=abgz, genes2=abgz, network=gzalltgene.ph
 # 468 edges; 204 with merged
 test.2 <- composite.shortest.paths(genes1=a, genes2=b, network=gzalltgene.physical.cfn.merged, exclude="MYH9")
 
-
-#_________________________________________
-```{r plot simpler sub-network}
-# The simplest way to get the node attributes is to select the genes in the entire network above and the node attribute file.
-genenames <- extract.gene.names.RCy3(alkep300)
-alkep300.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
-# Note: this contains PTMs. If you want only the CFN (gene nodes) use:
-alkep300.gene.cf <- alkep300.cf[which(alkep300.cf$Node.ID=="gene"),]
+# Save these because they took a long time
+save(ldgenes, gzallgenes, combinedgenes, combined.str, combined.str.edges, combined.str.ids, combined.str.net, combined.GM.net, combined.GM.edges, combined.pc.edges, combined.bp.edges, combined.enzsub.edges, combined.all.ppi, combined.all.ppi.g, gzallt.key, gzallt.cccnplus, gzalltgene.cfn, gzalltgene.cfn.g, gzallt.gene.key, gzallt.network, gzallt.network.all, gzallt.physical.network, gzalltgene.physical.cfn.merged, gzalltgene.physical.cfn.merged.g, gzallt.cccnplus, gzalltgene.ave.ratios, gz.cfn, gzallt.network.all, gzallt.all.cf, gzallt.all.cf.pruned, gzalltgene.cf, gzalltgene.all.cf, gzalltgene.all.cf.pruned, gz.cf, gz.cf.pruned, ld.gene.key, ld.gene.cccn.g, ldgene.cfn, ldgene.cfn.g, gzgene.cfn.netatts, ldgene.cfn.netatts, compare.nettatts, ldgene.physical.cfn, gzalltgene.physical.cfn, overlap.cfn, overlap.cfn2, ldgene.physical.cfn.g, gzalltgene.physical.cfn.g, overlap.cfn2.g, gzalltgene.cfn.rcy3, gzalltgene.physical.cfn.rcy3, ldgene.cfn.rcy3, ldgene.physical.cfn.rcy3, overlap.cfn2.rcy3, ldgene.physical.cfn.merged, ldgene.physical.cfn.merged.g, overlap.cfn2.merged, overlap.cfn2.merged.g,  keggpath, wikipath, bioplanet, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))

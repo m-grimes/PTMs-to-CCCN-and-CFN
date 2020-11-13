@@ -19,9 +19,10 @@ Use 'BiocManager::install' instead.
 # source("http://www.bioconductor.org/biocLite.R")
 # biocLite("RCy3")
 # biocLite("BiocStyle")
-# Try the latest version of RCy3 by running:
-    # install.packages("BiocManager")
-    #   BiocManager::install("RCy3")
+# #Try the latest version of RCy3 by running:
+# install.packages("BiocManager")
+#   BiocManager::install("RCy3")
+Sys.setenv(LANG="en")
 library(devtools)
 library(RCy3)
 library(plyr)
@@ -37,7 +38,7 @@ options(stringsAsFactors=FALSE)
 browseVignettes('RCy3')
 # https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
 # 
-
+#MAY 19th make a change
 # Note: Start Cytoscape
 # ------------------------------------------------------------------------
 cytoscapePing ()
@@ -48,10 +49,11 @@ cytoscapeVersionInfo ()
 
 ---
 ```{r load data objects and functions}
- options(stringsAsFactors=FALSE)
+Sys.setenv(LANG="en")
 options(stringsAsFactors=FALSE)
-data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
-code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+options(stringsAsFactors=FALSE)
+data_path <- "D:/Shortest_path_network/RDataFiles-20200721T045131Z-001/RDataFiles/"
+code_path <- "D:/Shortest_path_network/PTMs-to-CCCN-and-CFN/"
 load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
 load(file=paste(data_path, "TenCell.RData", sep=""))
@@ -61,14 +63,767 @@ load(file=paste(data_path,"drug_effects.RData", sep=""))
 	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
 	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
 	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+    source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
 if (!cytoscapePing()=="You are connected to Cytoscape!") {
      print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+# Workaround for edge mapping problem in Cytoscape
+FixEdgeDprops.RCy32 <- function() {
+  setEdgeLineWidthDefault (3)
+  setEdgeColorDefault ( "#FFFFFF")  # white
+  setEdgeSelectionColorDefault (col2hex("chartreuse"))
+  edgecolors <- col2hex(c("red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "darkorange1"))
+  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2", "darkorange1"))
+  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+  edgeTypes <- c("pp", "PHOSPHORYLATION", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "ACETYLATION")
+  # 22 edgeTypes            
+  myarrows <- c ('Arrow', 'Arrow', 'Arrow','Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', "Arrow")
+  setEdgeTargetArrowMapping( 'shared interaction', edgeTypes, myarrows, default.shape='None')  
+  matchArrowColorToEdge('TRUE')
+  setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")
+  # A grey background helps highlight some of the edges
+  setBackgroundColorDefault("#949494") # grey 58
+  edgevalues <- getTableColumns('edge')
+  if (length(edgevalues[grep("pp", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("pp", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("PHOSPHORYLATION", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("PHOSPHORYLATION", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("phosphorylation", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("phosphorylation", edgevalues$'shared interaction'), 1], col2hex("red"))}
+  if (length(edgevalues[grep("ACETYLATION", edgevalues$'shared interaction'), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("ACETYLATION", edgevalues$'shared interaction'), 1], col2hex("darkorange1"))}
+}
+
+# Function to set edge appearance - revised to test for mapping problem
+setCorrEdgeAppearance <- function(edgefile) {
+  setEdgeLineWidthDefault (3)
+  setEdgeColorDefault ( "#FFFFFF")  # white
+  edgevalues <- getTableColumns('edge',c('Weight'))
+  edgevalues['Weight']<-abs(edgevalues['Weight'])
+  edgevalues['Weight']<-lapply(edgevalues['Weight'], function(x) log2(x * 10) + 2)
+  #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
+  names(edgevalues)<-c('Width')
+  loadTableData(edgevalues, table = 'edge', table.key.column = 'SUID')
+  setEdgeLineWidthMapping('Width', mapping.type = 'passthrough', style.name = 'default')
+  setEdgeSelectionColorDefault ( "#FF69B4")  # hotpink
+  edgecolors <- col2hex(c("red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2"))
+  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2"))
+  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+  edgeTypes <- c("pp", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains") 
+  # 22 edgeTypes            
+  myarrows <- c ('Arrow', 'Arrow', 'Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None')
+  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+  matchArrowColorToEdge('TRUE')
+  # work around  misaligned mapping
+  test <- getTableColumns('edge',c('interaction', "shared interaction", "shared name"))
+  if (identical(test$interaction, test$`shared interaction`)) {
+    setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
+    edgeDprops.RCy32()
+  } else {
+    setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
+    FixEdgeDprops.RCy32() }
+} 
+```
+
+#This chunk selects sites from an experiment with absolute fold-change greater than a specified value. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target). Then it computes and draws the union and intersection of the shortest paths networks and draws the networks. PC9/erlotinib is used as an example.  
+```{r shortest paths to target for PC9/erlotinib-independent experiments method}
+#There are 5 PC9/erlotinib experiments ("PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio"). For each experiment select sites that have abs fold-change > 2.25-fold. Then find the shortest paths to EGFR.
+
+selected_sites_S1 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
+paths_S1 <- shortest.paths.to.target(selected_sites_S1, target = "EGFR")
+
+selected_sites_S2 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+paths_S2 <- shortest.paths.to.target(selected_sites_S2, target = "EGFR")
+
+selected_sites_S3 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E3.ratio", min_value = 2.25)
+paths_S3 <- shortest.paths.to.target(selected_sites_S3, target = "EGFR")
+
+selected_sites_T1 <- select.sites.w.min.value(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+paths_T1 <- shortest.paths.to.target(selected_sites_T1, target = "EGFR")
+
+selected_sites_T2 <- select.sites.w.min.value(gz.cf, "PC9_ErlotinibRatio", min_value = 2.25)
+paths_T2 <- shortest.paths.to.target(selected_sites_T2, target = "EGFR")
+
+#Find the union of shortest paths networks for the three SEPTM experiments and draw the network
+S_union <- my.union(paths_S1, paths_S2, paths_S3)
+# union_network <- graph.cfn.cccn (S_union, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+
+#Find the intersection of shortest paths networks for the three SEPTM experiments
+S_intersect <- my.intersect(paths_S1, paths_S2, paths_S3)
+# CFN= False -> CCCN network
+# intersect_network <- graph.cfn.cccn (S_intersect, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+
+```  
+# Cell line are matched to the interested drug-target
+# The gz.cf is the node list
+# The fold-change is abs(2.25) to acquire greatly changed molecules
+# This is the part for distance heatmap
+```{r}
+
+# cell line = H3122, ExpSet = SEPTM, Drug = Crizotinib, rep = 3
+
+ss1 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C1.ratio", min_value = 2.25)
+paths_1 <- shortest.paths.to.target(ss1, target = "ALK")
+
+ss2 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C2.ratio", min_value = 2.25)
+paths_2 <- shortest.paths.to.target(ss2, target = "ALK")
+
+ss3 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.C3.ratio", min_value = 2.25)
+paths_3 <- shortest.paths.to.target(ss3, target = "ALK")
+
+
+# cell line = H3122, ExpSet = TenCell, Drug = Crizotinib, rep = 2
+
+ss4 <- select.sites.w.min.value(gz.cf, "H3122_Crizotinib.1Ratio", min_value = 2.25)
+paths_4 <- shortest.paths.to.target(ss4, target = "ALK")
+
+ss5 <- select.sites.w.min.value(gz.cf, "H3122CrizotinibRatio", min_value = 2.25)
+paths_5 <- shortest.paths.to.target(ss5, target = "ALK")
+
+
+# cell line = HCC78, ExpSet = TenCell, Drug = Crizotinib, rep = 2
+
+ss6 <- select.sites.w.min.value(gz.cf, "HCC78_Crizotinib.1Ratio", min_value = 2.25)
+paths_6 <- shortest.paths.to.target(ss6, target = "ROS1")
+
+ss7 <- select.sites.w.min.value(gz.cf, "HCC78_CrizotinibRatio", min_value = 2.25)
+paths_7 <- shortest.paths.to.target(ss7, target = "ROS1")
+
+
+# cell line = STE.1, ExpSet = TenCell, Drug = Crizotinib, rep = 1
+
+ss8 <- select.sites.w.min.value(gz.cf, "STE.1_CrizotinibRatio", min_value = 2.25)
+paths_8 <- shortest.paths.to.target(ss8, target = "ALK")
+
+
+# cell line = H2228, ExpSet = TenCell, Drug = Crizotinib, rep = 1
+
+ss9 <- select.sites.w.min.value(gz.cf, "H2228CrizotinibRatio", min_value = 2.25)
+paths_9 <- shortest.paths.to.target(ss9, target = "ALK")
+
+
+# cell line = PC9, ExpSet = SEPTM, Drug = Erlotinib, rep = 3
+
+ss10 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E1.ratio", min_value = 2.25)
+paths_10 <- shortest.paths.to.target(ss10, target = "EGFR")
+
+ss11 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+paths_11 <- shortest.paths.to.target(ss11, target = "EGFR")
+
+ss12 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.E3.ratio", min_value = 2.25)
+paths_12 <- shortest.paths.to.target(ss12, target = "EGFR")
+
+# cell line = PC9, ExpSet = TenCell, Drug = Erlotinib, rep = 2
+
+ss13 <- select.sites.w.min.value(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+paths_13 <- shortest.paths.to.target(ss13, target = "EGFR")
+
+ss14 <- select.sites.w.min.value(gz.cf, "PC9_ErlotinibRatio", min_value = 2.25)
+paths_14 <- shortest.paths.to.target(ss14, target = "EGFR")
+
+# cell line = HCC4006, ExpSet = TenCell, Drug = Erlotinib, rep = 1
+
+ss15 <- select.sites.w.min.value(gz.cf, "HCC4006_ErlotinibRatio", min_value = 2.25)
+paths_15 <- shortest.paths.to.target(ss15, target = "EGFR")
+
+# cell line = HCC827, ExpSet = TenCell, Drug = Erlotinib, rep = 1
+
+ss16 <- select.sites.w.min.value(gz.cf, "HCC827_ErlotinibRatio", min_value = 2.25)
+paths_16 <- shortest.paths.to.target(ss16, target = "EGFR")
+
+
+##### PR171
+# cell line = H3122, ExpSet = SEPTM, Drug = PR171， rep = 3
+
+ss17 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR1.ratio", min_value = 2.25)
+paths_17 <- shortest.paths.to.target(ss17, target = "")
+
+ss18 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR2.ratio", min_value = 2.25)
+paths_18 <- shortest.paths.to.target(ss18, target = "")
+
+ss19 <- select.sites.w.min.value(gz.cf, "H3122SEPTM.PR3.ratio", min_value = 2.25)
+paths_19 <- shortest.paths.to.target(ss19, target = "")
+
+# cell line = PC9, ExpSet = SEPTM, Drug = PR171， rep = 3
+
+ss20 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR1.ratio", min_value = 2.25)
+paths_20 <- shortest.paths.to.target(ss20, target = "")
+
+ss21 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR2.ratio", min_value = 2.25)
+paths_21 <- shortest.paths.to.target(ss21, target = "")
+
+ss22 <- select.sites.w.min.value(gz.cf, "PC9SEPTM.PR3.ratio", min_value = 2.25)
+paths_22 <- shortest.paths.to.target(ss22, target = "")
+
+
+# cell line = H2286, ExpSet = TenCell, Drug = Dasatinib， rep = 1
+
+ss23 <- select.sites.w.min.value(gz.cf, "H2286_DasatinibRatio", min_value = 2.25)
+paths_23 <- shortest.paths.to.target(ss23, target = "")
+
+# cell line = H366, ExpSet = TenCell, Drug = Dasatinib， rep = 1
+
+ss24 <- select.sites.w.min.value(gz.cf, "H366_DasatinibRatio", min_value = 2.25)
+paths_24 <- shortest.paths.to.target(ss24, target = "")
+
+
+# cell line = H1781, ExpSet = TenCell, Drug = Afatinib， rep = 1
+
+ss25 <- select.sites.w.min.value(gz.cf, "H1781_AfatinibRatio", min_value = 2.25)
+paths_25 <- shortest.paths.to.target(ss25, target = "ERBB2")
+
+# The table for the cell line, Experiment set, Drug etc.
+gz_experiments_df <- read.csv("gz_experiments.csv")
+```
+# The union and intersection or single path network
+
+# Paired union and intersection and generate the ratio. 
+
+```{r}
+# Paired Union
+sample_order_l <- c(1, 2, 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15, 16, 25)
+
+# Uni_i_j <- my.union(paths_i,paths_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Uni",i,j,sep = "_"), my.union(get(paste("paths_",i,sep = "")),get(paste("paths_",j,sep = ""))))
+   }
+}
+
+# Paired Intersection
+
+# Inters_i_j <- my.intersect(paths_i,paths_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Inters",i,j,sep = "_"), my.intersect(get(paste("paths_",i,sep = "")),get(paste("paths_",j,sep = ""))))
+   }
+}
+
+# The ratio = nrow(Inters_i_j)/nrow(Uni_i_j)
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign(paste("Ratio",i,j,sep = "_"), nrow(get(paste("Inters",i,j,sep = "_")))/nrow(get(paste("Uni",i,j,sep = "_"))))
+   }
+}
+
+
+# 15*15 ratio dataframe 
+ratio_df <- list()
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign("ratio_df", append(ratio_df,get(paste("Ratio",i,j,sep = "_"))))
+  }
+}
+
+ratio_df <- as.numeric(ratio_df)
+ratio_mat <- matrix(ratio_df,nrow = 15,ncol = 15)
+ratio_dataframe <- as.data.frame(ratio_mat)
+
+
+sample_15 <- c("ss1",
+"ss2",
+"ss3",
+"ss4",
+"ss5",
+"ss8",
+"ss9",
+"ss10",
+"ss11",
+"ss12",
+"ss13",
+"ss14",
+"ss15",
+"ss16",
+"ss25")
+
+
+gz_exp_15_df <- gz_experiments_df[sample_order_l,]
+gz_exp_15_df <- gz_exp_15_df[,2:5]
+target_l <- c("ALK","ALK","ALK","ALK","ALK","ALK","ALK",
+              "EGFR","EGFR","EGFR","EGFR","EGFR","EGFR","EGFR"
+              ,"ERBB2")
+gz_exp_15_df$target <- target_l
+gz_exp_15_df$merge <- paste(gz_exp_15_df$CellLine,gz_exp_15_df$ExpSet,gz_exp_15_df$Drug,gz_exp_15_df$target,gz_exp_15_df$Rep,sep = "_")
+
+colnames(ratio_dataframe) <- gz_exp_15_df$merge
+rownames(ratio_dataframe) <- gz_exp_15_df$merge
+
+# The following code brings in the extra annotative information about the drug and cell line and target.
+
+
+Cell <- factor(gz_exp_15_df$CellLine,levels = unique(gz_exp_15_df$CellLine))
+
+
+Drug <- factor(gz_exp_15_df$Drug,levels = unique(gz_exp_15_df$Drug))
+
+
+Target <- factor(gz_exp_15_df$target,levels = unique(gz_exp_15_df$target))
+
+ann_colors = list(Cell = c(H3122="#99CC66",STE.1="#CCCC99",H2228="#FFFF99",PC9="#87CEFA",HCC4006="#7FFFD4",HCC827="#FF6666",H1781="#FFD700"),Drug = c(Crizotinib="#99CCCC",Erlotinib="#FF9999",Afatinib="#FFCC99"),Target = c(ALK="#FFFFCC",EGFR="#CCCCFF",ERBB2="#CCFFFF"))
+annotation<-data.frame(Cell,Drug,Target)
+rownames(annotation) <- rownames(ratio_dataframe)
+
+
+pheatmap::pheatmap(ratio_dataframe,annotation = annotation,annotation_colors = ann_colors,angle_col ="315")
+
+
+
+```
+# As the rown() acturally counts each correlation (source to target) realtionship, there must be many duplicated counting of nodes.
+# The following heatmap is based on the nodes/gene dependet counting and hopefully this would generate a approximal heatmap to what we already have.
+```{r}
+#This counts the node number of in the network.
+node_number_counting <- function(node_list){
+  len <- length(union(unique(node_list$target),unique(node_list$source)))
+  return(len)
+}
+
+# Node count list for the unions NLU, Node count list for intersection NLI
+NLU <- list()
+NLI <- list()
+for (i in sample_order_l){
+  for (j in sample_order_l){
+    assign("NLU", append(NLU,node_number_counting(get(paste("Uni",i,j,sep = "_")))))
+    assign("NLI", append(NLI,node_number_counting(get(paste("Inters",i,j,sep = "_")))))
+  }
+}
+```
+
+
+```{r}
+
+NLU <- as.numeric(NLU)
+NLI <- as.numeric(NLI)
+
+node_ratio_list <- list()
+
+for (i in 1:225){
+  assign("node_ratio_list", append(node_ratio_list, NLI[i]/NLU[i]))
+}
+
+node_ratio_list <- as.numeric(node_ratio_list)
+node_ratio_mat <- matrix(node_ratio_list,nrow = 15,ncol = 15)
+node_ratio_df <- data.frame(node_ratio_mat)
+
+colnames(node_ratio_df) <- gz_exp_15_df$merge
+rownames(node_ratio_df) <- gz_exp_15_df$merge
+pheatmap::pheatmap(node_ratio_df, annotation= annotation)
 
 ```
 
-# This script selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
+# The upregulated sites in the 15 sample
+```{r}
+# modifed version of select sites function that select nodes are upregulated only
+select.sites.up.regulated <- function(df, exp, min_value = 2.25) {
+  data <- df[, exp]
+  df <- df[ which(data > log2(min_value)), ]
+  return(df)
+}
 
-```{r shortest paths to target for PC9/erlotinib}
+sample_names <- c("H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio","H3122_Crizotinib.1Ratio","H3122CrizotinibRatio","HCC78_Crizotinib.1Ratio","HCC78_CrizotinibRatio","STE.1_CrizotinibRatio","H2228CrizotinibRatio","PC9SEPTM.E1.ratio","PC9SEPTM.E2.ratio","PC9SEPTM.E3.ratio","PC9_Erlotinib.1Ratio","PC9_ErlotinibRatio","HCC4006_ErlotinibRatio","HCC827_ErlotinibRatio","H3122SEPTM.PR1.ratio","H3122SEPTM.PR2.ratio","H3122SEPTM.PR3.ratio","PC9SEPTM.PR1.ratio","PC9SEPTM.PR2.ratio","PC9SEPTM.PR3.ratio","H2286_DasatinibRatio","H366_DasatinibRatio","H1781_AfatinibRatio")
+
+# up_ss_i <- select.sites.up.regulated(gz.cf,sample_names[i],min_value = 2.25)
+for (i in 1:25){
+  assign(paste("up_ss",i,sep = "_"),select.sites.up.regulated(gz.cf,sample_names[i],min_value = 2.25))
+}
+
+# shortest path of up-regulated sites
+
+# up_paths_i <- shortest.paths.to.target(up_ss_i,target= x)
+for (i in 1:15){
+  assign(paste("up_paths_",sample_order_l[i],sep = ""),shortest.paths.to.target(get(paste("up_ss_",sample_order_l[i],sep = "")), target = target_l[i]))
+}
+
+
+
+#This is a general table of nodes and edge number in the shortest path network
+edge_l <- list()
+for (i in sample_order_l){
+  assign("edge_l",append(edge_l,nrow(get(paste("up_paths_",i,sep = "")))))
+}
+edge_l <- as.numeric(edge_l)
+
+
+node_l <- list()
+for (i in sample_order_l){
+  assign("node_l",append(node_l,node_number_counting(get(paste(paste("up_paths_",i,sep = ""))))))
+}
+node_l <- as.numeric(node_l)
+
+
+total_edge_l <- list()
+total_node_l <- list()
+
+for (i in sample_order_l){
+  assign("total_edge_l",append(total_edge_l,nrow(get(paste("paths",i,sep = "_")))))
+}
+total_edge_l <- as.numeric(total_edge_l)
+
+for (i in sample_order_l){
+  assign("total_node_l",append(total_node_l,node_number_counting(get(paste("paths",i,sep = "_")))))
+}
+total_node_l <- as.numeric(total_node_l)
+
+
+sample_counting <- data.frame(edge_l,node_l,sample_order_l,total_edge_l,total_node_l)
+rownames(sample_counting) <- gz_exp_15_df$merge
+sample_counting
+
+#H3122_ALK_SEPTM for greatly changed gene
+# H3122_ALK_SEPTM_all <- my.intersect(paths_1,paths_2,paths_3)
+# graph.cfn.cccn (H3122_ALK_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+# graph.cfn.cccn (H3122_ALK_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# all.ratio.styles()
+
+# verification 1, for loop generate up_ss_i
+# up_ss11 <- select.sites.up.regulated(gz.cf, "PC9SEPTM.E2.ratio", min_value = 2.25)
+# up_path11 <- shortest.paths.to.target(up_ss11, target = "EGFR")
+# up_paths_11 == up_path11
+
+# verification 2
+# up_ss4 <- select.sites.up.regulated(gz.cf, "H3122_Crizotinib.1Ratio", min_value = 2.25)
+# up_path4 <- shortest.paths.to.target(up_ss4, target = "ALK")
+# up_path4 == up_paths_4
+
+# verification 3
+# up_ss13 <- select.sites.up.regulated(gz.cf, "PC9_Erlotinib.1Ratio", min_value = 2.25)
+# up_path13 <- shortest.paths.to.target(up_ss13, target = "EGFR")
+# up_path13 == up_paths_13
+
+
+
+
+
+
+
+
+```
+
+```{r}
+# cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(cccn4)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+
+
+#ALK network for upregulated gene
+# H3122_ALK_SEPTM 
+H3122_ALK_SEPTM <- my.intersect(up_paths_1,up_paths_2,up_paths_3)
+
+# graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# all.ratio.styles()
+# graph.cfn.cccn (H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# all.ratio.styles()
+
+#exclude MYH9
+ex_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = "MYH9")
+ex_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = "MYH9")
+ex_H3122_ALK_SEPTM <- my.intersect(ex_up_paths_1,ex_up_paths_2,ex_up_paths_3)
+
+
+
+# ex_MYH9_H3122_ALK_SEPTM_CFN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CFN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# 
+# ex_MYH9_H3122_ALK_SEPTM_CCCN<- graph.cfn.cccn (ex_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# FixEdgeDprops.RCy32()
+
+
+#exclude MYH9 and MET
+ex_MYH9_MET_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = "ALK",excluded_gene = c("MYH9","MET"))
+ex_MYH9_MET_H3122_ALK_SEPTM <- my.intersect(ex_MYH9_MET_up_paths_1,ex_MYH9_MET_up_paths_2,ex_MYH9_MET_up_paths_3)
+# ex_MYH9_MET_H3122_ALK_SEPTM_CFN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_network)
+# FixEdgeDprops.RCy32()
+# 
+# ex_MYH9_MET_H3122_ALK_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_MET_H3122_ALK_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_MET_H3122_ALK_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# FixEdgeDprops.RCy32()
+
+
+# H3122_ALK_MET_SEPTM 
+ALK_MET_ex_MYH9_up_paths_1 <- shortest.paths.to.target(up_ss_1,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_2 <- shortest.paths.to.target(up_ss_2,target = c("ALK","MET"),excluded_gene = "MYH9")
+ALK_MET_ex_MYH9_up_paths_3 <- shortest.paths.to.target(up_ss_3,target = c("ALK","MET"),excluded_gene = "MYH9")
+
+ex_MYH9_H3122_ALK_MET_SEPTM <- my.intersect(ALK_MET_ex_MYH9_up_paths_1,ALK_MET_ex_MYH9_up_paths_2,ALK_MET_ex_MYH9_up_paths_3)
+# ex_MYH9_H3122_ALK_MET_SEPTM_CFN <- graph.cfn.cccn (ALK_MET_ex_MYH9_up_paths_1, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ALK_MET_ex_MYH9_up_paths_1)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+# 
+# ex_MYH9_H3122_ALK_MET_SEPTM_CCCN <- graph.cfn.cccn (ex_MYH9_H3122_ALK_MET_SEPTM, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# setCorrEdgeAppearance(ex_MYH9_H3122_ALK_MET_SEPTM_CCCN)
+# FixEdgeDprops.RCy32()
+# all.ratio.styles()
+
+
+
+
+
+gz.cf[which(gz.cf$Gene.Name == "ALK"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+
+
+```
+#2.25 fold change all , this is the case to study H3122 Criz and ALK/MET 
+```{r}
+#gene appearance count, counts the occurrence of each gene in a shortest path network in an ordered table
+
+genes_counts <- function(...){
+  df <- rbind(...)
+  sou <- as.vector(df$source)
+  tar <- as.vector(df$target)
+  l <- c(sou,tar)
+  tab <- table(l)
+  tab <- as.data.frame(tab)
+  tab <- tab[order(tab[,2],decreasing = TRUE),]
+  return(tab)
+}
+# as outersect
+my.outersect <- function(...){
+  dfs <- rbind(...)
+  dfs$merge <- paste(dfs$source,dfs$target,sep = "_")
+  dup <- dfs[duplicated(dfs$merge),]
+  out <- dfs[which(!(dfs$merge %in% dup$merge)),]
+  out <- out[,1:4]
+  return(out)
+}
+
+# H3122_ALK_MET_SEPTM 
+# ALK MET
+ALK_MET_ex_MYH9_paths_1 <- shortest.paths.to.target(ss1,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN"))
+ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN")) 
+ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3,target = c("ALK","MET"),excluded_gene = c("MYH9","GSN"))
+ALK_MET_ex_MYH9_paths_4 <- shortest.paths.to.target(ss4,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2","ZDHHC5"))
+ALK_MET_ex_MYH9_paths_5 <- shortest.paths.to.target(ss5,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2"))
+
+
+
+
+ex_H3122_ALK_MET_SEPTM_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3)
+# ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_SEPTM_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_H3122_ALK_MET_SEPTM_all_CFN)
+# FixEdgeDprops.RCy32()
+# setVisualStyle("H3122SEPTM.C2.ratio Style")
+
+ex_H3122_ALK_MET_all <- my.intersect(ALK_MET_ex_MYH9_paths_1,ALK_MET_ex_MYH9_paths_2,ALK_MET_ex_MYH9_paths_3,ALK_MET_ex_MYH9_paths_4,ALK_MET_ex_MYH9_paths_5)
+
+# ex_H3122_ALK_MET_all_CFN <- graph.cfn.cccn (ex_H3122_ALK_MET_all, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# setCorrEdgeAppearance(ex_H3122_ALK_MET_all_CFN)
+# FixEdgeDprops.RCy32()
+
+
+```
+# eliminate rowsum()==0 in gz.cf and create a new variable called "gz.cf_trim1"
+# distinguish the oncogenic or tumor-supress role of the selected gene or both (some genes may have dual fucntion).
+# The oncogene comes from the source Network of Cancer Genes database(http://ncg.kcl.ac.uk/download.php).List of 2372 cancer genes and supporting literature
+# The tumor suppressor genes comes from the Tumor Suppressor Gene database (https://bioinfo.uth.edu/TSGene/download.cgi?csrt=7572166880112831892). All the 1217 human tumor suppressor genes with basic annotations
+```{r}
+# the function that collects the nodes in shortest pathway edgefile
+# extract.gene.names() functions finds out the gene in edgefile
+
+
+onco_df <- read.csv(file = "NCG6_cancergenes.tsv", sep = '\t') # read.table does not function well
+TSG_df <- read.csv(file = "Human_TSGs.txt",sep = '\t')
+
+onco_c <- unique(c(onco_df$symbol))
+TSG_c <- unique(c(TSG_df$GeneSymbol))
+dual_c <- intersect(onco_c,TSG_c)
+
+# cancer colum: 1= onco, 2= TSG, 3= 1 and 2, 0 = nothing special,
+gz.cf$cancer <- 0
+gz.cf[which(gz.cf$Gene.Name %in% onco_c),]$cancer <- 1
+gz.cf[which(gz.cf$Gene.Name %in% TSG_c),]$cancer <- 2
+gz.cf[which(gz.cf$Gene.Name %in% dual_c),]$cancer <- 3
+
+
+# I specifically would like to look into the those dual genes and see the fold change in these genes
+dual_genes_gz.cf <- gz.cf[gz.cf$cancer == 3, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+dual_genes_gz.cf <- dual_genes_gz.cf[rowSums(dual_genes_gz.cf[,3:5])!=0,]
+length(unique(dual_genes_gz.cf$Gene.Name))
+dual_genes_gz.cf
+
+onco_genes_gz.cf <- gz.cf[gz.cf$cancer == 1, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+onco_genes_gz.cf <- onco_genes_gz.cf[rowSums(onco_genes_gz.cf[,3:5])!=0,]
+length(unique(onco_genes_gz.cf$Gene.Name))
+
+
+
+TS_genes_gz.cf <- gz.cf[gz.cf$cancer == 2, c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+TS_genes_gz.cf <- TS_genes_gz.cf[rowSums(TS_genes_gz.cf[,3:5])!=0,]
+length(unique(TS_genes_gz.cf$Gene.Name))
+
+
+
+```
+
+
+# graphing strategy https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6880260/.
+
+```{r}
+# function to filter networks to include only selected nodes and those with edges to them
+filter.edges.0 <- function(nodenames, edge.file) {
+  nodenames <-as.character(nodenames)
+  a = as.character(edge.file[,1])
+  b = as.character(edge.file[,2])
+  edgefile.nodes <- unique(c(a,b))
+  # show pruned nodes (turned off)
+  # flub <- setdiff(edgefile.nodes, nodenames) 
+  # if (length(flub) >= 1) { 
+  # cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }	
+  sel.edges <- edge.file[edge.file[,1] %in% nodenames & edge.file[,2] %in% nodenames,]
+  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
+}
+# 1) upregulated oncogene and downregulated TSG neighbour/ downregulated oncogene and upregulated TSG neighbour pair
+
+
+```
+
+```{r}
+# Brute force
+# ALK_MET_ex_MYH9_paths_2 <- shortest.paths.to.target(ss2[285:288,],target = c("ALK","MET"),excluded_gene = "MYH9")
+# ALK_MET_ex_MYH9_paths_3 <- shortest.paths.to.target(ss3[345:348,],target = c("ALK","MET"),excluded_gene = "MYH9")
+# ss2[285:288,]$Gene.Name
+# ss3[345:348,]$Gene.Name
+# # Two genes "GSK3B" "GSN" are found to be the disrupting genes
+# gz.cf[which(gz.cf$Gene.Name == "GSK3B"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+# gz.cf[which(gz.cf$Gene.Name == "GSN"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio")]
+# 
+# "GSK3B" %in% paths_2$source
+# "GSK3B" %in% paths_2$target
+# 
+# "GSN" %in% paths_2$source
+# "GSN" %in% paths_2$target
+# gz.cf[which(gz.cf$Gene.Name == "EPB41L2"),c("id","Gene.Name","H3122SEPTM.C1.ratio","H3122SEPTM.C2.ratio","H3122SEPTM.C3.ratio","H3122_Crizotinib.1Ratio","H3122CrizotinibRatio")]
+
+ALK_MET_ex_MYH9_paths_4 <- shortest.paths.to.target(ss4,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2","ZDHHC5"))
+ALK_MET_ex_MYH9_paths_5 <- shortest.paths.to.target(ss5,target = c("ALK","MET"),excluded_gene = c("MYH9","EPB41L2"))
+
+```
+
+
+```{r}
+# 1) upregulated oncogene and downregulated TSG neighbour/ downregulated oncogene and upregulated TSG neighbour pair
+# gzalltgene.physical.cfn
+#pick out the rows that at least one of the two genes are oncogenes. And same for TSG.
+gzalltgene.physical.cfn.onco <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% onco_c)|(gzalltgene.physical.cfn$Gene.2 %in% onco_c)),]
+gzalltgene.physical.cfn.TSG <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% TSG_c)|(gzalltgene.physical.cfn$Gene.2 %in% TSG_c)),]
+
+gzalltgene.physical.cfn.onco_TSG <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% onco_c)&(gzalltgene.physical.cfn$Gene.2 %in% TSG_c)),]
+gzalltgene.physical.cfn.TSG_onco <- gzalltgene.physical.cfn[which((gzalltgene.physical.cfn$Gene.1 %in% TSG_c)&(gzalltgene.physical.cfn$Gene.2 %in% onco_c)),]
+onco_TSG.gzalltgene.physical.cfn <- rbind(gzalltgene.physical.cfn.onco_TSG,gzalltgene.physical.cfn.TSG_onco)
+colnames(onco_TSG.gzalltgene.physical.cfn)<- colnames(ex_H3122_ALK_MET_SEPTM_all)
+
+cancer_ex_H3122_ALK_MET_SEPTM_all_CFN <- graph.cfn.cccn (onco_TSG.gzalltgene.physical.cfn, only.cfn=FALSE,pruned = FALSE)
+setCorrEdgeAppearance(cancer_ex_H3122_ALK_MET_SEPTM_all_CFN)
+FixEdgeDprops.RCy32()
+all.ratio.styles()
+# 
+# onco_TSG_genes <- unique(c(onco_TSG.gzalltgene.physical.cfn$Gene.1,onco_TSG.gzalltgene.physical.cfn$Gene.2))
+# onco_TSG_shortest.path <-  composite.shortest.paths(onco_TSG_genes,onco_TSG_genes,gzalltgene.physical.cfn)
+
+```
+
+
+# in order to have a easier interpretation of the gz.cf file, I need to create a gz.cf_mody1, in the gz.cf_mody1, only the summary gene name (no PTM sites) would be included, and the cell line correlation would be the highest number among the column (same Gene.Name). 
+# BiocManager::install(version = "3.11")gz.cf_mody1
+```{r}
+# install.packages("remotes")
+# remotes::install_github("snandi/RFunctionsSN")
+#library(RFunctionsSN)
+library(gensvm)
+
+gz.cf_mody1 <- gz.cf[1,]
+
+unique_gene_gz.cf_Gene.Name <- c(unique(gz.cf$Gene.Name))
+for (gene in unique_gene_gz.cf_Gene.Name){
+  same_gene_sub_gz.cf<- gz.cf[which(gz.cf$Gene.Name == gene),]
+  cell_correlation <- gensvm.maxabs.scale(same_gene_sub_gz.cf[,17:41])
+  gz.cf_mod_row <- same_gene_sub_gz.cf[1,]
+  gz.cf_mod_row[,17:41] <- cell_correlation
+  gz.cf_mody1 <- rbind(gz.cf_mody1,gz.cf_mod_row)
+}
+gz.cf_mody1 <- gz.cf_mody1[-1,]
+
+
+```
+
+# look into the gene correlation table gz.cf, find the correlation of these two genes in H3122SEPTM,if the multiplication of two numbers are positive, then it would be interesting, which is paired oncogene-TSG are both upregulated or downregulated
+```{r}
+#nrow(onco_TSG.gzalltgene.physical.cfn) c(1:369,372:460,463:853,860:922)
+interesting_rows <- c()
+for(i in 1:922){
+  if((gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.1),]$H3122SEPTM.C2.ratio)*
+      (gz.cf_mody1[which(gz.cf_mody1$Gene.Name == onco_TSG.gzalltgene.physical.cfn[i,]$Gene.2),]$H3122SEPTM.C2.ratio)<0){
+    print(i)
+    interesting_rows <- c(interesting_rows,i)
+  }
+}
+# it is quite weired that some of the genes in gzalltgene.physical.cfn cannot be found in gz.cf
+nrow(gz.cf_mody1) #2689
+nrow(onco_TSG.gzalltgene.physical.cfn)#922
+
+f1<- onco_TSG.gzalltgene.physical.cfn[interesting_rows,]
+colnames(f1) <- colnames(ex_H3122_ALK_MET_SEPTM_all)
+graph.f1 <- graph.cfn.cccn(f1, ld=FALSE, gz=TRUE, only.cfn=TRUE,pruned = FALSE)
+```
+
+Genral heatmap of genes vs cell line
+```{r}
+library(reshape2)
+
+experiments_c <- c(colnames(gz.cf)[17:41])
+
+#create DF1:DF25
+
+for (i in 1:25){
+  assign(paste("DF",i,sep = ""),data.frame("Genes" = gz.cf$Gene.Name,
+                                            "Cells" = replicate(9701,experiments_c[i]),
+                                            "Correlations" = gz.cf[17:41][i]))
+}
+
+# c("Genes","Cells","Correlations")
+gene_cell_ls <- list(DF1,DF2,DF3,DF4,DF5,DF6,DF7,DF8,DF9,DF10,
+                     DF11,DF12,DF13,DF14,DF15,DF16,DF17,DF18,DF19,DF20,
+                     DF21,DF22,DF23,DF24,DF25)
+
+for (i in gene_cell_ls){
+  print(colnames(i))
+  colnames(i) <- c("Genes","Cells","Correlations")
+  print(colnames(i))
+}
+
+
+# p <- ggplot(gene_cell_df, aes(x=Genes,y=Cells))
+# p
+
+```
+
+
+
+
+
+
+
+
+
+
+
+# This chunk selects sites for a particular cell line/drug combo that meet criteria for minimum number of observations, minimum absolute value of mean for the ratio, and maximun coefficient of variation for the ratio. Then it computes the shortest paths in the CFN from the selected sites to a specified target (e.g, the drug target) and draws the network. PC9/erlotinib is used as an example.  
+
+```{r shortest paths to target for PC9/erlotinib-mean/CV method}
 #There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Select sites with CV<=1.
 
 all_cols <- colnames(gz.cf)
@@ -79,7 +834,7 @@ desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "
 
 #Select the rows that have at least 2 (non-NA) observations
 gz_pc9_erl.cf <- gz.cf[desired_cols]
-gz_pc9_erl_keep.cf <- select.sites.w.enough.obs(gz_pc9_erl_keep.cf, num_rep = 5, min_obs = 2)
+gz_pc9_erl_keep.cf <- select.sites.w.enough.obs(gz_pc9_erl.cf, num_rep = 5, min_obs = 2)
 nrow(gz_pc9_erl_keep.cf)
 
 #Calculate the mean and keep only those rows with abs(mean) > log2(2.25)
@@ -98,82 +853,33 @@ all.ratio.styles()
 
 
 ```  
+# use the identical method to measure the H3122 cell lines sets
+```{r}
+#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 H3122/Crizotinib data columns
+desired_cols2 <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio", "H3122_Crizotinib.1Ratio", "H3122CrizotinibRatio")
 
+#Select the rows that have at least 2 (non-NA) observations
+gz_H3_CRI.cf <- gz.cf[desired_cols2]
+gz_H3_CRI_keep.cf <- select.sites.w.enough.obs(gz_H3_CRI.cf, num_rep = 5, min_obs = 2)
+nrow(gz_H3_CRI_keep.cf)
 
-```{r select PC9/erlotinib sites using mean and stdev}
-#There are 5 PC9/erlotinib experiments (3 from SEPTM and 2 from TenCellLines). Select sites that (i) have observed values in at least two experiments; (ii) have mean change of at least 2.25-fold; (iii) have a "small" standard deviation. Calculate the coefficient of variation for log-transformed data (https://en.wikipedia.org/wiki/Coefficient_of_variation). Look at the distribution and decide what is "small".
-
-#Make a dataframe with just the following columns from gz.cf: id, Gene.Name and the 5 PC9/Erlotinib data columns
-desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
-gz_pc9_erl.cf <- gz.cf[desired_cols]
-
-#Select sites that have at least two observations. To do this, replace 0's with NA and find rows where sum of NAs is less than 4.
-gz_pc9_erl.cf[gz_pc9_erl.cf == 0] <- NA
-gz_pc9_erl.cf$sumNA <- apply(is.na(gz_pc9_erl.cf), 1, sum)
-gz_pc9_erl_keep.cf <- gz_pc9_erl.cf[ which(gz_pc9_erl.cf$sumNA < 4), ]
-
-#Calculate the mean and keep only those rows with abs(mean) > log2(2.25); calculate the coefficient of variation for each row and the percentile of the coefficient of variation
-gz_pc9_erl_keep.cf$mean <- rowMeans(gz_pc9_erl_keep.cf[3:7], na.rm = TRUE)
-gz_pc9_erl_keep2.cf <- gz_pc9_erl_keep.cf[ which(abs(gz_pc9_erl_keep.cf$mean) > log2(2.25)), ]
-gz_pc9_erl_keep2.cf$sd_base2 <- apply(gz_pc9_erl_keep2.cf[3:7],1, sd, na.rm = TRUE)
-gz_pc9_erl_keep2.cf$sd_ln <- gz_pc9_erl_keep2.cf$sd_base2 * log(2)
-gz_pc9_erl_keep2.cf$cv <- sqrt(exp(gz_pc9_erl_keep2.cf$sd_ln^2) -1)
-gz_pc9_erl_keep2.cf$cv_percentile <- rank(gz_pc9_erl_keep2.cf$cv)/length(gz_pc9_erl_keep2.cf$cv)
-
-#Trying to decide how to filter for those rows with "reasonable" level of inter-replicate variation. 
-#Calculate CV for the whole dataset with >2 observations (regardless of the mean)
-
-gz_pc9_erl_keep.cf$sd_base2 <- apply(gz_pc9_erl_keep.cf[3:7],1, sd, na.rm = TRUE)
-gz_pc9_erl_keep.cf$sd_ln <- gz_pc9_erl_keep.cf$sd_base2 * log(2)
-gz_pc9_erl_keep.cf$cv <- sqrt(exp(gz_pc9_erl_keep.cf$sd_ln^2) -1)
-gz_pc9_erl_keep.cf$cv_percentile <- rank(gz_pc9_erl_keep.cf$cv)/length(gz_pc9_erl_keep.cf$cv)
-
-#Is the coefficient of variation a good statistic to use? If it is, there should not be a significant correlation between the mean and the CV
-cor_all <- cor(abs(gz_pc9_erl_keep.cf$mean), gz_pc9_erl_keep.cf$cv)
-cor_high_mean <- cor(abs(gz_pc9_erl_keep2.cf$mean), gz_pc9_erl_keep2.cf$cv)
-
-#How do the quantiles of the whole dataset and the >2.25-fold set compare?
-quantile(gz_pc9_erl_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-quantile(gz_pc9_erl_keep2.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-
-#What if we compare to a different dataset (H3122 Criz)
-desired_cols2 <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio")
-desired_cols <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
-gz_h3122_criz.cf <- gz.cf[desired_cols]
-
-gz_h3122_criz.cf[gz_h3122_criz.cf == 0] <- NA
-gz_h3122_criz.cf$sumNA <- apply(is.na(gz_h3122_criz.cf), 1, sum)
-gz_h3122_criz_keep.cf <- gz_h3122_criz.cf[ which(gz_h3122_criz.cf$sumNA < 2), ]
-
-gz_h3122_criz_keep.cf$sd_base2 <- apply(gz_h3122_criz_keep.cf[3:5],1, sd, na.rm = TRUE)
-gz_h3122_criz_keep.cf$sd_ln <- gz_h3122_criz_keep.cf$sd_base2 * log(2)
-gz_h3122_criz_keep.cf$cv <- sqrt(exp(gz_h3122_criz_keep.cf$sd_ln^2) -1)
-gz_h3122_criz_keep.cf$cv_percentile <- rank(gz_h3122_criz_keep.cf$cv)/length(gz_h3122_criz_keep.cf$cv)
-quantile(gz_h3122_criz_keep.cf$cv, c(0.25,0.5,0.75,0.90,0.95, 0.99))
-
-#Given that different datasets have different distributions of CV (indicating that noise levels vary), it would be better to use a numerical cutoff for CV--try 2.
-gz_pc9_erl_keep2_CV2.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 2)
+#Calculate the mean and keep only those rows with abs(mean) > log2(2.25)
+gz_pc9_erl_keep2.cf <- select.sites.w.min.mean(gz_pc9_erl_keep.cf, first_rep = 3, num_rep = 5, min_mean = 2.25)
 nrow(gz_pc9_erl_keep2.cf)
-nrow(gz_pc9_erl_keep2_CV2.cf)
 
-#Try CV cutoff of 1
-gz_pc9_erl_keep2_CV1.cf <- subset(gz_pc9_erl_keep2.cf, cv <= 1)
-nrow(gz_pc9_erl_keep2.cf)
-nrow(gz_pc9_erl_keep2_CV1.cf)
+#Calculate the log-transformed coefficient of variation for each row and keep only rows with CV <=1
+gz_H3_CRI_keep2.cf <- select.sites.w.max.cv(gz_H3_CRI_keep2.cf, first_rep = 3, num_rep =5, max_cv = 1)
+nrow(gz_H3_CRI_keep2.cf)
 
 #Now compute the shortest paths network for this set of sites and make Cytoscape graph.
-gz_pc9_erl_keep2_CV1_changed_genes <- unique(gz_pc9_erl_keep2_CV1.cf$Gene.Name)
-gz_pc9_erl_keep2_CV1_changed_genes2 <- gz_pc9_erl_keep2_CV1_changed_genes[gz_pc9_erl_keep2_CV1_changed_genes %in% gzallt.gene.key$Gene.Name]
-gz_pc9_erl_keep2_CV1_paths <- composite.shortest.paths(genes1=c("EGFR"), gz_pc9_erl_keep2_CV1_changed_genes2, exclude="", network=gzalltgene.physical.cfn.merged)
-nrow(gz_pc9_erl_keep2_CV1_paths)
+gz_H3_CRI_keep2_paths <- shortest.paths.to.target(gz_H3_CRI_keep2.cf, target = "EGFR")
+nrow(gz_H3_CRI_keep2_paths)
+changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+all.ratio.styles()
 
-
-changed_genes_network <- graph.cfn.cccn (gz_pc9_erl_keep2_CV1_paths, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-#all.ratio.styles()
-
-
-```  
 ```
+
+
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 
