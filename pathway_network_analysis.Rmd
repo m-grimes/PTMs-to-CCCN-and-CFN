@@ -120,7 +120,7 @@ rows.changed.genes <- sapply(1:length(pathway.crosstalk.egfr.changed.genes),func
 
 #[1] 77  8 13 10 10 29 35 12 14 35 16 35 13 10  8  3 15 20 16 15 19  9  6  5  2  0  7  2 14
 
-#Now apply to all 29 pathway pairs in pathway.crosstalk.egfr. This selects the cross pathway interactions where BOTH of the interacting genes are at least 2.25-fold up or 2.25-fold down in at least two experiments
+#For all 29 pathway pairs in pathway.crosstalk.egfr, this selects the cross pathway interactions where BOTH of the interacting genes are at least 2.25-fold up or 2.25-fold down in at least two experiments
 pathway.crosstalk.egfr.changed.genes.both <- lapply(1:length(pathway.crosstalk.egfr),function(x) {pathway.crosstalk.egfr[[x]][ which((pathway.crosstalk.egfr[[x]]$source %in% gz.cf.erl.keep.genes) & (pathway.crosstalk.egfr[[x]]$target %in% gz.cf.erl.keep.genes)),]})
 
 #Name the sets of interaction using the pair of pathways they come from
