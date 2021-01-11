@@ -253,4 +253,40 @@ sum(erl.changed.random.paths2 > 48) #87
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+#Comparison of EGFR Cross Pathway Interactions
+From browsing through the networks, it is apparent that many of the cross-pathway interactions networks for different pairs of pathways have genes and edges in common. How many unique genes are in the interaction networks? In how many networks does each gene appear? How many unique edges are there? In how many networks does each edge appear?
+
+```{r EGFR pathway network stats}
+#How many total edges are there in the networks where at least one interactor has an erl changed site?
+sum(rows.changed.genes) #458 Total number of edges in all networks including duplicates
+
+#Combine the edges from all networks into a single dataframe and tally the number of times each source/target pair appears
+all.rows <- bind_rows(pathway.crosstalk.egfr.changed.genes, .id = "column_label")
+edge.tally <- plyr::count(all.rows, var = c("source", "target")) #235 rows
+#Problem: this tallies "source = a, target = b" separately from "source = b, target = a"
+#Instead try this: take just the source and target columns from all rows, sort each row alphabetically, then do the plyr::count step.
+all.rows.sorted <- all.rows[c("source", "target")]
+all.rows.sorted <- as.data.frame(t(apply(all.rows.sorted,1,function(x) sort(x))))
+colnames(all.rows.sorted) <- c("gene1", "gene2")
+edge.tally.sorted <- plyr::count(all.rows.sorted, var = c("gene1", "gene2")) #232 rows (232 unique edges)
+
+#Sort edge tally dataframe in descending order by frequency
+edge.tally.sorted <- edge.tally.sorted[order(edge.tally.sorted$freq, decreasing = TRUE),]
+
+#Same thing for the networks where both interactors have an erl changed site
+#How many total edges are there in the networks where both interactors have an erl changed site?
+sum(rows.changed.genes.both) #98
+
+#Combine the edges from all networks into a single dataframe and tally the number of times each source/target pair appears
+all.rows.both <- bind_rows(pathway.crosstalk.egfr.changed.genes.both, .id = "column_label")
+all.rows.both.sorted <- all.rows.both[c("source", "target")]
+all.rows.both.sorted <- as.data.frame(t(apply(all.rows.both.sorted,1,function(x) sort(x))))
+colnames(all.rows.both.sorted) <- c("gene1", "gene2")
+edge.tally.both.sorted <- plyr::count(all.rows.both.sorted, var = c("gene1", "gene2")) #39 rows (39 unique edges)
+
+#Sort edge tally dataframe in descending order by frequency
+edge.tally.both.sorted <- edge.tally.both.sorted[order(edge.tally.both.sorted$freq, decreasing = TRUE),]
+
+
+```
+

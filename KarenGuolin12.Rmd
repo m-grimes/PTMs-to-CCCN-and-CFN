@@ -558,7 +558,7 @@ CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
 CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
 
 #Plot sites from cluster 109.115.27
-cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "109.115.27"),]
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "328.274.205"),]
 graph.cluster(cluster_sites$Site, gzallt.network.all)
 all.ratio.styles()
 
