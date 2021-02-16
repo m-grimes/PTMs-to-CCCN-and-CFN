@@ -73,3 +73,8 @@ setCorrEdgeAppearance <- function(edgefile) {
     FixEdgeDprops.RCy32() }
 } 
 
+
+# GitHup token update: see: https://stackoverflow.com/questions/66065099/how-to-update-github-authentification-token-on-rstudio-to-match-the-new-policy
+install.packages("gitcreds")
+library(gitcreds)
+gitcreds_set()
