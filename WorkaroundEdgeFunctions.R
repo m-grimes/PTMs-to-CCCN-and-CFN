@@ -1,3 +1,21 @@
+# Workaround function for RCy3 glitches
+delete.bad.networks <- function(){
+  pingtest=cytoscapePing()
+  if (!grepl("connected", pingtest)) {
+    print("You are NOT conncected to Cytoscape!")
+    break } else {
+      networks <- getNetworkList()
+      for (i in 1:length(networks)) {
+        edgeTable <- getTableColumns("edge", c("name", "shared name"), network=networks[i])
+        if(!identical(edgeTable[,1], edgeTable[,2])) {
+          print(paste('Network', networks[i], "is bad."))
+          deleteNetwork(networks[i])} else {
+            print (paste("Network", networks[i], "passes edge test."))
+          } 
+      }
+    }
+}
+
 # Workaround for edge mapping problem in Cytoscape
 FixEdgeDprops.RCy32 <- function() {
   setEdgeLineWidthDefault (3)
@@ -54,3 +72,4 @@ setCorrEdgeAppearance <- function(edgefile) {
     setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
     FixEdgeDprops.RCy32() }
 } 
+
