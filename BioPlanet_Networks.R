@@ -477,7 +477,7 @@ sparse.net <- create.pathway.network(cluster.pathway.evidence, 0.2)
 next.net <- create.pathway.network(cluster.pathway.evidence, 0.1)
 length(unique(c(next.net$source, next.net$target)))
 # 235 edges 146 nodes
-# What is the size of the netowrk without any threshold?
+# What is the size of the network without any threshold?
 total.net <- create.pathway.network(cluster.pathway.evidence, 0)
 #  dim (total.net) 645709      4
 no.nodes.total.net <- length(unique(c(total.net$source, total.net$target))) # 1488
@@ -856,9 +856,12 @@ createSubnetwork(subnetwork.name="Edges Between Pathays")
 cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 # Try mulitple times, then
 delete.bad.networks()
-setCorrEdgeAppearance(cccn4) 
-setCorrEdgeAppearance(getTableColumns('edge'))
-FixEdgeDprops.RCy32()
+# Experimental function to check graphs as you go, up to 10 tries
+cccn4 <- graph.cfn.cccn.check (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+
+#setCorrEdgeAppearance(cccn4) 
+#setCorrEdgeAppearance(getTableColumns('edge'))
+#FixEdgeDprops.RCy32()
 look5 <- filter.edges.between( bioplanet[["Protein metabolism"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 # 32 edges
 get.all.gene.names.from.peps(unique(c(look5$source, look5$target)))
