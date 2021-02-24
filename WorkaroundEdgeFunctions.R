@@ -42,7 +42,18 @@ graph.cfn.cccn.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pr
         print (paste("Network", i, "passes edge test."))
         break }
   }}
-  
+#Same for createNetworkFromDataFrames
+createNetworkFromDataFrames.check <- function(nodes, edges, title="Checked", collection="Checked interactions") {
+  for (i in 1:10){
+    createNetworkFromDataFrames(nodes, edges, title, collection) 
+    edgeTable <- getTableColumns("edge", c("name", "shared name"))
+    if(!identical(edgeTable[,1], edgeTable[,2])) {
+      print(paste('Network', i, "is bad."))
+      deleteNetwork()} else {
+        print (paste("Network", i, "passes edge test."))
+        break }
+  }}
+}
   
   
   
