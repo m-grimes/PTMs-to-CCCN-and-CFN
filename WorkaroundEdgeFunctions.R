@@ -53,7 +53,7 @@ createNetworkFromDataFrames.check <- function(nodes, edges, title="Checked", col
         print (paste("Network", i, "passes edge test."))
         break }
   }}
-}
+
   
   
   

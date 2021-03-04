@@ -535,9 +535,9 @@ clust.data.from.vec <- function(vec, tbl) {
   return (clust.data)	}
 # Examine all clusters
 eu.sp.sed.gzallt.data <- lapply(eu.sp.sed.gzallt, clust.data.from.vec, tbl= gzdata.allt) 
-# produces errors. try this:
-eu.sp.sed.gzallt.data <- list()
-for (i in 1:length(eu.sp.sed.gzallt)) {
+# This works the second time around. First time produces errors. try this:
+# eu.sp.sed.gzallt.data <- list()
+# for (i in 1:length(eu.sp.sed.gzallt)) {
   if (length(intersect(eu.sp.sed.gzallt[[i]], rownames(gzdata.allt)))==0) next
   at <- gzdata.allt[unlist(eu.sp.sed.gzallt[[i]]),]
   if(dim(at)[1]<2 | dim(at)[2]<2) next
@@ -545,6 +545,7 @@ for (i in 1:length(eu.sp.sed.gzallt)) {
   print(i)
 }
 # error at 243 (fixed above)
+# Note : names missing.
 gzdata.allt[rownames(gzdata.allt) %in% eu.sp.sed.gzallt[[i]],]
 # data in only one column! xxxx
 # first data set was not trimmed for PTMs are detected more than twice
@@ -606,9 +607,18 @@ fractNA(gztencelldata.trimmed)  # .7079
 fractNA(gzdata.allt) # 0.77679
 # Make more convenient names
 # essgzallt <- eu.sp.sed.gzallt # trimmmed above
+# Check names, which were lost in proceudre to make the data list
+head(eu.sp.sed.gzallt)
+lapply(eu.sp.sed.gzallt.data[1:5], rownames) # looks okay, check all
+testrownames <- lapply(eu.sp.sed.gzallt.data, rownames)
+identical (testrownames, eu.sp.sed.gzallt) # FALSE because names are differet
+testcontents <- eu.sp.sed.gzallt
+names(testcontents) <- NULL
+identical(testrownames, testcontents) # Still FALSE
+setdiff(testrownames, testcontents) # Several clusters with NAs
 essgzallt.data <- eu.sp.sed.gzallt.data
 
-save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste("_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste("/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 # neg cor edges and netatts from KGnegcorredges2.R
 ###################################################################################################
 # Compare different results from different data sets/treatments
