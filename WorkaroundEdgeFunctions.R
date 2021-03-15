@@ -1,3 +1,17 @@
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install(version = "3.12")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("RCy3") # returns 
+install.packages("devtools")
+library(devtools)
+install_github('cytoscape/RCy3', build_vignettes=TRUE)
+#If installation fails due to package 'XXX' not found,
+# then run install.packages("XXX") and then try install_github('cytoscape/RCy3') again
+library(RCy3)
+
 # Workaround function for RCy3 glitches
 delete.bad.networks <- function(){
   pingtest=cytoscapePing()
