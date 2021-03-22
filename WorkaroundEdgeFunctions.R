@@ -10,6 +10,15 @@ library(devtools)
 install_github('cytoscape/RCy3', build_vignettes=TRUE)
 #If installation fails due to package 'XXX' not found,
 # then run install.packages("XXX") and then try install_github('cytoscape/RCy3') again
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+# The following initializes usage of Bioc devel
+BiocManager::install(version='devel')
+
+BiocManager::install("RCy3", version='devel')
+
+
 library(RCy3)
 
 # Workaround function for RCy3 glitches

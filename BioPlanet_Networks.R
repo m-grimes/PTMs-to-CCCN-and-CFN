@@ -472,6 +472,7 @@ create.pathway.network <- function(pathway.evidence, ev.threshold){
   return(pathway.network)
 }
 create.pathway.network(cluster.pathway.evidence[1:10,], 1)
+
 # Okay, this works, generates error if threshold is too high.
 # Demo
 demo1.net <- create.pathway.network(cluster.pathway.evidence[20:30,colnames(cluster.pathway.evidence)[grep("Endo", colnames(cluster.pathway.evidence))]], ev.threshold = 0) 
@@ -713,11 +714,12 @@ total.pathway.net$Combined.Weight <- total.pathway.net$Weight.bp + total.pathway
 total.pathway.net.no.bp <- total.pathway.net[which(total.pathway.net$Weight.bp==0),]
 # Change the name of total.pathway.net$Weight to Weight.normalized
 names(total.pathway.net)[7] <- "Weight.normalized"
-# >>>>
+# >>>>***
 # Create pathway crosstalk network with individual cluster and bioplanet edges
 pathway.crosstalk.network <- rbind(total.net, bioplanetjaccardedges)
 # 852738 edges
-
+##############################################################################
+# 
 ##############################################################################
 # Network characterization
 #
@@ -1383,3 +1385,39 @@ gzva <- unlist(vertex_attr(gzalltgene.physical.cfn.merged.g))
 ldva <- unlist(vertex_attr(ldgene.physical.cfn.merged.g))
 setdiff(gzva, ldva)
 setdiff(ldva, gzva)
+
+#*#*#*#*
+#* Hypothesis: clustering mulitiple edges will reveal patterns in interactions
+# * Plot multiple edge weights in 2D or 3D and use minimum spanning tree, single linkage
+# * For more than 3D, use t-SNE to find patterns
+#   * LF Data: Gene CCCN, CFN; PTM Gene CCCN, CFN, bioplanet jaccard similarity
+#   * Define bioplanet jaccard similarity between genes as that for the pathway interactions
+#
+# Use approach for making CCCN from clusterlist
+#   make.clusterlist is function(tsnedata, toolong, tbl.sc)
+#   Try with commandes that are built into that function
+tpn.weights <- total.pathway.net[, c("Weight.bp",  "Weight.clust")]
+# plot a subset of the 645709 edges for testing
+tpnw.sub <- tpn.weights[seq(1, 645000, 100), ]
+plot(tpnw.sub)
+plot(log2(tpnw.sub))
+# Convert to log2
+tpnw.sub.log2 <- log2(tpnw.sub)
+tpnw.log2 <- log2(tpn.weights)
+plot(tpnw.log2)
+toolong=0.1
+tpn.span2 <- spantree(dist(tpnw.sub), toolong=toolong)
+tpn.disc2 <-  distconnected(dist(tpnw.sub), toolong = toolong, trace = TRUE)  # test
+cat ("threshold dissimilarity", toolong, "\n", max(tsnedata.disc2), " groups","\n")
+ordiplot(tpnw.sub)
+plot(tpnw.sub)
+plot(tpnw.log2)
+# Conclusion: there is not enough strucure in the data -- it's a cloud, very dense!
+#lines(tsne.span2, tsnedata)
+ordihull(tpnw.sub.log2, tpn.disc2, col="red", lwd=2)	
+# Find groups
+tsnedata.span2.df <- data.frame(rownames(tbl.sc))
+names(tsnedata.span2.df) <- "Gene.Name"
+tsnedata.span2.df$group <- tsnedata.disc2
+tsnedata.span2.list <- dlply(tsnedata.span2.df, .(group))  # GROUP LIST  !
+return(tsnedata.span2.list)	
