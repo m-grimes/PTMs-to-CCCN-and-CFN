@@ -29,11 +29,6 @@ library(igraph)
 library(knitr)
 library("BiocStyle")
 options(stringsAsFactors=FALSE)
-#
-# There are several resources available:
-browseVignettes('RCy3')
-# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
-# 
 
 # Note: Start Cytoscape
 # ------------------------------------------------------------------------
@@ -45,24 +40,21 @@ cytoscapeVersionInfo ()
 
 ---
 ```{r load data objects and functions}
- options(stringsAsFactors=FALSE)
-options(stringsAsFactors=FALSE)
-data_path <- "/Applications/study/Rdata/"
-code_path <- "/Users/huangchuran/PTMs-to-CCCN-and-CFN/"
-load(file=paste(data_path, "KGFunDataObjects.RData", sep=""))
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects-3.RData", sep=""))
 load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
-load(file=paste(data_path, "TenCell.RData", sep=""))
-load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(data_path, "TenCell-TKI.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701
 load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
 load(file=paste(data_path,"drug_effects.RData", sep=""))
-
+load(file=paste(data_path,"BioPlanetNetworks.RData", sep=""))
 	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
 	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
 	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
-    source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
-if (!cytoscapePing()=="You are connected to Cytoscape!") {
-     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+  source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
 
+```
 ```
 
 ## Count the number of sites in each cluster

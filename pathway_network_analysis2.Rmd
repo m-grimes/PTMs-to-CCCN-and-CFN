@@ -62,6 +62,7 @@ The goal here is to make a version of the pathway network where the interacting 
 #Make a version of the pathway network where the interacting pathways have strong cluster evidence and little overlap of genes.
 selected.pathway.edges <- big.path.net[big.path.net$Weight.clust > 0.8 & big.path.net$Weight.bp < 0.001,]
 nrow(selected.pathway.edges) #251
+num_nodes <- length(unique(c(selected.pathway.edges$source, selected.pathway.edges$target)))
 
 #Find names of all pathways in Bioplanet that contain EGFR. The data object 'bioplanet' is a list, where the name of the list element is the name of a Bioplanet pathway and each element is a character vector of the genes in that pathway
 egfr_pathways <- names(bioplanet)[sapply(1:length(bioplanet),function(x){"EGFR" %in% bioplanet[[x]]})]
@@ -92,8 +93,7 @@ names(pathway.crosstalk.egfr) <- paste(selected.pathways.egfr$source, selected.p
 
 #Next task...for each list of interactions, find those where one or both genes had a PTM with a signficant change in erlotinib
 
-#NEED TO FIX THIS BECAUSE RATIOS ARE IN LOG2!!!
-#Find genes that had at least one site where that site was changed at least 2.25-fold in at least two PC9 erlotinib experiments
+#Find genes that had at least one site where that site was changed at least 2.25-fold in at least two PC9 erlotinib experiments. NOTE: Ratios in gz.cf are in log2.
 #Remove gene lines from gz.cf, and then make a smaller version of gz.cf with only the site, gene, and PC9 erlotinib columns
 gz.cf.erl <- gz.cf[which (gz.cf$Node.ID == "peptide"), ]
 gz.cf.erl <- gz.cf.erl[c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")]
@@ -102,14 +102,14 @@ gz.cf.erl$count_down <- rowSums(gz.cf.erl[3:7] < -log2(2.25))
 gz.cf.erl.keep <- gz.cf.erl[which((gz.cf.erl$count_down > 1) | (gz.cf.erl$count_up > 1)),]
 
 #Now get the unique gene names that meet the condition
-gz.cf.erl.keep.genes <- unique(gz.cf.erl.keep$Gene.Name) #143 genes
+gz.cf.erl.keep.genes <- unique(gz.cf.erl.keep$Gene.Name) #383 genes
 
 #Select the rows from each set of cross-pathway interactions in pathway.crosstalk.egfr where at least one gene meets the condition. Test this first on just the first set of interactions
 test <- pathway.crosstalk.egfr[[1]]
-test2 <- test[ which((test$source %in% gz.cf.erl.keep.genes) | (test$target %in% gz.cf.erl.keep.genes)),] #76 rows
+test2 <- test[ which((test$source %in% gz.cf.erl.keep.genes) | (test$target %in% gz.cf.erl.keep.genes)),] #101 rows
 
 #Now find cases where both genes in the interaction meet the condition
-test3 <- test[ which((test$source %in% gz.cf.erl.keep.genes) & (test$target %in% gz.cf.erl.keep.genes)),] #12 rows, ~10 genes
+test3 <- test[ which((test$source %in% gz.cf.erl.keep.genes) & (test$target %in% gz.cf.erl.keep.genes)),] #35 rows
 
 #Now apply to all 29 pathway pairs in pathway.crosstalk.egfr. This selects the cross pathway interactions where at least one of the two interacting genes is at least 2.25-fold up or 2.25-fold down in at least two experiments
 pathway.crosstalk.egfr.changed.genes <- lapply(1:length(pathway.crosstalk.egfr),function(x) {pathway.crosstalk.egfr[[x]][ which((pathway.crosstalk.egfr[[x]]$source %in% gz.cf.erl.keep.genes) | (pathway.crosstalk.egfr[[x]]$target %in% gz.cf.erl.keep.genes)),]})
@@ -120,7 +120,8 @@ names(pathway.crosstalk.egfr.changed.genes) <- names(pathway.crosstalk.egfr)
 #Number of interactions for each pathway pair where at least one gene meets the condition
 rows.changed.genes <- sapply(1:length(pathway.crosstalk.egfr.changed.genes),function(x) {nrow(pathway.crosstalk.egfr.changed.genes[[x]])})
 
-#[1] 77  8 13 10 10 29 35 12 14 35 16 35 13 10  8  3 15 20 16 15 19  9  6  5  2  0  7  2 14
+#[1] 101   9  25  10  12  36  43  12  24  44  28  44  14  12  11   4  15  25  30  16  22  14   7  11
+#[25]   2   0   8   2  15
 
 #For all 29 pathway pairs in pathway.crosstalk.egfr, this selects the cross pathway interactions where BOTH of the interacting genes are at least 2.25-fold up or 2.25-fold down in at least two experiments
 pathway.crosstalk.egfr.changed.genes.both <- lapply(1:length(pathway.crosstalk.egfr),function(x) {pathway.crosstalk.egfr[[x]][ which((pathway.crosstalk.egfr[[x]]$source %in% gz.cf.erl.keep.genes) & (pathway.crosstalk.egfr[[x]]$target %in% gz.cf.erl.keep.genes)),]})
@@ -131,9 +132,15 @@ names(pathway.crosstalk.egfr.changed.genes.both) <- names(pathway.crosstalk.egfr
 #Number of interactions for each pathway pair where both genes meet the condition
 rows.changed.genes.both <- sapply(1:length(pathway.crosstalk.egfr.changed.genes.both),function(x) {nrow(pathway.crosstalk.egfr.changed.genes.both[[x]])})
 
-#[1] 12  3  1  3  2  5  9  4  3  7  2  9  3  2  1  0  6  5  2  6  5  0  2  1  0  0  1  0  4
+#[1] 35  6  5  4  6 10 12  5 13 15  6 11  4  6  3  2  8  8 10  7  7  4  4  7  0  0  2  0  4
 
-#Make Cytoscape networks containing CFN and CCCN for each of the pairs of pathways in pathway.crosstalk.egfr.changed.genes.both. These are saved in Cytoscape session pathway_crosstalk_networks_both_changed2.cys
+```
+
+```{r Plot EGFR pathway networks}
+#Make Cytoscape networks containing CFN and CCCN for each of the pairs of pathways in pathway.crosstalk.egfr.changed.genes.both. These are saved in Cytoscape session pathway_crosstalk_networks_both_changed2.cys. Note: if networks are being If the networks are being created in a Cytoscape session where the full cfn/cccn with all styles has already been created, then the functions specifying the node and edge properties setNodeMapping and setCorrEdgeAppearance can be commented out. This will make the network creation _much_ faster.
+
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+
 graph.crosstalk.network <- function(edgefile, my.title) {
   if (nrow(edgefile) > 0) {
     graph.cfn.cccn.title(edgefile, custom.title = my.title)
@@ -142,86 +149,96 @@ graph.crosstalk.network <- function(edgefile, my.title) {
 
 crosstalk.networks.all <- lapply(1:length(pathway.crosstalk.egfr.changed.genes.both), function(x) {graph.crosstalk.network(pathway.crosstalk.egfr.changed.genes.both[[x]], names(pathway.crosstalk.egfr.changed.genes.both[x]))})
 
-#Make Cytoscape networks containing CFN and CCCN for each of the pairs of pathways in pathway.crosstalk.egfr.changed.genes. These are saved in Cytoscape session pathway_crosstalk_networks_one_changed.cys.
+#Make Cytoscape networks containing CFN and CCCN for each of the pairs of pathways in pathway.crosstalk.egfr.changed.genes. These are saved in Cytoscape session pathway_crosstalk_networks_one_changed2.cys.
 
 crosstalk.networks.one.changed <- lapply(1:length(pathway.crosstalk.egfr.changed.genes), function(x) {graph.crosstalk.network(pathway.crosstalk.egfr.changed.genes[[x]], names(pathway.crosstalk.egfr.changed.genes[x]))})
 
 ```
+
+
 
 ## EGFR Network Statistics
 1. How many of the genes affected by erlotinib are found in the pairs of pathways from the pathways interaction network where at least one of the pathways contains EGFR? Is this number higher than you would expect by chance?
 ```{r EGFR pathway network stats}
 #How many of the genes with at least one site changed in at least two PC9/Erlotinib experiments are found in the 29 unique pathways in selected.pathways.egfr
 selected.genes.all <- unique(unlist(unique.pathway.list)) #3741 genes total in these 29 pathways
-num.erl.in.paths <- sum(gz.cf.erl.keep.genes %in% selected.genes.all) #74 out of 143
+num.erl.in.paths <- sum(gz.cf.erl.keep.genes %in% selected.genes.all) #188 out of 383
 
-#How interesting is it that 74 out of 143 PC9/erlotinib changed genes are found in the 29 pathways?
+#How interesting is it that 188 out of 383 PC9/erlotinib changed genes are found in the 29 pathways?
 gz.cf.genes.all <- unique(gz.cf$Gene.Name) 
 length(gz.cf.genes.all) #3246
-sum(selected.genes.all %in% gz.cf.genes.all) #1145
+sum(selected.genes.all %in% gz.cf.genes.all) #1145 of 3741 genes in the 29 paths found in gz.cf
 
-#Proportion of total genes in gz.cf that are in the selected 29 pathways is 1145/3246 = 0.35. 0.35 * 143 = 50.44; so on average you would expect ~50 out of 143 genes randomly selected from gz.cf.genes.all to be in the selected 29 pathways. How unusual is it to get 74? We could do a fisher test:
+#Proportion of total genes in gz.cf that are in the selected 29 pathways is 1145/3246 = 0.35. 0.35 * 383 = 134.05; so on average you would expect ~134 out of 383 genes randomly selected from gz.cf.genes.all to be in the selected 29 pathways. How unusual is it to get 188? We could do a fisher test:
 num.erl.not.in.paths <- length(gz.cf.erl.keep.genes) - num.erl.in.paths
 num.not.erl.in.paths <- sum(selected.genes.all %in% gz.cf.genes.all) - num.erl.in.paths
 num.not.erl.not.in.paths <- length(gz.cf.genes.all) - sum(selected.genes.all %in% gz.cf.genes.all) - num.erl.not.in.paths
 
 fisher.input <- matrix(c(num.erl.in.paths, num.erl.not.in.paths, num.not.erl.in.paths, num.not.erl.not.in.paths), nrow = 2)
-fisher.result <- fisher.test(fisher.input, alternative = "greater") # p = 2.683e-05
+fisher.result <- fisher.test(fisher.input, alternative = "greater") # p = 2.32e-09
 
-#Another check: select 143 genes at random 10,000 times and see how many are in the selected pathways in each case
-genes.in.paths.random <- replicate(10000, sum(sample(gz.cf.genes.all, size = 143) %in% selected.genes.all))
-min(genes.in.paths.random) #30
-max(genes.in.paths.random) #72
-mean(genes.in.paths.random) #50.40
-#We observed 74 genes which is higher than the max in our random sample. So, the probability of getting 74 is < 1/10,000 (< 1e-04). 
+#Another check: select 383 genes at random 10,000 times and see how many are in the selected pathways in each case
+genes.in.paths.random <- replicate(10000, sum(sample(gz.cf.genes.all, size = 383) %in% selected.genes.all))
+min(genes.in.paths.random) #103
+max(genes.in.paths.random) #168
+mean(genes.in.paths.random) #135.0196
+#We observed 188 genes which is higher than the max in our random sample. So, the probability of getting 188 is < 1/10,000 (< 1e-04). 
 
 #Can also try with 100,000 repetitions
-genes.in.paths.random2 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 143) %in% selected.genes.all))
-min(genes.in.paths.random2) #27
-max(genes.in.paths.random2) #77
-mean(genes.in.paths.random2) #50.46
-sum(genes.in.paths.random2 > 73) #4
-#In this larger random sample, there were 4 results that were 74 or more, so the probability of getting 74 or more is 4/100,000 or 4e-05. This is getting to be very similar to the result of the Fisher Test.
+genes.in.paths.random2 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 383) %in% selected.genes.all))
+min(genes.in.paths.random2) #101
+max(genes.in.paths.random2) #171
+mean(genes.in.paths.random2) #135.094
+sum(genes.in.paths.random2 > 187) #0
+#In this larger random sample, there were still no results that were 188 or more, so the probability of getting 188 or more is < 1/100,000 or 1e-05.
 
 #What about just the 13 pathways that contain EGFR?
 selected.genes.egfr <- unique(unlist(unique.pathways.egfr.list)) #2120 genes total in these 13 pathways
 sum(selected.genes.egfr %in% gz.cf.genes.all) #726 of these genes in gz.cf
-num.erl.in.egfr.pathways <- sum(gz.cf.erl.keep.genes %in% selected.genes.egfr) #53 out of 143 erlotinib-affected genes
+num.erl.in.egfr.pathways <- sum(gz.cf.erl.keep.genes %in% selected.genes.egfr) #131 out of 383 erlotinib-affected genes
 
-#Is having 53/143 erlotinib affected genes in the EGFR pathways significant?
-genes.in.paths.random4 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 143) %in% selected.genes.egfr))
-min(genes.in.paths.random4) #12
-max(genes.in.paths.random4) #53
+#Is having 131/383 erlotinib affected genes in the EGFR pathways significant? Expect 726/3246 * 383 = 85.66
+genes.in.paths.random4 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 383) %in% selected.genes.egfr))
+min(genes.in.paths.random4) #53
+max(genes.in.paths.random4) #126
 mean(genes.in.paths.random4) #31.97
-sum(genes.in.paths.random4 > 52) #5
+sum(genes.in.paths.random4 > 130) #0
 
-#There were 5 results that were 53 or more, so the probability of getting 53 or more is 5/100,000 or 5e-05. 
+#There were 0 results that were 131 or more, so the probability of getting 131 or more is  < 1/100,000 or 1e-05. 
 
 #What about the 16 selected pathways that do not contain EGFR?
 unique.pathways.not.egfr.list <- unique.pathway.list[!unique.pathways.egfr] #List of 16 selected pathways that do not have EGFR
 selected.genes.not.egfr <- unique(unlist(unique.pathways.not.egfr.list)) #2169 genes in these 16 pathways
 sum(selected.genes.not.egfr %in% gz.cf.genes.all) #690 genes in gz.cf
-num.erl.in.not.egfr.pathways <- sum(gz.cf.erl.keep.genes %in% selected.genes.not.egfr) #49 erl-changed genes in non-EGFR paths
+num.erl.in.not.egfr.pathways <- sum(gz.cf.erl.keep.genes %in% selected.genes.not.egfr) #115 erl-changed genes in non-EGFR paths
 
-#There are 3246 total genes in gz.cf; 690/3246 = 0.213 are in the selected non-EGFR pathways. If you selected 143 genes at random from gz.cf, you would expect 0.213 * 143 = 30.45 to be in the selected non-EGFR pathways. We observed 49. Is this significant?
-genes.in.paths.random3 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 143) %in% selected.genes.not.egfr))
-min(genes.in.paths.random3) #12
-max(genes.in.paths.random3) #52
-mean(genes.in.paths.random3) #30.40
-sum(genes.in.paths.random3 > 48) #13
+#There are 3246 total genes in gz.cf; 690/3246 = 0.2125 are in the selected non-EGFR pathways. If you selected 383 genes at random from gz.cf, you would expect 0.213 * 388 = 81.41 to be in the selected non-EGFR pathways. We observed 115. Is this significant?
+genes.in.paths.random3 <- replicate(100000, sum(sample(gz.cf.genes.all, size = 383) %in% selected.genes.not.egfr))
+min(genes.in.paths.random3) #52
+max(genes.in.paths.random3) #117
+mean(genes.in.paths.random3) #81.39
+sum(genes.in.paths.random3 > 114) #1
 
-#So the probability of getting at least 49 is 13/100000 = 1.3e-04.
+#So the probability of getting at least 115 is 1/100000 = 1e-05.
 
 #How many of the erl-changed genes in the EGFR subset are also in the non-EGFR subset?
 egfr.path.genes <- gz.cf.erl.keep.genes[gz.cf.erl.keep.genes %in% selected.genes.egfr]
 not.egfr.path.genes <- gz.cf.erl.keep.genes[gz.cf.erl.keep.genes %in% selected.genes.not.egfr]
-sum(egfr.path.genes %in% not.egfr.path.genes) #28 erl-changed genes are found in both EGFR-containing and non-EGFR containing selected pathways
+sum(egfr.path.genes %in% not.egfr.path.genes) #58 erl-changed genes are found in both EGFR-containing and non-EGFR containing selected pathways
 
-#There are quite a few (28) erl-changed genes in the non-EGFR pathways that are also in the EGFR pathways. This might suggest that non-EGFR containing pathways that interact with EGFR pathways are more likely to have genes in common with EGFR pathways.
+#There are quite a few (58/188) erl-changed genes in the interacting non-EGFR pathways that are also in the EGFR pathways. This might suggest that non-EGFR containing pathways that interact with EGFR pathways are more likely to have genes in common with EGFR pathways.
 
 #Bottom line: Erlotinib-affected genes are more likely than a random set of genes from gz.cf to be in the selected pathways overall, the subset of selected pathways that contain EGFR, and in the subset of pathways that do not contain EGFR. 
 
 #But maybe just being in a Bioplanet pathway makes a gene more likely to be erlotinib affected? What if we selected other random subsets of 29 Bioplanet pathways?
+
+#First, how many genes in gz.cf are in at least one Bioplanet pathway?
+genes_bioplanet <- unique(unlist(bioplanet))
+num_genes_bioplanet <- length(unique(unlist(bioplanet))) #9818 genes in bioplanet
+bioplanet_genes_in_gz.cf <- gz.cf.genes.all[gz.cf.genes.all %in% genes_bioplanet]
+num_bioplanet_genes_in_gz.cf <- length(bioplanet_genes_in_gz.cf) #2120
+sum(selected.genes.egfr %in% bioplanet_genes_in_gz.cf) #726
+#This is a weird coincidence: The number of genes in the 13 EGFR pathways in Bioplanet (2120) is equal to the number of genes in all Bioplanet pathways that are in gz.cf (2120). However, these two gene lists are not the same. There are only 726 genes from the EGFR Bioplanet pathways that are in gz.cf. 
 
 sample.bioplanet <- function(num_pathways= 29) {
   pathways <- sample(bioplanet, size = num_pathways)
@@ -232,24 +249,22 @@ sample.bioplanet <- function(num_pathways= 29) {
 }
 
 erl.changed.random.paths <- replicate(100000, sample.bioplanet(num_pathways = 29))
-min(erl.changed.random.paths) #1
-max(erl.changed.random.paths) #71
-mean(erl.changed.random.paths) #23.99
-sum(erl.changed.random.paths > 73) #0
+min(erl.changed.random.paths) #11
+max(erl.changed.random.paths) #156
+mean(erl.changed.random.paths) #59.45
+sum(erl.changed.random.paths > 187) #0
 
-#With a random selection of 29 Bioplanet pathways, the chances are less than 1e-05 that there will be at least 74 erlotinib changed genes. However, our selected 29 pathways included 13 pathways that contain EGFR and would be expected to be enriched for erlotinib changed genes. Try the random sample using the numbers for the non-EGFR containing pathways--16 pathways and 49 erlotinib-changed genes.
+#With a random selection of 29 Bioplanet pathways, the chances are less than 1e-05 that there will be at least 188 erlotinib changed genes. However, our selected 29 pathways included 13 pathways that contain EGFR and would be expected to be enriched for erlotinib changed genes. Try the random sample using the numbers for the non-EGFR containing pathways--16 pathways and 115 erlotinib-changed genes.
 
 erl.changed.random.paths2 <- replicate(100000, sample.bioplanet(num_pathways = 16))
-min(erl.changed.random.paths2) #0
-max(erl.changed.random.paths2) #67
-mean(erl.changed.random.paths2) #15.37
-sum(erl.changed.random.paths2 > 48) #87
+min(erl.changed.random.paths2) #2
+max(erl.changed.random.paths2) #135
+mean(erl.changed.random.paths2) #37.75
+sum(erl.changed.random.paths2 > 114) #58
 
-#With a random selection of 16 Bioplanet pathways, the chances are 87/100000 = 8.7e-04 that there will be at least 49 erlotinib changed genes. 
+#With a random selection of 16 Bioplanet pathways, the chances are 58/100000 = 5.8e-04 that there will be at least 115 erlotinib changed genes. 
 
-#First test: Are erlotinib-affected genes more likely than a random set of genes from gz.cf to be in the selected pathways? Yes. #Second test: Do the selected pathways include an unusually high number of erlotinib-affected genes compared to a randomly selected set of pathways from Bioplanet. Yes (True for both the overall 29 selected pathways (with 74 erlotinib changed genes) and for the 16 selected pathways that do not contain EGFR (with 49 erlotinib changed genes)).
-
-
+#First test: Are erlotinib-affected genes more likely than a random set of genes from gz.cf to be in the selected pathways? Yes. #Second test: Do the selected pathways include an unusually high number of erlotinib-affected genes compared to a randomly selected set of pathways from Bioplanet. Yes (True for both the overall 29 selected pathways (with 188 erlotinib changed genes) and for the 16 selected pathways that do not contain EGFR (with 115 erlotinib changed genes)).
 
 #Next up: how many unique genes are in the interaction networks? In how many networks does each gene appear? How many unique edges are there? In how many networks does each edge appear?
 
@@ -258,37 +273,38 @@ sum(erl.changed.random.paths2 > 48) #87
 #Comparison of EGFR Cross Pathway Interactions
 From browsing through the networks, it is apparent that many of the cross-pathway interactions networks for different pairs of pathways have genes and edges in common. How many unique genes are in the interaction networks? In how many networks does each gene appear? How many unique edges are there? In how many networks does each edge appear?
 
-```{r EGFR pathway network stats}
+```{r EGFR pathway network commonalities}
 #How many total edges are there in the networks where at least one interactor has an erl changed site?
-sum(rows.changed.genes) #458 Total number of edges in all networks including duplicates
+sum(rows.changed.genes) #596 Total number of edges in all networks including duplicates
 
 #Combine the edges from all networks into a single dataframe and tally the number of times each source/target pair appears
 all.rows <- bind_rows(pathway.crosstalk.egfr.changed.genes, .id = "column_label")
-edge.tally <- plyr::count(all.rows, var = c("source", "target")) #235 rows
+edge.tally <- plyr::count(all.rows, var = c("source", "target")) #318 rows
 #Problem: this tallies "source = a, target = b" separately from "source = b, target = a"
 #Instead try this: take just the source and target columns from all rows, sort each row alphabetically, then do the plyr::count step.
 all.rows.sorted <- all.rows[c("source", "target")]
 all.rows.sorted <- as.data.frame(t(apply(all.rows.sorted,1,function(x) sort(x))))
 colnames(all.rows.sorted) <- c("gene1", "gene2")
-edge.tally.sorted <- plyr::count(all.rows.sorted, var = c("gene1", "gene2")) #232 rows (232 unique edges)
+edge.tally.sorted <- plyr::count(all.rows.sorted, var = c("gene1", "gene2")) #315 rows (315 unique edges)
 
 #Sort edge tally dataframe in descending order by frequency
 edge.tally.sorted <- edge.tally.sorted[order(edge.tally.sorted$freq, decreasing = TRUE),]
 
 #Same thing for the networks where both interactors have an erl changed site
 #How many total edges are there in the networks where both interactors have an erl changed site?
-sum(rows.changed.genes.both) #98
+sum(rows.changed.genes.both) #204 (includes duplicates)
 
 #Combine the edges from all networks into a single dataframe and tally the number of times each source/target pair appears
 all.rows.both <- bind_rows(pathway.crosstalk.egfr.changed.genes.both, .id = "column_label")
 all.rows.both.sorted <- all.rows.both[c("source", "target")]
 all.rows.both.sorted <- as.data.frame(t(apply(all.rows.both.sorted,1,function(x) sort(x))))
 colnames(all.rows.both.sorted) <- c("gene1", "gene2")
-edge.tally.both.sorted <- plyr::count(all.rows.both.sorted, var = c("gene1", "gene2")) #39 rows (39 unique edges)
+edge.tally.both.sorted <- plyr::count(all.rows.both.sorted, var = c("gene1", "gene2")) #101 rows (101 unique edges)
 
 #Sort edge tally dataframe in descending order by frequency
 edge.tally.both.sorted <- edge.tally.both.sorted[order(edge.tally.both.sorted$freq, decreasing = TRUE),]
 
 
 ```
+
 

@@ -457,7 +457,7 @@ fasnep300.cccn1 <- filter.edges.1(rownames(fasnep300.mat), gzallt.network)
 # Focus on these two genes and their associated PTMs in the following graph.
 nodes.cf <- gz.cf[gz.cf$id %in% unique(c(fasnep300.cccn1$source, fasnep300.cccn1$target)),]
 fasnep300.cccn1.suid <- createNetworkFromDataFrames(nodes=nodes.cf, edges=fasnep300.cccn1, title=paste("FASN, EP300 CCCN", (getNetworkCount()+1)), collection = "Interactions") 
-        setNodeMapping(nodes.cf)
+        (nodes.cf)
         setCorrEdgeAppearance(fasnep300.cccn1) 
        layoutNetwork("force-directed")
 # Examine all PTMs     
@@ -558,11 +558,39 @@ CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
 CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
 
 #Plot sites from cluster 109.115.27
-cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "109.115.27"),]
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "328.274.205"),]
 graph.cluster(cluster_sites$Site, gzallt.network.all)
 all.ratio.styles()
 
+graph.cfn.cccn(alkep300)
+all.ratio.styles()
+
+
 ```
+
+```{r Plot Clusters2}
+
+
+genenames <- extract.gene.names(alkep300)
+gz.cf <- gz.cf.pruned
+cccn <- gzallt.cccnplus
+cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+# make gene-peptide edges
+net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+# remove gene-gene interactions
+net.gpe <- remove.autophos.RCy3(net.gpe)
+ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, alkep300)
+all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]
+cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title=paste("CFN plus CCCN", (getNetworkCount()+1)), collection = "Interactions") 
+setNodeMapping(cccn.cf)
+setCorrEdgeAppearance(cfn.cccn.edges) 
+layoutNetwork("force-directed") 
+
+
+```
+
 
 When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
 

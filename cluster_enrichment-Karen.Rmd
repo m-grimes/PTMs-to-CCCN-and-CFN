@@ -1,0 +1,320 @@
+---
+title: "Cluster Enrichment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load_packages}
+library(devtools)
+library(RCy3)
+library(plyr)
+library(dplyr)
+library(RColorBrewer)
+library(gplots)
+library(igraph)
+library(knitr)
+library("BiocStyle")
+options(stringsAsFactors=FALSE)
+
+# Note: Start Cytoscape
+# ------------------------------------------------------------------------
+cytoscapePing ()
+cytoscapeVersionInfo ()
+if (!cytoscapePing()=="You are connected to Cytoscape!") {
+     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+```
+
+```{r load data objects and functions}
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+load(file=paste(data_path, "KGFunDataObjects-3.RData", sep=""))
+load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+load(file=paste(data_path, "TenCell-TKI.RData", sep=""))
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701
+load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+load(file=paste(data_path,"drug_effects.RData", sep=""))
+load(file=paste(data_path,"BioPlanetNetworks.RData", sep=""))
+	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+  source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+```
+
+```{r plot full cfn and cccn}
+#Plot the full cfn and cccn. Once this is done in a Cytoscape session, it will not be necessary to run all.ratio.styles() on each smaller subnetwork
+
+full_network <- graph.cfn.cccn.title(gzallt.physical.network, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=FALSE, custom.title = "CFN plus CCCN, Physical Interactions")
+all.ratio.styles()
+
+```
+
+
+## Cluster Enrichment Analysis
+
+This analysis will be done for each drug/cell-line combo. When replicates are available, we will select sites that changed at least 2.25-fold in the same direction in at least two experiments. These are the drug/cell line combos:
+H3122/Crizotinib: 5 experiments
+HCC78/Crizotinib: 2 experiments
+H2228/Crizotinib: 1 experiment
+STE.1/Crizotinib: 1 experiment
+
+PC9/Erlotinib: 5 experiments
+HCC4006/Erlotinib: 1 experiment
+HCC827/Erlotinib: 1 experiment
+
+H3122/PR1: 3 experiments
+PC9/PR1: 3 experiments
+
+H1781/Afatinib: 1 experiment
+
+H2286_Dasatinib: 1 experiment
+H366_Dasatinib: 1 experiment
+
+For each experiment (drug/cell-line combo):
+
+1. Get the list of significantly changed sites
+
+2. Map the sites to clusters
+
+3. Using the same methods as for the all site data, tally the number of sites in the experimental data in each cluster. Then caluclate the number of sites that are not in each cluster.
+
+4. Perform a one-sided Fisher test to look for clusters with more significantly changed sites than expected by chance. To improve the statistical power (limit the number of tests), only do the analysis on clusters that have at least three significantly changed sites. 
+
+## Count the number of sites in each cluster
+Here we will compute the number of sites in each cluster in the CCCN. This data will be used as the "background" for enrichment analysis. To do this, we will use the file sites_by_cluster.txt that lists each site in the CCCN in one column and the cluster it belongs to in a second column. We will use the count function in the plyr package to count the number of rows (sites) for each cluster. (This function will create a new dataframe with one column containing the cluster names and the second column containing the number of rows (sites) for each cluster. Then, for each cluster calculate the number of sites in the CCCN that are not in the cluster--the will be the total sites in the CCCN minus the number of sites in the cluster. 
+
+```{r tally_clusters}
+
+#Load the file with the cluster assignments for each site
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Tally the number of sites in each cluster
+all_tally <- plyr::count(CCCN_sites, var = "Cluster")
+colnames(all_tally)[2] <- "AllNumInCluster"
+
+
+#Now calculate the number of unique sites that are not in each family. First find the total number of sites. Then
+#substract the number in each cluster from the total to find the number not in each cluster
+num_sites <- nrow(CCCN_sites)
+all_tally$AllNumOutCluster <- num_sites - all_tally$AllNumInCluster
+
+```
+
+
+## Function to Get Significantly Changed Sites
+
+```{r get_sig_sites}
+
+#The function get.sig.sites takes a list of columns from gz.cf (assumes that the column list is "id", "Gene.Name", and then the ratio columns for the desired drug/cell line combo), a threshold fold-change, and a minimum experiment number and returns a dataframe with the id, gene name, and values for sites that are changed by at least the threshold in the same direction in at least the minimum specified number of experiments. If the total number of ratio columns is less than the specified minimum, then it will return sites that meet the threshold for all of the given ratio columns. For example, if num_exp = 3, but there are only two ratio colums given, the function will return sites which are changed by at least the threshold in both of the ratio columns.
+
+get.sig.sites <- function(site_df = gz.cf, columns, threshold = 2.25, num_exp = 2) {
+  #Remove gene lines from gz.cf
+  gz.cf.sites <- gz.cf[which (gz.cf$Node.ID == "peptide"), ]
+  #Make a smaller version of gz.cf with only the site, gene, and desired ration columns
+  gz.cf.selected <- gz.cf.sites[columns]
+  #Count sites that meet the threshold (up or down)
+  gz.cf.selected$count_up <- rowSums(gz.cf.selected[3:length(columns)] > log2(threshold))
+  gz.cf.selected$count_down <- rowSums(gz.cf.selected[3:length(columns)] < -log2(threshold))
+  num_ratio_cols <- length(columns) - 2
+  if (num_ratio_cols < num_exp) {
+    #Require that threshold be met for all ratio columns
+    selected.sig.sites <- gz.cf.selected[which((gz.cf.selected$count_down == num_ratio_cols) | (gz.cf.selected$count_up == num_ratio_cols)),]
+  } else {
+    #Require that the threshold be met for at least the number of ratio columns specified in num_exp
+    selected.sig.sites <- gz.cf.selected[which((gz.cf.selected$count_down > (num_exp - 1)) | (gz.cf.selected$count_up > (num_exp - 1))),]
+  }
+  
+  return(selected.sig.sites) }
+
+```
+
+## Function to Perform the Enrichment Analysis
+```{r cluster_enrichment_function}
+
+#This function takes a dataframe showing which sites are in which clusters, a dataframe of significantly changed sites, and a dataframe with a count of how many sites are in (and not in) each cluster. It maps the sites to clusters, tallies the number of sig sites in each cluster (and not in each cluster), and performs the fisher test. Returns a dataframe with the values used for the fisher 2x2 contingency table, the raw p-value, and the Benjamini corrected p-value.
+
+cluster_enrichment <- function(clusters, sig_sites, all_sites_tally) {
+    #Change name of id column of sig_sites table to "Site" so it can be merged with the clusters table
+    colnames(sig_sites)[1] = "Site" 
+
+    #To map the sig sites to clusters do a merge of the sig_sites to the clusters table. 
+    #Note that some of the sig sites do not map to a cluster, so the number of rows in the merged table is less than the number
+    #in the sig sites table
+    mapped_sites <- merge(clusters, sig_sites, by = "Site")
+
+    #Calculate the number of selected sites in each cluster
+    selected_tally <- plyr::count(mapped_sites, var = "Cluster")
+    colnames(selected_tally)[2] <- "SelectedNumInCluster"
+
+    #Calculate the number of selected sites not in each cluster. 
+    num_selected_sites <- nrow(mapped_sites)
+    selected_tally$SelectedNumOutCluster <- num_selected_sites - selected_tally$SelectedNumInCluster
+
+    #Merge the data for all clusters and the data for the selected clusters to make a table with all data needed for the
+    #Fisher test. Set the row names to be the cluster ID's. Remove rows where the number of selected sites in a cluster
+    #is less than 3 because this is unlikely to give a significant result and will just drive up the number of tests
+    fisher_table <- merge(selected_tally, all_tally, by = "Cluster")
+    rownames(fisher_table) <- fisher_table$Cluster
+    fisher_table$Cluster <- NULL
+    fisher_table <- fisher_table[ which(fisher_table$SelectedNumInCluster >= 3),]
+
+    #Perform the Fisher Test and the Benjamini-Hochberg multiple testing correction
+    fisher_table$p_value <- apply(fisher_table,1, function(x) fisher.test(matrix(x,nr=2), alternative = "greater")$p.value)
+    fisher_table$corr_p_value <- p.adjust(fisher_table$p_value, method = "BH")
+
+    #Add a column with the ratio of selected sites to the ratio of total sites for each cluster
+    fisher_table$SelectedToAllRatio <- fisher_table$SelectedNumInCluster/fisher_table$AllNumInCluster
+
+    #Sort by corrected p-value
+    fisher_table <- fisher_table[order(fisher_table$corr_p_value),]
+  
+    return(fisher_table)
+}
+
+
+
+```
+
+## Perform the Enrichment Analysis on Each Drug/Cell Line Combo
+```{r process_sig_site_data}
+
+#H3122/Crizotinib
+h3122.criz.columns <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio", "H3122_Crizotinib.1Ratio", "H3122CrizotinibRatio")
+h3122.criz.sig.sites <- get.sig.sites(columns = h3122.criz.columns)
+nrow(h3122.criz.sig.sites)
+h3122.criz.enrich <- cluster_enrichment(CCCN_sites, h3122.criz.sig.sites, all_tally)
+
+#HCC78/Crizotinib
+hcc78.criz.columns <- c("id", "Gene.Name", "HCC78_Crizotinib.1Ratio", "HCC78_CrizotinibRatio")
+hcc78.criz.sig.sites <- get.sig.sites(columns = hcc78.criz.columns)
+nrow(hcc78.criz.sig.sites)
+hcc78.criz.enrich <- cluster_enrichment(CCCN_sites, hcc78.criz.sig.sites, all_tally)
+
+#H2228/Crizotinib
+h2228.criz.columns <- c("id", "Gene.Name", "H2228CrizotinibRatio")
+h2228.criz.sig.sites <- get.sig.sites(columns = h2228.criz.columns)
+nrow(h2228.criz.sig.sites)
+h2228.criz.enrich <- cluster_enrichment(CCCN_sites, h2228.criz.sig.sites, all_tally)
+
+#STE1/Crizotinib
+ste1.criz.columns <- c("id", "Gene.Name", "STE.1_CrizotinibRatio")
+ste1.criz.sig.sites <- get.sig.sites(columns = ste1.criz.columns)
+nrow(ste1.criz.sig.sites)
+ste1.criz.enrich <- cluster_enrichment(CCCN_sites, ste1.criz.sig.sites, all_tally)
+
+#PC9/Erlotinib
+pc9.erl.columns <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
+pc9.erl.sig.sites <- get.sig.sites(columns = pc9.erl.columns)
+nrow(pc9.erl.sig.sites)
+pc9.erl.enrich <- cluster_enrichment(CCCN_sites, pc9.erl.sig.sites, all_tally)
+
+#HCC4006/Erlotinib
+hcc4006.erl.columns <- c("id", "Gene.Name", "HCC4006_ErlotinibRatio")
+hcc4006.erl.sig.sites <- get.sig.sites(columns = hcc4006.erl.columns)
+nrow(hcc4006.erl.sig.sites)
+hcc4006.erl.enrich <- cluster_enrichment(CCCN_sites, hcc4006.erl.sig.sites, all_tally)
+
+#HCC827/Erlotinib
+hcc827.erl.columns <- c("id", "Gene.Name", "HCC827_ErlotinibRatio")
+hcc827.erl.sig.sites <- get.sig.sites(columns = hcc827.erl.columns)
+nrow(hcc827.erl.sig.sites)
+hcc827.erl.enrich <- cluster_enrichment(CCCN_sites, hcc827.erl.sig.sites, all_tally)
+
+#H3122/PR
+h3122.pr.columns <- c("id", "Gene.Name", "H3122SEPTM.PR1.ratio", "H3122SEPTM.PR2.ratio", "H3122SEPTM.PR3.ratio")
+h3122.pr.sig.sites <- get.sig.sites(columns = h3122.pr.columns)
+nrow(h3122.pr.sig.sites)
+h3122.pr.enrich <- cluster_enrichment(CCCN_sites, h3122.pr.sig.sites, all_tally)
+
+#PC9/PR
+pc9.pr.columns <- c("id", "Gene.Name", "PC9SEPTM.PR1.ratio", "PC9SEPTM.PR2.ratio", "PC9SEPTM.PR3.ratio")
+pc9.pr.sig.sites <- get.sig.sites(columns = pc9.pr.columns)
+nrow(pc9.pr.sig.sites)
+pc9.pr.enrich <- cluster_enrichment(CCCN_sites, pc9.pr.sig.sites, all_tally)
+
+#H1781/Afatinib
+h1781.afat.columns <- c("id", "Gene.Name", "H1781_AfatinibRatio")
+h1781.afat.sig.sites <- get.sig.sites(columns = h1781.afat.columns)
+nrow(h1781.afat.sig.sites)
+h1781.afat.enrich <- cluster_enrichment(CCCN_sites, h1781.afat.sig.sites, all_tally)
+
+#H2286/Dasatinib
+h2286.dasat.columns <- c("id", "Gene.Name", "H2286_DasatinibRatio")
+h2286.dasat.sig.sites <- get.sig.sites(columns = h2286.dasat.columns)
+nrow(h2286.dasat.sig.sites)
+h2286.dasat.enrich <- cluster_enrichment(CCCN_sites, h2286.dasat.sig.sites, all_tally)
+
+#H366/Dasatinib
+h366.dasat.columns <- c("id", "Gene.Name", "H366_DasatinibRatio")
+h366.dasat.sig.sites <- get.sig.sites(columns = h366.dasat.columns)
+nrow(h366.dasat.sig.sites)
+h366.dasat.enrich <- cluster_enrichment(CCCN_sites, h366.dasat.sig.sites, all_tally)
+```
+
+## Make a Table Showing Clusters that Meet a p-value Threshold for Each Drug/Cell Line Combo
+```{r make_all_result_table}
+
+format_enrichment_table <- function(enrich_table, col_name, p_value) {
+  #Cluster names are currently the row names. Make the cluster names the first column and delete the row names.
+  #Name the new first column with the cluster names "Cluster"
+  enrich_table <- cbind(rownames(enrich_table), data.frame(enrich_table, row.names=NULL))
+  colnames(enrich_table)[1] <- "Cluster"
+  
+  #Select just the Cluster and corr_p_value columns.
+  #Select the rows where the corr_p_value is less than the threshold p-value
+  #Change name of corr_p_value column to col_name
+  enrich_table <- enrich_table[c("Cluster", "corr_p_value")]
+  enrich_table <- enrich_table[which (enrich_table$corr_p_value <  p_value), ]
+  colnames(enrich_table)[2] <- col_name
+  
+  return(enrich_table)
+}
+
+#Run the formatting function on the enrichment results for all 12 drug-cell-line combos and then join into one big table
+
+h3122.criz.enrich.format <- format_enrichment_table(h3122.criz.enrich, "h3122.criz", p_value = 0.01)
+all_results <- h3122.criz.enrich.format
+
+hcc78.criz.enrich.format <- format_enrichment_table(hcc78.criz.enrich, "hcc78.criz", p_value = 0.01)
+all_results <- full_join(all_results, hcc78.criz.enrich.format, by = "Cluster")
+
+h2228.criz.enrich.format <- format_enrichment_table(h2228.criz.enrich, "h2228.criz", p_value = 0.01)
+all_results <- full_join(all_results, h2228.criz.enrich.format, by = "Cluster")
+
+ste1.criz.enrich.format <- format_enrichment_table(ste1.criz.enrich, "ste1.criz", p_value = 0.01)
+all_results <- full_join(all_results, ste1.criz.enrich.format, by = "Cluster")
+
+pc9.erl.enrich.format <- format_enrichment_table(pc9.erl.enrich, "pc9.erl", p_value = 0.01)
+all_results <- full_join(all_results, pc9.erl.enrich.format, by = "Cluster")
+
+hcc4006.erl.enrich.format <- format_enrichment_table(hcc4006.erl.enrich, "hcc4006.erl", p_value = 0.01)
+all_results <- full_join(all_results, hcc4006.erl.enrich.format, by = "Cluster")
+
+hcc827.erl.enrich.format <- format_enrichment_table(hcc827.erl.enrich, "hcc827.erl", p_value = 0.01)
+all_results <- full_join(all_results, hcc827.erl.enrich.format, by = "Cluster")
+
+h3122.pr.enrich.format <- format_enrichment_table(h3122.pr.enrich, "h3122.pr", p_value = 0.01)
+all_results <- full_join(all_results, h3122.pr.enrich.format, by = "Cluster")
+
+pc9.pr.enrich.format <- format_enrichment_table(pc9.pr.enrich, "pc9.pr", p_value = 0.01)
+all_results <- full_join(all_results, pc9.pr.enrich.format, by = "Cluster")
+
+h1781.afat.enrich.format <- format_enrichment_table(h1781.afat.enrich, "h1781.afat", p_value = 0.01)
+all_results <- full_join(all_results, h1781.afat.enrich.format, by = "Cluster")
+
+h2286.dasat.enrich.format <- format_enrichment_table(h2286.dasat.enrich, "h2286.dasat", p_value = 0.01)
+all_results <- full_join(all_results, h2286.dasat.enrich.format, by = "Cluster")
+
+h366.dasat.enrich.format <- format_enrichment_table(h366.dasat.enrich, "h366.dasat", p_value = 0.01)
+all_results <- full_join(all_results, h366.dasat.enrich.format, by = "Cluster")
+
+#Add column to results table giving number of drug/cell-line combos where that cluster had a significant p-value
+all_results$num_exp <- rowSums(!is.na(all_results[2:13]))
+
+write.table(all_results, file = "enrichment_results_01.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```

@@ -424,7 +424,7 @@ collapse.CCCN.nodes <- function(nodenames=NULL) {
 
 # Alex Pico writes: Try to avoid using Bypasses whenever possible. They are slow; they are not saved with a style; they stick to a particular network view. I only recommend them for a handful of things that you really must override. But you can almost always simply create a new column and make a mapping instead. 
 setNodeMapping <- function(cf) {
-  setBackgroundColorDefault("#949494") # grey 58
+  setBackgroundColorDefault(style.name = "default", new.color = "#949494") # grey 58
   setNodeShapeDefault("ELLIPSE")
   setNodeColorDefault("#F0FFFF") # azure1
   setNodeSizeDefault(100) # for grey non-data nodes
@@ -468,7 +468,9 @@ setNodeMapping <- function(cf) {
 # Use: setNodeMapping(gz.cf)
 # Function to set edge appearance
 setCorrEdgeAppearance <- function(edgefile) {
+  print("Start setEdgeLineWidthDefault")
   setEdgeLineWidthDefault (3)
+  print("Start setEdgeColorDefault")
   setEdgeColorDefault ( "#FFFFFF")  # white
   edgevalues <- getTableColumns('edge',c('Weight'))
   edgevalues['Weight']<-abs(edgevalues['Weight'])
@@ -476,7 +478,9 @@ setCorrEdgeAppearance <- function(edgefile) {
   #setEdgeLineWidthBypass(edgevalues[['name']], edgevalues[['Weight']])
   names(edgevalues)<-c('Width')
   loadTableData(edgevalues, table = 'edge', table.key.column = 'SUID')
+  print("Start setEdgeLineWidthMapping")
   setEdgeLineWidthMapping('Width', mapping.type = 'passthrough', style.name = 'default')
+  print("Start setEdgeSelectionColorDefault")
   setEdgeSelectionColorDefault ( "#FF69B4")  # hotpink
   edgecolors <- col2hex(c("red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2"))
   edgecolorsplus <- col2hex(c("deeppink", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2"))
@@ -484,9 +488,13 @@ setCorrEdgeAppearance <- function(edgefile) {
   edgeTypes <- c("pp", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains") 
   # 22 edgeTypes            
   myarrows <- c ('Arrow', 'Arrow', 'Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None')
-  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+  print("Start setEdgeTargetArrowMapping")
+  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')
+  print("Start matchArrowColorToEdge")
   matchArrowColorToEdge('TRUE')
+  print("Start setEdgeColorMapping")
   setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")  
+  print("Start edgeDprops.RCy32")
   edgeDprops.RCy32()
 }  
 
@@ -644,7 +652,10 @@ graph.cfn.cccn <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=T
   if (only.cfn==FALSE) return(cfn.cccn.edges)
 }
 
-#Same as graph.cfn.cccn except you can specify a custom title for the network
+#Same as graph.cfn.cccn except you can specify a custom title for the network. If the networks are being created
+#in a Cytoscape session where the full cfn/cccn with all styles has already been created, then the functions specifying
+#the node and edge properties setNodeMapping and setCorrEdgeAppearance can be commented out. This will make the
+#network creation _much_ faster.
 graph.cfn.cccn.title <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE, custom.title = "default") {
   genenames <- extract.gene.names(edgefile)
   if(pruned==TRUE) {gz.cf <- gz.cf.pruned}
@@ -657,7 +668,7 @@ graph.cfn.cccn.title <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pr
     cccn.cf <- ld.cf[ld.cf$Gene.Name %in% genenames,]
   }
   if (only.cfn==TRUE) {
-    if (custom.title == "defualt") {
+    if (custom.title == "default") {
         custom.title <- paste("CFN", (getNetworkCount()+1))
     }
     cfn.cf <- cccn.cf[which(cccn.cf$Node.ID=="gene"),]
@@ -678,12 +689,67 @@ graph.cfn.cccn.title <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pr
     cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
     if (gz==TRUE) {all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
     if (ld==TRUE) {all.cf <- ld.cf[ld.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+    print("Start createNetworkFromDataFrames")
     cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title=custom.title, collection = "Interactions") 
-    setNodeMapping(cccn.cf)
-    setCorrEdgeAppearance(cfn.cccn.edges) 
+    #setNodeMapping(cccn.cf) 
+    #setCorrEdgeAppearance(cfn.cccn.edges) 
   }
+  print("Start layoutNetwork")
   layoutNetwork("force-directed") 
   if (only.cfn==FALSE) return(cfn.cccn.edges)
+}
+
+#for testing Cytoscape edge table errors
+make.edgefile <- function(edgefile) {
+  genenames <- extract.gene.names(edgefile)
+  gz.cf <- gz.cf.pruned
+  cccn <- gzallt.cccnplus
+  cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+  netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+  # make gene-peptide edges
+  net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+  # remove gene-gene interactions
+  net.gpe <- remove.autophos.RCy3(net.gpe)
+  ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+  cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+  return (cfn.cccn.edges)
+}
+
+#for testing Cytoscape edge table errors
+make.nodefile <- function(edgefile) {
+  genenames <- extract.gene.names(edgefile)
+  gz.cf <- gz.cf.pruned
+  cccn <- gzallt.cccnplus
+  cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+  netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+  # make gene-peptide edges
+  net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+  # remove gene-gene interactions
+  net.gpe <- remove.autophos.RCy3(net.gpe)
+  ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+  cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+  all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]
+  return (all.cf)
+}
+
+graph.cfn.cccn.simple <- function(edgefile) {
+  genenames <- extract.gene.names(edgefile)
+  gz.cf <- gz.cf.pruned
+  cccn <- gzallt.cccnplus
+  cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+  netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+  # make gene-peptide edges
+  net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+  # remove gene-gene interactions
+  net.gpe <- remove.autophos.RCy3(net.gpe)
+  ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
+  cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+  all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]
+  cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title="graph.cfn.cccn.simple", collection = "Interactions") 
+}
+
+graph.cfn.cccn.simplest <- function(nodefile, edgefile) {
+  cfn.cccn.suid <- createNetworkFromDataFrames(nodefile, edgefile, title="graph.cfn.cccn.simple", collection = "Interactions")
 }
 
 all.ratio.styles <- function(ratiocols=NULL) {
