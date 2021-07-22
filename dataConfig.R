@@ -1,10 +1,13 @@
 
 workingDir = getwd()
+workingDir = "C:/Dropbox/Academic/Manitoba/Biological networks/data/GeneFunction_DomainInfo/"
 #Pathway file comes from BioPlanet
-pathwayFile = paste(workingDir,"/dataset/bioplanet_pathway.csv",sep="");
+dir2<-"C:/Dropbox/Academic/Manitoba/Biological networks/data/PathwayCrosstalkFilesForCuneyt/"
+pathwayFile = paste(dir2,"bioplanet_pathway.csv",sep="");
+bioPlanetsRdata<-"C:/Dropbox/Academic/Manitoba/Biological networks/data/BioPlanetNetworks.RData"
 
 #Clusters come from Mark's experiments
-clusterFile = paste(workingDir,"/dataset/sites_by_cluster.txt",sep="");
+clusterFile = paste(workingDir,"sites_by_cluster.txt",sep="");
 
 #Files to be used in gene similarity computations
 #I needed to do the following modifications on the original file:
@@ -12,10 +15,10 @@ clusterFile = paste(workingDir,"/dataset/sites_by_cluster.txt",sep="");
 #2- Change line endings with "\t\t\r\n" to "\r\n"
 #3- Change pathway name and remove commas in the name
 #4- Change pathway name and gene list seperator from "\t\t" to ","
-subcellularSimFile =paste(workingDir,"/dataset/GO_Cellular_Component_2018.txt",sep="");
-molecularSimFile = paste(workingDir,"/dataset/GO_Molecular_Function_2018.txt",sep="");
-proDomainSimFile = paste(workingDir,"/dataset/InterPro_Domains_2019.txt",sep="");
-bioProcessSimFile = paste(workingDir,"/dataset/GO_Biological_Process_2018.txt",sep="");
+subcellularSimFile =paste(workingDir,"GO_Cellular_Component_2018.txt",sep="");
+molecularSimFile = paste(workingDir,"GO_Molecular_Function_2018.txt",sep="");
+proDomainSimFile = paste(workingDir,"InterPro_Domains_2019.txt",sep="");
+bioProcessSimFile = paste(workingDir,"GO_Biological_Process_2018.txt",sep="");
 
 #Target Fasn pathways. This list comes from Guolin.
 targetFasn<-c("p73 transcription factor network", "Delta Np63 pathway", "Ghrelin pathway",
