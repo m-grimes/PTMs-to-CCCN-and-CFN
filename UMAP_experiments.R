@@ -12,7 +12,7 @@ load(file="/Users/_mark_/Archive/Terra_Byte/R_Archive_2/_LINCS/GZTenCellMatrices
 # "/Users/_mark_/Dropbox/ZBackup/R_Backup/R_Archive_2/_LINCS/GZTenCellMatrices2.RData"
 # " /Volumes/.timemachine/A52C7FA9-94A9-4792-9298-2C9BD45A5DA4/2021-06-02-122159.backup/2021-06-02-122159.backup/iMac_Pro_HD\ -\ Data/Users/_mark_/Archive/Terra_Byte/R_Archive_2/_LI NCS/GZTenCellMatrices2.RData"
 # For previous work:
-source (" /Users/_mark_/Dropbox/_Work/R_/MG_packages.R")
+source ("/Users/_mark_/Dropbox/_Work/R_/MG_packages.R")
 load(file=paste(comp_path, "Dropbox/_Work/R_/_LINCS/_Export_for_Paper/LC_TMT_Nets.RData", sep=""))
 # 
 data_path <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/", sep="")
