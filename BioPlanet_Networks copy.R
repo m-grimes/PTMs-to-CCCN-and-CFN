@@ -11,16 +11,14 @@
 #
 localpath = getwd()	
 comp_path <- unlist(strsplit(localpath, "Dropbox"))[[1]]
-if(length(grep("Dropbox", comp_path))==0) { 
-  comp_path <- unlist(strsplit(localpath, "Documents"))[[1]]}
+
 source(paste(comp_path, "/Dropbox/_Work/R_/MG_packages.R", sep=""))
 # load work
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 
-#_________________________________________
-#_________________________________________
+#_________________________________________#_________________________________________
 #
 # Calculate the number of bioplanet pathways for each gene, and the number of overlapping genes in each pathway.
 # there are 1657 pathways
@@ -45,7 +43,8 @@ intersect(names(bioplanet[grep("PAG1", bioplanet)]), names(bioplanet[grep("FYN",
 bioplanetgenes <- data.frame(Gene.Name = sort(unique(unlist(bioplanet))))
 
 length(which(str_detect("CTTN", bioplanetgenes$Gene.Name)))
-# But partial matches still a problem   
+str_count("FYN", test.2[[1]]) # vector
+# But partial matches still a problem 
 # okay try this
 calculate.pathways.per.gene <- function(gene, pathwaylist) {
   sum.paths <- sum(unlist(sapply(pathwaylist, function (x) which(gene %in% x))))
@@ -92,6 +91,7 @@ matrix.common <- function(clust.list1, clust.list2)	{
   return(tt.dd)	}
 bioplanet.matrix.common <- matrix.common(bioplanet, bioplanet)
 # 1657 x 1657 pathways
+hist(unlist(bioplanet.matrix.common), breaks=100)
 # Note: diagonal gives the number of genes in each pathway
 # Determine the number of distinct genes so that the fraction of genes in common may be calculated
 matrix.outersect <- function(clust.list1, clust.list2)	{
@@ -131,6 +131,8 @@ bioplanet.matrix.union <- matrix.union(bioplanet, bioplanet)
 bioplanet.jaccard.matrix <- bioplanet.matrix.common/bioplanet.matrix.union
 range(unlist(bioplanet.jaccard.matrix), na.rm=T)
 # 0.0005350455 to 1.0000000000 (including diagnal)
+range(unlist(bioplanet.matrix.common), na.rm=T)
+# 1 1615
 #_________________________________________________
 # Treat this as an adjacency matrix
 # BioPlanet Pathway Relationship = (number of genes shared between Pathwayi and Pathwayi2) / (number of distinct genes in  Pathwayi and Pathwayi2 )
@@ -171,8 +173,7 @@ plot(bioplanetreledges$Weight~bioplanetgeneedges$Weight, pch=19, col=alpha("red"
 plot(bioplanetreledges$Weight~bioplanetjaccardedges$Weight, pch=19, col=alpha("forestgreen", 0.2))
 # *** interesting. Max 0.7778, similar to cluster.pathway evidence below
 # 
-#_________________________________________
-#_________________________________________
+#_________________________________________#_________________________________________
 # Apply this approach to determine evidence for pathways based on the CCCN
 # Cluster Pathway Evidence = ∑( PTMs from gene(i) pathway in cluster /  total number of Pathways for gene(i)
 #
@@ -255,7 +256,8 @@ count.ambiguous.gene.weights <- function(pepvec, pepsep="; ") {
 }
 count.ambiguous.gene.weights(testvec)
 gene.clist.weights <- lapply(pep.clist, count.ambiguous.gene.weights)
-# This gene.clist.weights is the list of gene clusters' weights with single PTMs weighted as 1 and ambigous PTMs weighted porportially to the number of possible matches. 
+# This gene.clist.weights is the list of gene clusters' weights with single PTMs weighted as 1 and ambiguous PTMs weighted proportionally to the number of possible matches. 
+
 # Use this to weight gene matches
 weighted.matrix.common <- function(clist, pathwaylist=bioplanet, clist.weights)	{
   tt.dd <- matrix(data = NA, nrow = length(clist), ncol = length(pathwaylist), byrow = FALSE, dimnames = NULL)
@@ -429,7 +431,8 @@ test.edges$Weight <- edge_attr(test.g)[[1]]
 test.edges$interaction <- "cluster evidence" 
 # OR
 # Call edge weight the sum of evidence for interaction
-test.matrix2 <- test.matrix+test.matrix
+# test.matrix2 <- test.matrix+test.matrix # Note: this is flawed compared to 
+# Mode= "plus": An undirected graph will be created, A(i,j)+A(j,i) gives the edge weights.
 test.g2 <- graph_from_adjacency_matrix(test.matrix2, mode="lower", weighted=TRUE, diag=F)
 test.edges2 <- data.frame(as_edgelist(test.g2))
 names(test.edges2) <- c("source", "target")
@@ -454,8 +457,9 @@ create.pathway.network <- function(pathway.evidence, ev.threshold){
     edge.mat <- matrix(ev.list2[[i]], nrow=length(ev.list2[[i]]), ncol=length(ev.list2[[i]]))
     colnames(edge.mat) <- names(ev.list2[[i]])
     rownames(edge.mat) <- names(ev.list2[[i]])
-    edge.mat2 <- edge.mat+edge.mat
-    edge.g <- graph_from_adjacency_matrix(edge.mat2, mode="lower", weighted=TRUE, diag=F)
+    # Edge Weight is the sum of each pathway cluster evidence
+    # Mode= "plus": An undirected graph will be created, A(i,j)+A(j,i) gives the edge weights.
+    edge.g <- graph_from_adjacency_matrix(edge.mat, mode="plus", weighted=TRUE, diag=F)
     edgefile <- data.frame(as_edgelist(edge.g))
     names(edgefile) <- c("source", "target")
     edgefile$Weight <- edge_attr(edge.g)[[1]]
@@ -468,7 +472,226 @@ create.pathway.network <- function(pathway.evidence, ev.threshold){
   return(pathway.network)
 }
 create.pathway.network(cluster.pathway.evidence[1:10,], 1)
+
 # Okay, this works, generates error if threshold is too high.
+# Demo
+demo1.net <- create.pathway.network(cluster.pathway.evidence[20:30,colnames(cluster.pathway.evidence)[grep("Endo", colnames(cluster.pathway.evidence))]], ev.threshold = 0) 
+# for demonstration and explanation, step by step in function above
+pathway.evidence=cluster.pathway.evidence
+ev.threshold=0
+pedemo1 <- pathway.evidence[, c("Transmembrane transport of small molecules", "EGF/EGFR signaling pathway")]
+
+# use this as pathway.evidence
+pathway.evidence <- pedemo1
+ev.list <- apply(pathway.evidence, 1, function(y) y %>% keep(., function(x) !is.na(x) & x > ev.threshold) )
+ev.list.sizes <- sapply(ev.list, length)
+ev.list2 <- ev.list[which(ev.list.sizes>=2)]
+if(length(ev.list2) < 1) {stop("Threshold too high!")}
+# Create edge file for each list element
+edgelist <- list()
+for (i in 1:length(ev.list2)){
+  edge.mat <- matrix(ev.list2[[i]], nrow=length(ev.list2[[i]]), ncol=length(ev.list2[[i]]))
+  colnames(edge.mat) <- names(ev.list2[[i]])
+  rownames(edge.mat) <- names(ev.list2[[i]])
+  # Edge Weight is the sum of each pathway cluster evidence
+  # Mode= "plus": An undirected graph will be created, A(i,j)+A(j,i) gives the edge weights.
+  edge.g <- graph_from_adjacency_matrix(edge.mat, mode="plus", weighted=TRUE, diag=F)
+  edgefile <- data.frame(as_edgelist(edge.g))
+  names(edgefile) <- c("source", "target")
+  edgefile$Weight <- edge_attr(edge.g)[[1]]
+  edgefile$interaction <- "cluster evidence" 
+  edgelist[[i]] <- edgefile
+}
+# Combine edges
+pathway.network.1 <- do.call("rbind", edgelist)
+hist(pathway.network.1$Weight, breaks=20, col="blue")
+# range  0.002772228 0.122222222
+pathway.network <-  ddply(pathway.network.1, .(source, target, interaction), numcolwise(sum))
+# look directly at genes intersecting
+pedemo1.filled <- apply(pedemo1, 1, filled)
+pedemo2 <- pedemo1[which(pedemo1.filled==2),]
+# 68 clusters have weights for both pathways
+pedemo2 <- pedemo2[order(rowSums(pedemo2), decreasing=T),]
+plot(pedemo2[,1], pedemo2[,2], pch=19, col="blue")
+pedemo2 <- pedemo2[order(rowMeans(pedemo2), decreasing=T),]
+# Examine top cluster 231.289.73 in eu.sp.sed.gzallt, eu.sp.sed.gzallt.data
+eu.sp.sed.gzallt["231.289.73"]
+eu.sp.sed.gzallt.data["231.289.73"]
+eu.sp.sed.gzallt["139.312.154"]
+eu.sp.sed.gzallt.data["139.312.154"]
+eu.sp.sed.gzallt["81.149.107"]
+eu.sp.sed.gzallt.data["81.149.107"]
+eu.sp.sed.gzallt["19.69.20"]
+eu.sp.sed.gzallt.data["19.69.20"]
+# get gene names
+topclusters <- rownames(head(pedemo2))
+pedemo2.somegenes <- lapply(eu.sp.sed.gzallt[topclusters], get.gene.names.from.peps)
+a <- lapply(pedemo2.somegenes, function(x) intersect(x, bioplanet[["Transmembrane transport of small molecules"]]))
+b <- lapply(pedemo2.somegenes, function(x) intersect(x, bioplanet[["EGF/EGFR signaling pathway"]]))
+ab <- mapply(c, a, b)
+# Let's graph these - ALL of them this time.
+allclusters <- rownames(pedemo2)
+pedemo2.genes <- lapply(eu.sp.sed.gzallt[allclusters], get.gene.names.from.peps)
+a <- lapply(pedemo2.genes, function(x) intersect(x, bioplanet[["Transmembrane transport of small molecules"]]))
+b <- lapply(pedemo2.genes, function(x) intersect(x, bioplanet[["EGF/EGFR signaling pathway"]]))
+ab <- mapply(c, a, b)
+transegf.cccn <- filter.edges.0(unlist(eu.sp.sed.gzallt[allclusters]), gzallt.cccn.edges.plus)
+# 34186 edges! TOO MANY!
+# Below we used filter.edges.between with physical.cfn, but this relies on PPIs
+# Use gzallt.cccn? gzallt.cccn.edges.plus?
+# First get PTMs from pathway genes. 
+# pathway.evidence = gzallt.cccn[eu.sp.sed.gzallt[["231.289.73"]], eu.sp.sed.gzallt[["231.289.73"]]]
+gene1a <- a[[1]] 
+clust1a <- names(a[1])
+peps1a <- eu.sp.sed.gzallt[[clust1a]][grep(gene1a, eu.sp.sed.gzallt[[clust1a]])]
+gene1b <- b[[1]] 
+clust1b <- names(b[1])
+peps1b <- eu.sp.sed.gzallt[[clust1b]][grep(gene1b, eu.sp.sed.gzallt[[clust1b]])]
+peps.edges <- filter.edges.between(peps1a, peps1b, gzallt.cccn.edges.plus)
+# Make into function using clusters retrieved as above
+# Test with
+genes1 <- bioplanet[["Transmembrane transport of small molecules"]]
+genes2 <- bioplanet[["EGF/EGFR signaling pathway"]]
+pathway1 <- "Transmembrane transport of small molecules"
+pathway2 <- "EGF/EGFR signaling pathway"
+pepclusterlist <- eu.sp.sed.gzallt
+cccnedges <- gzallt.cccn.edges.plus
+#------...
+#
+get.pep.egdes.between.pathways <- function(pathway1, pathway2, only_between=FALSE, pepclusterlist=eu.sp.sed.gzallt, cccnedges=gzallt.cccnplus, pathway.evidence=cluster.pathway.evidence, ev.threshold=0){
+  genes1 <- bioplanet[[pathway1]]
+  genes2 <- bioplanet[[pathway2]]
+  pathevidence.subset <- pathway.evidence[,c(pathway1, pathway2)]
+  ev.list <- apply(pathevidence.subset, 1, function(y) y %>% keep(., function(x) !is.na(x) & x > ev.threshold) )
+  if(length(ev.list) < 1) {stop("Threshold too high!")}
+  # Look for more than two pathways
+  ev.list.sizes <- sapply(ev.list, length)
+  ev.list2 <- ev.list[which(ev.list.sizes>=2)]
+  if(length(ev.list2) < 1) {stop("Threshold too high!")}
+  # Clusters are 
+  clusternames <- names(ev.list2)
+  cluster.genes.list <- lapply(pepclusterlist[clusternames], get.gene.names.from.peps)
+  a <- lapply(cluster.genes.list, function(x) intersect(x, genes1))
+  b <- lapply(cluster.genes.list, function(x) intersect(x, genes2))
+  # ab <- mapply(c, a, b)
+  pepedges.list <- list()
+  for (i in 1:length(clusternames)) {
+    a.genes <- a[[i]] 
+    b.genes <- b[[i]]
+    clustpeps <- pepclusterlist[[clusternames[i]]]
+    # Get all peptides from cluster
+    a.peps <- NULL
+    b.peps <- NULL
+    for (j in 1:length(a.genes)) {
+      a.peps[j] <- clustpeps[grep(a.genes[j], clustpeps)] }
+    for (k in 1:length(b.genes)) {
+      b.peps[k] <- clustpeps[grep(b.genes[j], clustpeps)] }
+    if (only_between==TRUE) {
+      pepedges.list[[i]] <- filter.edges.between(a.peps, b.peps, cccnedges)
+    } else {
+      pepedges.list[[i]] <- filter.edges.0(c(a.peps, b.peps), cccnedges)
+    }
+    }
+  # Some edges are NA
+  pepedges.list <- pepedges.list[!is.na(pepedges.list)]
+  pepedges <- do.call("rbind", pepedges.list)
+  return(pepedges)
+}
+tryit <- get.pep.egdes.between(pathway1="Transmembrane transport of small molecules", pathway2 ="EGF/EGFR signaling pathway")
+# make gene-peptide edges
+# onlynecessary if gzallt.cccn.edges.plus, instead of gzallt.cccnplus, is used:
+#transegf.tryit <- edgeType.to.interaction(tryit)
+genenames <- extract.gene.names(tryit) # alternatively:
+genenames <- unique(sapply(c(tryit[,1],tryit[,2]),  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
+# NOTE: Find gz.cf unpruned should be 12K rows! Find on google drive LD_GZ Networks
+# TenCell.RData - fixed and saved
+  cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+net.gpe <- remove.autophos.RCy3(net.gpe)
+# Use only those edges above
+net.gpe.pruned <- net.gpe[net.gpe$target %in% unique(c(transegf.tryit$source, transegf.tryit$target)),]
+transegf.between <-filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
+transegf.fe0 <- filter.edges.0( c(bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]]), edge.file=gzalltgene.physical.cfn.merged)
+transegf.edges <- rbind(net.gpe.pruned, transegf.between, transegf.tryit)
+transegf.edges2 <- rbind(net.gpe.pruned, transegf.fe0, transegf.tryit)
+transegf.cf <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
+transegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
+# Check
+outersect(transegf.cf$id, unique(c(transegf.edges$source, transegf.edges$target)))
+# Now zero
+tryit.graph <- createNetworkFromDataFrames.check(transegf.cf, transegf.edges)
+tryit.graph2 <- createNetworkFromDataFrames.check(transegf.cf2, transegf.edges2)
+setdiff (transegf.cf$id, transegf.cf2$id)  # not identical
+# first is a subset so don't need to
+# Merge networks in cytoscape, then
+nodeDprops.RCy32()
+edgeDprops.RCy32()
+setNodeMapping(transegf.cf2)
+setCorrEdgeAppearance(transegf.edges2) 
+all.ratio.styles()
+# Conclusion: a different, possibly better view of the CFN/CCCN.
+# Compare
+#
+focus.cccn1 <- graph.cfn.cccn.check (transegf.between, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+focus.nodes <- getAllNodes() # 126 vs. in between network above
+between.nodes <- getAllNodes() # 243 nodes
+outersect(focus.nodes, between.nodes)
+# Getting edges between pathway peptides is superior! ****
+
+# Test with glycolysis and gluconeogenesis...
+# >>>>>>>>>>>>••••••••••••
+tryit2 <- get.pep.egdes.between.pathways(pathway1="Glycolysis and gluconeogenesis", pathway2 ="EGF/EGFR signaling pathway") #101 edges
+tryit2b <- get.pep.egdes.between.pathways(pathway1="Glycolysis and gluconeogenesis", pathway2 ="EGF/EGFR signaling pathway", only_between = TRUE) #49 edges
+# Create a new function to make gene-peptide edges from a peptide edgefile
+make.genepep.edges <- function(peptide.edgefile, cccn.cf=gz.cf) {
+  peptides <- unique(c(peptide.edgefile$source, peptide.edgefile$target))
+  genenames <- sapply(peptides,  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1])
+  net.gpe <- data.frame(source=genenames, target=peptides, Weight=0.25, interaction="peptide")
+  return(net.gpe)
+}
+tryit2t.gpe <- make.genepep.edges(tryit2)
+glucegf.between <-filter.edges.between( bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
+glucegf.fe0 <- filter.edges.0( c(bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["EGF/EGFR signaling pathway"]]), edge.file=gzalltgene.physical.cfn.merged)
+glucegf.edges <- rbind(tryit2t.gpe, glucegf.between, tryit2)
+glucegf.edges2 <- rbind(tryit2t.gpe, glucegf.fe0, tryit2)
+glucegf.cf <- gz.cf[gz.cf$id  %in% unique(c(glucegf.edges$source, glucegf.edges$target)),]
+glucegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(glucegf.edges2$source, glucegf.edges2$target)),]
+# Check
+outersect(glucegf.cf$id, unique(c(glucegf.edges$source, glucegf.edges$target)))
+# Now zero
+tryit2.graph <- createNetworkFromDataFrames.check(glucegf.cf, glucegf.edges)
+tryit2.graph2 <- createNetworkFromDataFrames.check(glucegf.cf2, glucegf.edges2)
+setdiff (glucegf.cf$id, glucegf.cf2$id)  # not identical
+# first is a subset so don't need to
+# Merge networks in cytoscape, then
+#nodeDprops.RCy32()
+#edgeDprops.RCy32()
+setNodeMapping(glucegf.cf2)
+setCorrEdgeAppearance(glucegf.edges2) 
+all.ratio.styles()
+#****
+#------------------------------------------------------------------------
+# Attempt to recover weight to normalize 
+filter.pathway.edges <- function(query.edges, edge.file=bioplanetjaccardedges) {
+  sel.edges.forward <- edge.file %>% right_join(query.edges, by=c("source","target"))
+  # Test for reverse edges
+  query.edges.rev <- query.edges[, c(2,1,3,4)]
+  names(query.edges.rev) <- names(query.edges) 
+  sel.edges.rev <- edge.file %>% right_join(query.edges.rev, by=c("source","target"))
+  if (any(!is.na(sel.edges.rev$interaction.x))) {
+    sel.edges.rev <- sel.edges.rev[!is.na(sel.edges.rev$interaction.x),]
+    sel.edges <- rbind(sel.edges.forward, sel.edges.rev)
+  } else {sel.edges = sel.edges.forward}
+  if(dim(sel.edges)[1] == 0) {return(NA)} else {
+    # convert NA to zero
+    sel.edges[is.na(sel.edges)] <- 0
+    # Calculate normalized interaction
+    sel.edges$Weight <- sel.edges$Weight.y - sel.edges$Weight.x
+    sel.edges$interaction <- "normalized cluster evidence"
+    return(unique(sel.edges)) }
+}
+test.i4 <- filter.pathway.edges(test.edges, bioplanetjaccardedges)
+# THis works! ***
 # Let's try the max evidence first
 sparse.net <- create.pathway.network(cluster.pathway.evidence, 0.2)
 # 22 edges
@@ -499,6 +722,7 @@ pathway.crosstalk.network <- rbind(total.net, bioplanetjaccardedges)
 # 
 ##############################################################################
 # Network characterization
+#
 calc.net.density <- function(edgefile) {
   no.nodes <- length(unique(c(edgefile$source, edgefile$target)))
   no.edges <- dim(edgefile)[2]
@@ -506,6 +730,7 @@ calc.net.density <- function(edgefile) {
   net.density <- no.edges/no.possible.edges
   return(net.density)
 }
+calc.net.density(total.net) # 3.615564e-06
 # Do this iteratively to look at network dimensions as a function of threshold
 pathway.net.list2 <- list()
 density.list2 <- list()
@@ -516,6 +741,7 @@ for (i in 1:(length(thresh.vec2))){
   density.list2[[i]] <- calc.net.density(pathway.net.list2[[i]] )
 }
 #
+plot(unlist(density.list2)~thresh.vec2, log="y")
 net.edges <- sapply(pathway.net.list2, function(x) dim(x)[1])
 net.nodes <- sapply(pathway.net.list2, function(x) length(unique(c(x[,2], x[ ,1]))))
 net.atts.df <- data.frame(threshold=thresh.vec2, nodes=net.nodes, edges=net.edges, density=unlist(density.list2))
@@ -523,8 +749,17 @@ dev.new()
 plot(unlist(density.list) ~ thresh.vec)
 plot(net.edges ~ thresh.vec2)
 plot(net.nodes ~ thresh.vec2)
-plot(log2(net.nodes) ~ thresh.vec)
+plot(log2(net.edges) ~ thresh.vec2)
+plot(log2(net.nodes) ~ thresh.vec2)
+plot(net.atts.df$density~net.atts.df$threshold, log="xy", pch=18, col=alpha(col2hex("purple"), 0.6), cex=1.5)
 # Threshold values from 0.11 to 0.16 produce a sort of local maximum. 
+# What is the best way to look at this? 
+plot(net.atts.df$edges~net.atts.df$nodes, log="xy", pch=20, col=alpha(col2hex("seagreen4"), 0.6), cex=1.8)
+plot(net.atts.df$density~net.atts.df$nodes, log="xy", pch=20, col=alpha(col2hex("seagreen4"), 0.6), cex=1.8)
+# linear on log scale
+plot(net.atts.df$density~(net.atts.df$nodes*net.atts.df$edges), log="xy", pch=20, col=alpha(col2hex("seagreen4"), 0.6), cex=1.8)
+
+
 ###>>>>>----
 # Calculate background from bioplanet
 test.edges <- pathway.net.list[[1]]
@@ -552,29 +787,188 @@ apply(test.i4r, 1, function (x) any(is.na(x)))
 any(!is.na(test.i4r$interaction.x))
 # I wonder if this is generally true?
  # No - 
-# Attempt to recover weight to normalize 
-filter.pathway.edges <- function(query.edges, edge.file=bioplanetjaccardedges) {
-  sel.edges.forward <- edge.file %>% right_join(query.edges, by=c("source","target"))
-  # Test for reverse edges
-    query.edges.rev <- query.edges[, c(2,1,3,4)]
-    names(test.edges.rev) <- names(query.edges) 
-    sel.edges.rev <- edge.file %>% right_join(query.edges.rev, by=c("source","target"))
-    if (any(!is.na(sel.edges.rev$interaction.x))) {
-      sel.edges.rev <- sel.edges.rev[!is.na(sel.edges.rev$interaction.x),]
-      sel.edges <- rbind(sel.edges.forward, sel.edges.rev)
-    } else {sel.edges = sel.edges.forward}
-  if(dim(sel.edges)[1] == 0) {return(NA)} else {
-    # convert NA to zero
-    sel.edges[is.na(sel.edges)] <- 0
-    # Calculate normalized interaction
-    sel.edges$Weight <- sel.edges$Weight.y - sel.edges$Weight.x
-    sel.edges$interaction <- "normalized cluster evidence"
-    return(unique(sel.edges)) }
-}
-test.i4 <- filter.pathway.edges(test.edges, bioplanetjaccardedges)
-# THis works! ***
+
+
+plot(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust)
+# 456985/645709 edges
+head(total.pathway.net.no.bp[1:25, 1:2], 25)
+# Metabolism; RNA binding proteins, messengry RNA processing; splicing; feature prominently 
+tpn <- total.pathway.net.no.bp
+tpn.big <- tpn[tpn$Weight>0.2,]
+# 19523 edges
+tpn.small <- tpn[tpn$Weight>2,]
+# 249 edges
+# Plots
+hist(tpn$Weight, col='orange', breaks=50) # Max 6.3; new: 5.89
+# Graph
+tpn.small.nodes <- data.frame(id=unique(c(tpn.small$source, tpn.small$target)))
+look2.suid <- createNetworkFromDataFrames.check(tpn.small.nodes, tpn.small[ c("source", "target", "Weight", "interaction")], title="Pathway Interactions, Weight > 2.0; Weight.bp = 0", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+tpn.small.nodes$id[grep("mRNA", tpn.small.nodes$id)]
+tpn.small.nodes$id[grep("poptosis", tpn.small.nodes$id)]
+tpn.small.nodes$id[grep("ransport", tpn.small.nodes$id)]
+filter.edges.1("Transmembrane transport of small molecules", tpn.small)
+# EGF/EGFR signaling pathway interactions here, plus translation
+filter.edges.1("SLC-mediated transmembrane transport", tpn.small)
+intersect(bioplanet[["Protein processing in the endoplasmic reticulum"]], bioplanet[["Developmental biology"]]) 
+# "HSP90AA1" "HSP90AB1"
+intersect(bioplanet[["EGF/EGFR signaling pathway"]], bioplanet[["Endocytosis"]]) 
+# 27 proteins
+filter.edges.between("EGF/EGFR signaling pathway", "Endocytosis", total.pathway.net)
+filter.edges.between("EGF/EGFR signaling pathway", "Endocytosis", bioplanetjaccardedges)
+filter.edges.between("EGF/EGFR signaling pathway", "Endocytosis", big.path.net)
+#NOTE: big.path.net filters individual edges to be >0.01; weights are larger in total.pathway.net
+total.pathway.net <- total.pathway.net[order(total.pathway.net$Combined.Weight,decreasing=TRUE),]
+dev.new()
+plot(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust, log="xy", pch=20, col=alpha(col2hex("seagreen4"), 0.1), cex=1.8)
+# A cloud
+plot(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust, log="xy", pch=20, col=alpha(col2hex("magenta"), 0.1), cex=1.8)
+points(big.path.net$Weight~big.path.net$Weight.clust,  pch=19, col=alpha(col2hex("blue"), 0.1), cex=1.8)
+points(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("yellow"), 0.1), cex=1.8)
+# Try different order
+dev.new()
+plot(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust, ylab= "Transformed weight", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green"), 0.1), log="xy", cex=1.8)
+points(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("magenta"), 0.1), cex=1.8)
+points(big.path.net$Weight~big.path.net$Weight.clust,  pch=20, col=alpha(col2hex("blue"), 0.1), cex=1.8)
+# ***
+legend("bottomright", pt.cex=1.8, pch=20, col=c("green", "magenta", "blue"), legend = c("Weight normalized", "Weight combined", "Weight normalized, filtered"))
+# Without log
+dev.new()
+plot(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust, ylab= "Transformed weight", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green"), 0.25), cex=1.8)
+points(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("magenta"), 0.2), cex=1.8)
+points(big.path.net$Weight~big.path.net$Weight.clust,  pch=20, col=alpha(col2hex("blue"), 0.2), cex=1.8)
+# ***
+legend("bottomright", pt.cex=1.8, pch=20, col=c("green", "magenta", "blue"), legend = c("Weight normalized", "Weight combined", "Weight normalized, filtered"))
+# ***
+hist (total.pathway.net$Weight.clust, col="green", breaks=40000, xlim=c(0, 0.05))
+hist (big.path.net$Weight.clust, col="red", breaks=40000, xlim=c(0, 0.05), add=TRUE)
+# ***
+dev.new()
+plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(0,2))
+lines(density(big.path.net$Weight.clust), col="red",  xlim=c(0,2))
+lines(density(total.pathway.net$Combined.Weight), col="blue",  xlim=c(0, 2))
+
+# zoom in:
+plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(0,2), ylim=c(0, 1))
+lines(density(big.path.net$Weight.clust), col="red",  xlim=c(0,2), ylim=c(0, 1))
+plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(2,5), ylim=c(0, 0.02))
+lines(density(big.path.net$Weight.clust), col="red",  xlim=c(2,5), ylim=c(0, 0.02))
+lines(density(total.pathway.net$Combined.Weight), col="blue",  xlim=c(2,5), ylim=c(0, 0.02))
+# What does the graph look like? Repeat the above
+# Focus on cluster evidence but also graph bp edges
+tpn <- total.pathway.net.no.bp
+tpn.small <- tpn[tpn$Weight>2,]
+# 249 edges
+# Plots
+hist(tpn$Weight, col='orange', breaks=50) # Max 6.3
+# Now get the other edges
+tpn.small.nodes <- data.frame(id=unique(c(tpn.small$source, tpn.small$target)))
+# 124 nodes
+pcn.small <- filter.edges.0(tpn.small.nodes$id, pathway.crosstalk.network)
+# This gives all edges: 12116. Need to filter.
+bp.small <- filter.edges.0(tpn.small.nodes$id, bioplanetjaccardedges)
+# 4490 edges - need to filter
+hist(bp.small$Weight, breaks=100, col="yellow")
+bp.small.1 <- bp.small[bp.small$Weight>0.2,] # 280 edges
+bp.small.2 <- bp.small[bp.small$Weight>0.3,] # 186 edges
+bp.small.3 <- bp.small[bp.small$Weight>0.4,] # 113 edges
+# Bind together
+pcn.small <- rbind(tpn.small[,c("source", "target", "Weight", "interaction")], bp.small.2)
+# Graph
+look8.suid <- createNetworkFromDataFrames.check(tpn.small.nodes, pcn.small, title="Pathway Interactions, Weight > 2.0; Weight.bp graphed", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+setEdgeSelectionColorDefault (col2hex("chartreuse"))
+edgeColors <- c(col2hex("purple"), col2hex("green"))
+edgeTypes <- c("cluster evidence", "pathway Jaccard similarity")
+setEdgeColorMapping( 'interaction', edgeTypes, edgeColors, 'd', default.color="#FFFFFF")
+style.name <- "PCN style 3"
+copyVisualStyle('default', style.name)
+setVisualStyle(style.name)
+# Get a subset of nodes using Cytoscape
+funnodes <- getAllNodes()
+# Metabolism, Axon guidance, Protein metabolism, Messenger RNA processing, EGF/EGFR signaling pathway, Apoptosis regulation, Translation, Spliceosome, Protein processing in the endoplasmic reticulum, Transmembrane transport of small molecules, SLC-mediated transmembrane transport
+# With new weights, the transporter-EGF signaling weight is different
+filter.edges.between("Transmembrane transport of small molecules", "EGF/EGFR signaling pathway", pathway.crosstalk.network)
+# Weight 1.66
+filter.edges.between("Endocytosis", "EGF/EGFR signaling pathway", pathway.crosstalk.network)
+# Weight cluster 2.09728951; bp 0.086
+# Try picking some from this list and filtering edges
+selections <- funnodes[c(2,3,6,7,12,13,15,17,19,20,21,23,27,34,46,49,54,56,58)]
+selections.nodes <- data.frame(id=selections)
+selection.edges <- filter.edges.0(selections, pathway.crosstalk.network)
+# 269 edges
+hist(selection.edges$Weight, breaks=50, col="violet")
+hist(selection.edges$Weight, breaks=100, col="darkviolet", xlim=c(0,1))
+look9.suid <- createNetworkFromDataFrames.check(selections.nodes, selection.edges, title="Selected Pathway Interactions, unfiltered", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+# Too many edges!
+# Filter 
+selected.edges.bp <- selection.edges[selection.edges$interaction=="pathway Jaccard similarity",]
+selected.edges.cpe <- selection.edges[selection.edges$interaction=="cluster evidence",]
+hist(selected.edges.bp$Weight, breaks=100, col="darkviolet", xlim=c(0,0.1))
+hist(selected.edges.cpe$Weight, breaks=100, col="darkviolet", xlim=c(0,2))
+sel.cpe.filtered <- selected.edges.cpe[selected.edges.cpe$Weight>1,] # 141
+sel.bp.filtered <- selected.edges.bp[selected.edges.bp$Weight>0.01,] # 59
+sel.filtered <- rbind(sel.cpe.filtered, sel.bp.filtered)
+sel.nodes <- data.frame(id=unique(c(sel.filtered$source, sel.filtered$target)))
+look10.suid <- createNetworkFromDataFrames.check(sel.nodes, sel.filtered, title="Selected Pathway Interactions, clust weight>1, bp weight>0.01", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+# Still too many edges
+sel.cpe.filtered2 <- selected.edges.cpe[selected.edges.cpe$Weight>2,] # 83
+sel.bp.filtered2 <- selected.edges.bp[selected.edges.bp$Weight>0.035,] # 36
+sel.filtered2 <- rbind(sel.cpe.filtered2, sel.bp.filtered2)
+sel.nodes2 <- data.frame(id=unique(c(sel.filtered2$source, sel.filtered2$target)))
+look10.suid <- createNetworkFromDataFrames.check(sel.nodes2, sel.filtered2, title="Selected Pathway Interactions, clust weight>2, bp weight>0.035", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+# Filter further using no.bp
+sel.cpe.filtered3 <- filter.edges.0(selections, total.pathway.net.no.bp) # 73
+sel.cpe.filtered3 <-  sel.cpe.filtered3[sel.cpe.filtered3$Weight>1,] # 56
+sel.bp.filtered3 <- selected.edges.bp[selected.edges.bp$Weight>0.039,] # 34
+sel.bp.filtered3a <- sel.cpe.filtered3[,c("source", "target", "Weight", "interaction")]
+sel.bp.filtered3a$interaction <- "cluster evidence"
+sel.filtered3 <- rbind(sel.bp.filtered3a, sel.bp.filtered3)
+sel.nodes3 <- data.frame(id=unique(c(sel.filtered3$source, sel.filtered3$target)))
+look12.suid <- createNetworkFromDataFrames.check(sel.nodes3, sel.filtered3, title="Selected Pathway Interactions, clust weight>1, bp weight>0.039", collection = "Interactions")
+layoutNetwork("genemania-force-directed")
+# *** starting to look managable.
+#****
+# Focus on "Glycolysis and gluconeogenesis", "EGF/EGFR signaling pathway", "Transmembrane transport of small molecules"
+focus <- c("Glycolysis and gluconeogenesis", "EGF/EGFR signaling pathway", "Transmembrane transport of small molecules")
+focus.df <- data.frame(id=focus)
+focus.edges <- filter.edges.0(focus, pathway.crosstalk.network)
+intersect(bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["EGF/EGFR signaling pathway"]]) #0
+intersect(bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["Transmembrane transport of small molecules"]])     
+#  11 genes pathway Jaccard similarity 0.02217742
+
+look113.suid <- createNetworkFromDataFrames.check(focus.df, focus.edges, title="Selected Pathway Interactions, clust weight>1, bp weight>0.01", collection = "Interactions")
+setEdgeWidths.RCy32(focus.edges, factor=1.5, log=F)         
+# BP edge very thin!
+setEdgeWidths.RCy32(focus.edges, factor=1.2, log=T)         
+#****
+# Now get cfn for each as above
+look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
+# 13 edges
+look5 <- filter.edges.between( bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
+# 22 edges
+# selectNodes(nodes=extract.gene.names.RCy3(look4), by.col="id")
+# selectFirstNeighbors()
+# createSubnetwork(subnetwork.name="Edges Between Pathays")
+# Try this (again, in fresh Cytoscape session, with checking function)
+focus.cccn1 <- graph.cfn.cccn.check (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+focus.cccn2 <- graph.cfn.cccn.check (look5, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# Merge networks in cytoscape, then
+all.ratio.styles()
+toggleGraphicsDetails()
+
+#*
+#___________________________________________________________________________
+# <<<<
 # Apply to list of networks.
 pathway.net.list3 <- lapply(pathway.net.list2, filter.pathway.edges)
+# Do again due to possible error in function
+pathway.net.list3a <- lapply(pathway.net.list2, filter.pathway.edges)
+identical(pathway.net.list3, pathway.net.list3a)
+# [1] TRUE okay
 # Calculate attributes to check
 net.edges3 <- sapply(pathway.net.list3, function(x) dim(x)[1])
 net.nodes3 <- sapply(pathway.net.list3, function(x) length(unique(c(x[,2], x[ ,1]))))
@@ -605,6 +999,19 @@ dim(new.path.net[new.path.net$Weight>1.5,])
 # look at bottom end
 plot(big.path.net$Weight ~ big.path.net$Weight.clust, xlim=c(-1,2))
 plot(big.path.net$Weight.clust ~ big.path.net$Weight, xlim=c(-0.7,2), ylim=c(-0.1,2), pch=19, col=alpha("purple", 0.2))
+# look at bottom end
+plot(big.path.net$Weight ~ big.path.net$Weight.clust, xlim=c(-1,2))
+plot(big.path.net$Weight.clust ~ big.path.net$Weight, xlim=c(-0.7,2), ylim=c(-0.1,2), pch=19, col=alpha("purple", 0.2))
+# Look at top end regardless of bp or cluster weight
+bpn2 <- big.path.net
+bpn2$Weight.sum <- rowSums(bpn2[, c("Weight.bp", "Weight.clust")])
+bpn2 <- bpn2[order(bpn2$Weight.sum, decreasing= TRUE),]
+plot(big.path.net$Weight.bp ~ big.path.net$Weight.clust)
+plot(bpn2$Weight.bp ~ bpn2$Weight.sum)
+biggest <- bpn2[which(bpn2$Weight.clust>4 & bpn2$Weight.bp>0.1),]
+# These are mostly not surprizing. Expected relationships like Cytoplasmic ribosomal proteins-Protein metabolism
+
+
 # Look at smaller network 46 with Threshold 0.110: 140 nodes  217 edges
 small.path.net <- pathway.net.list3[[46]]
 small.path.net <- small.path.net[order(small.path.net$Weight, decreasing=TRUE),]
@@ -616,7 +1023,6 @@ summary(lm(small.path.net$Weight.clust ~ small.path.net$Weight.bp))
 smaller.path.net <- small.path.net[small.path.net$Weight>0.2, ] # now 157 edges
 plot(smaller.path.net$Weight.clust ~ smaller.path.net$Weight, pch=16, col=alpha("darkgreen", 0.5))
 # Look at the top pathway-pathway interactions in networks of different thresholds
-
 pathway.net.list4 <- lapply(pathway.net.list3, function(x) x[order(x$Weight, decreasing = TRUE),])
 newnames <- c("source", "target" , "Weight.bp", "bp.interaction", "clust.interaction", "Weight.clust", "Weight", "interaction" )
 pathway.net.list4 <- lapply(pathway.net.list4, setNames, newnames)
@@ -672,7 +1078,6 @@ print(unlist(spe.nodes3$id))
 selected.pathway.edges4 <- big.path.net[big.path.net$Weight.clust > 1 & big.path.net$Weight.bp < 1,]
 # 1045 pathway interactions at this setting
 # Graph
-spe.nodes4 <- data.frame(id=unique(c(selected.pathway.edges4$source, selected.pathway.edges4$target)))
 spe.nodes4 <- data.frame(id=unique(c(selected.pathway.edges4$source, selected.pathway.edges4$target)))
 look4.suid <- createNetworkFromDataFrames(spe.nodes4, selected.pathway.edges4[ c("source", "target", "Weight", "interaction")], title="Pathway Interactions, Weight > 1; Weight.bp < 1", collection = "Interactions")
 layoutNetwork("genemania-force-directed")
@@ -855,322 +1260,6 @@ all.ratio.styles()
 toggleGraphicsDetails()
 
 #-------------------------------------------
-# A cloud
-plot(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust, log="xy", pch=20, col=alpha(col2hex("magenta"), 0.1), cex=1.8)
-points(big.path.net$Weight~big.path.net$Weight.clust,  pch=19, col=alpha(col2hex("blue"), 0.1), cex=1.8)
-points(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("yellow"), 0.1), cex=1.8)
-# Try different order
-dev.new()
-plot(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust, ylab= "Transformed weight", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green"), 0.1), log="xy", cex=1.8)
-points(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("magenta"), 0.1), cex=1.8)
-points(big.path.net$Weight~big.path.net$Weight.clust,  pch=20, col=alpha(col2hex("blue"), 0.1), cex=1.8)
-# ***
-legend("bottomright", pt.cex=1.8, pch=20, col=c("green", "magenta", "blue"), legend = c("Weight normalized", "Weight combined", "Weight normalized, filtered"))
-# Without log
-dev.new()
-plot(total.pathway.net$Weight.normalized~total.pathway.net$Weight.clust, ylab= "Transformed weight", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green"), 0.25), cex=1.8)
-points(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust,  pch=20, col=alpha(col2hex("magenta"), 0.2), cex=1.8)
-points(big.path.net$Weight~big.path.net$Weight.clust,  pch=20, col=alpha(col2hex("blue"), 0.2), cex=1.8)
-# ***
-legend("bottomright", pt.cex=1.8, pch=20, col=c("green", "magenta", "blue"), legend = c("Weight normalized", "Weight combined", "Weight normalized, filtered"))
-# ***
-hist (total.pathway.net$Weight.clust, col="green", breaks=40000, xlim=c(0, 0.05))
-hist (big.path.net$Weight.clust, col="red", breaks=40000, xlim=c(0, 0.05), add=TRUE)
-# ***
-dev.new()
-plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(0,2))
-lines(density(big.path.net$Weight.clust), col="red",  xlim=c(0,2))
-lines(density(total.pathway.net$Combined.Weight), col="blue",  xlim=c(0, 2))
-
-# zoom in:
-plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(0,2), ylim=c(0, 1))
-lines(density(big.path.net$Weight.clust), col="red",  xlim=c(0,2), ylim=c(0, 1))
-plot(density(total.pathway.net$Weight.clust), col="green3", xlim=c(2,5), ylim=c(0, 0.02))
-lines(density(big.path.net$Weight.clust), col="red",  xlim=c(2,5), ylim=c(0, 0.02))
-lines(density(total.pathway.net$Combined.Weight), col="blue",  xlim=c(2,5), ylim=c(0, 0.02))
-# What does the graph look like? Repeat the above
-# Focus on cluster evidence but also graph bp edges
-tpn <- total.pathway.net.no.bp
-tpn.small <- tpn[tpn$Weight>2,]
-# 249 edges
-# Plots
-hist(tpn$Weight, col='orange', breaks=50) # Max 6.3
-# Now get the other edges
-tpn.small.nodes <- data.frame(id=unique(c(tpn.small$source, tpn.small$target)))
-# 124 nodes
-pcn.small <- filter.edges.0(tpn.small.nodes$id, pathway.crosstalk.network)
-# This gives all edges: 12116. Need to filter.
-bp.small <- filter.edges.0(tpn.small.nodes$id, bioplanetjaccardedges)
-# 4490 edges - need to filter
-hist(bp.small$Weight, breaks=100, col="yellow")
-bp.small.1 <- bp.small[bp.small$Weight>0.2,] # 280 edges
-bp.small.2 <- bp.small[bp.small$Weight>0.3,] # 186 edges
-bp.small.3 <- bp.small[bp.small$Weight>0.4,] # 113 edges
-# Bind together
-pcn.small <- rbind(tpn.small[,c("source", "target", "Weight", "interaction")], bp.small.2)
-# Graph
-look8.suid <- createNetworkFromDataFrames.check(tpn.small.nodes, pcn.small, title="Pathway Interactions, Weight > 2.0; Weight.bp graphed", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-setEdgeSelectionColorDefault (col2hex("chartreuse"))
-edgeColors <- c(col2hex("purple"), col2hex("green"))
-edgeTypes <- c("cluster evidence", "pathway Jaccard similarity")
-setEdgeColorMapping( 'interaction', edgeTypes, edgeColors, 'd', default.color="#FFFFFF")
-style.name <- "PCN style 3"
-copyVisualStyle('default', style.name)
-setVisualStyle(style.name)
-# Get a subset of nodes using Cytoscape
-funnodes <- getAllNodes()
-# Metabolism, Axon guidance, Protein metabolism, Messenger RNA processing, EGF/EGFR signaling pathway, Apoptosis regulation, Translation, Spliceosome, Protein processing in the endoplasmic reticulum, Transmembrane transport of small molecules, SLC-mediated transmembrane transport
-# With new weights, the transporter-EGF signaling weight is different
-filter.edges.between("Transmembrane transport of small molecules", "EGF/EGFR signaling pathway", pathway.crosstalk.network)
-# Weight 1.66
-filter.edges.between("Endocytosis", "EGF/EGFR signaling pathway", pathway.crosstalk.network)
-# Weight cluster 2.09728951; bp 0.086
-# Try picking some from this list and filtering edges
-selections <- funnodes[c(2,3,6,7,12,13,15,17,19,20,21,23,27,34,46,49,54,56,58)]
-selections.nodes <- data.frame(id=selections)
-selection.edges <- filter.edges.0(selections, pathway.crosstalk.network)
-# 269 edges
-hist(selection.edges$Weight, breaks=50, col="violet")
-hist(selection.edges$Weight, breaks=100, col="darkviolet", xlim=c(0,1))
-look9.suid <- createNetworkFromDataFrames.check(selections.nodes, selection.edges, title="Selected Pathway Interactions, unfiltered", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-# Too many edges!
-# Filter 
-selected.edges.bp <- selection.edges[selection.edges$interaction=="pathway Jaccard similarity",]
-selected.edges.cpe <- selection.edges[selection.edges$interaction=="cluster evidence",]
-hist(selected.edges.bp$Weight, breaks=100, col="darkviolet", xlim=c(0,0.1))
-hist(selected.edges.cpe$Weight, breaks=100, col="darkviolet", xlim=c(0,2))
-sel.cpe.filtered <- selected.edges.cpe[selected.edges.cpe$Weight>1,] # 141
-sel.bp.filtered <- selected.edges.bp[selected.edges.bp$Weight>0.01,] # 59
-sel.filtered <- rbind(sel.cpe.filtered, sel.bp.filtered)
-sel.nodes <- data.frame(id=unique(c(sel.filtered$source, sel.filtered$target)))
-look10.suid <- createNetworkFromDataFrames.check(sel.nodes, sel.filtered, title="Selected Pathway Interactions, clust weight>1, bp weight>0.01", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-# Still too many edges
-sel.cpe.filtered2 <- selected.edges.cpe[selected.edges.cpe$Weight>2,] # 83
-sel.bp.filtered2 <- selected.edges.bp[selected.edges.bp$Weight>0.035,] # 36
-sel.filtered2 <- rbind(sel.cpe.filtered2, sel.bp.filtered2)
-sel.nodes2 <- data.frame(id=unique(c(sel.filtered2$source, sel.filtered2$target)))
-look10.suid <- createNetworkFromDataFrames.check(sel.nodes2, sel.filtered2, title="Selected Pathway Interactions, clust weight>2, bp weight>0.035", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-# Filter further using no.bp
-sel.cpe.filtered3 <- filter.edges.0(selections, total.pathway.net.no.bp) # 73
-sel.cpe.filtered3 <-  sel.cpe.filtered3[sel.cpe.filtered3$Weight>1,] # 56
-sel.bp.filtered3 <- selected.edges.bp[selected.edges.bp$Weight>0.039,] # 34
-sel.bp.filtered3a <- sel.cpe.filtered3[,c("source", "target", "Weight", "interaction")]
-sel.bp.filtered3a$interaction <- "cluster evidence"
-sel.filtered3 <- rbind(sel.bp.filtered3a, sel.bp.filtered3)
-sel.nodes3 <- data.frame(id=unique(c(sel.filtered3$source, sel.filtered3$target)))
-look12.suid <- createNetworkFromDataFrames.check(sel.nodes3, sel.filtered3, title="Selected Pathway Interactions, clust weight>1, bp weight>0.039", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-# *** starting to look managable.
-#****
-# Explore example from BioPlanetTest for links between EGFR and FASN
-a <- "Signaling by EGFR in cancer"
-b <- "Fatty acid, triacylglycerol, and ketone body metabolism"
-filter.edges.0(c(a,b), big.path.net)[,c(3,6,7)]
-# Weight.bp   Weight.clust     Weight
-# 0.003533569 0.02083333      0.01729976
-# Not high.
-# Where else is FASN?
-fasn.bp <- bioplanet[grep("FASN", bioplanet)]
-fasn.paths <- names (fasn.bp)
-egfr.bp <- bioplanet[grep("EGFR", bioplanet)]
-intersect(unlist(fasn.paths), unlist(egfr.paths))
-egfr.paths <- names (egfr.bp)
-# Examine interactions
-egfr.fasn.between <- filter.edges.between(egfr.paths, fasn.paths, big.path.net)
-# Gets all edges connecting these: 410
-egfr.fasn <- filter.edges.0(c(egfr.paths, fasn.paths), big.path.net) 
-# 1463 edges, gets everything in between all nodes.
-# Examine weights
-egfr.fasn.between[egfr.fasn.between$Weight>1,]
-ef.sel <- egfr.fasn.between[egfr.fasn.between$Weight.clust > 0.5 & egfr.fasn.between$Weight.bp < 0.01,]
-# "Metabolism" is huge! > 1600 genes
-efnomet <- egfr.fasn.between[-grep("Metabolism",  egfr.fasn.between$source),]
-efnomet <- efnomet[-grep("Metabolism",  efnomet$target),]
-# 335 left
-efnomet[efnomet$Weight.clust > 0.3 & efnomet$Weight.bp < 0.01,]
-# Disease is too big
-efnomet <- efnomet[-grep("Disease",  efnomet$source),]
-efnomet <- efnomet[-grep("Disease",  efnomet$target),]
-# 321 left *** looking more interesting
-hist(efnomet$Weight, col="blue", , breaks=50)
-efselect <- efnomet[efnomet$Weight>=0.2,] # 37 edges
-efselect.nodes <- data.frame(id=unique(c(efselect$source, efselect$target)))
-look3.suid <- createNetworkFromDataFrames(efselect.nodes, efselect[ c("source", "target", "Weight", "interaction")], title="EGFR FASN Pathway Interactions", collection = "Interactions")
-layoutNetwork("genemania-force-directed")
-setEdgeWidths.RCy32(efselect, factor=5, log=F)
-#
-# Other Pathway interactions 
-egfnames <- names(bioplanet)[grep("EGF", names(bioplanet))] %w/o% names(bioplanet)[grep("VEGF", names(bioplanet))]
-names(bioplanet)[grep("Endocytosis", names(bioplanet))]
-filter.edges.between("Endocytosis", egfnames, selected.pathway.edges)
-#####>>>>-----
-# Plots for figures
-# Examine above pathway genes as in Karenguolin12
-a <- bioplanet[["Protein processing in the endoplasmic reticulum"]]
-b <- bioplanet[["Developmental biology"]]
-ab <- intersect (a, b)
-ab.all <- unique(c(a, b)) # 584
-# only "HSP90AA1" "HSP90AB1" 
-gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
-ER_Dev <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9")
-# 
-# 2520  merged edges
-test.ld <- composite.shortest.paths(genes1=a[a %in% ld.gene.key$Gene.Name], genes2=b[b %in% ld.gene.key$Gene.Name], network=ldgene.physical.cfn.merged, exclude="")
-# 1320 edges
-# new graphs
-# graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-cccn1 <- graph.cfn.cccn (ER_Dev, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
-toggleGraphicsDetails()
-# Follow up top EGFR FASN interaction from efselect above
-a <- bioplanet[["Lipid and lipoprotein metabolism"]]
-b <- bioplanet[["Developmental biology"]]
-ab <- intersect (a, b) # 58 - loads of MED mediator proteins!
-b <- bioplanet[["Lipid and lipoprotein metabolism"]]
-ab <- intersect (a, b) # 489!
-# Look for something from Pathway Interactions Weight.clust > 0.8 & Weight.bp < 0.001 selected.pathway.edges
-filter.edges.1("EGF/EGFR signaling pathway", selected.pathway.edges)
-# None have any bp interactions. Choose Transmembrane transport of small molecules (druggable?)
-a <- bioplanet[["Transmembrane transport of small molecules"]]
-b <- bioplanet[["EGF/EGFR signaling pathway"]]
-ab <- intersect (a, b) #0
-ab.all <- unique(c(a, b)) # 573
-# 
-gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
-egfr.transporters <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9")
-cccn2 <- graph.cfn.cccn.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-#FixEdgeDprops.RCy32()
-all.ratio.styles()
-toggleGraphicsDetails()
-# What are the edges *between* uniuqe pathway genes?
-look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
-# 13 edges
-selectNodes(nodes=extract.gene.names.RCy3(look4), by.col="id")
-selectFirstNeighbors()
-createSubnetwork(subnetwork.name="Edges Between Pathways")
-# Still to complex, try this (again)
-cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-setCorrEdgeAppearance(cccn4) 
-setCorrEdgeAppearance(getTableColumns('edge'))
-FixEdgeDprops.RCy32()
-# Already done all.ratio.styles()
-# **** Got two network figures before I couldn't fix edges! Try manually:
-# Who is in which pathway?
-look4.df <- data.frame(Gene.Name=sort(unique(c(look4$source, look4$target))))
-look4.df$EGFR.path <- sapply(look4.df$Gene.Name, function (x) x %in% b)
-look4.df$Transporter.path <- sapply(look4.df$Gene.Name, function (x) x %in% a)
-# >>>>>>>>>>>>>>>>>
-# "Friends of friends" approach
-# Use CFN here; keep genetic interactions (gzalltgene.cfn.rcy3)
-a <- bioplanet[["Transmembrane transport of small molecules"]]
-b <- bioplanet[["EGF/EGFR signaling pathway"]]
-transporter.friends <- filter.edges.1(a, gzalltgene.cfn.rcy3) 
-EGFR.friends <- filter.edges.1(b, gzalltgene.cfn.rcy3) 
-friends.of.friends <- intersect(extract.gene.names(transporter.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
-# 120 mutual friends
-# Network of these
-fof.cfn <- filter.edges.0(c(a,b,friends.of.friends),gzalltgene.cfn.rcy3)
-# 2634 edges
-cfn1 <- graph.cfn.cccn (fof.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-toggleGraphicsDetails()
-# Use simpler merged version and filter.edges.between
-fof.cfn2 <- filter.edges.between(c(a,b),friends.of.friends, gzalltgene.physical.cfn.merged) # now 296 edges
-cfn2 <- graph.cfn.cccn (fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-# separate out
-selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
-selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
-# ****
-# Try this with different views, including composite shortest paths and physical between in "EGF transporters.cys"
-selectNodes(nodes=friends.of.friends, by.col="id", preserve.current.selection = F)
-# Who is not in friends.of.friends in composite shortest paths: egfr.transporters
-csp.genes <- outersect(extract.gene.names(egfr.transporters), c(a, b, friends.of.friends)) # 253 genes§
-selectNodes(nodes=csp.genes, by.col="id", preserve.current.selection = F)
-# look at CFN version
-selectNodes(nodes=extract.gene.names(egfr.transporters), by.col="id", preserve.current.selection = F)
-createSubnetwork(subnetwork.name="EGFR transporters composite shortest paths CFN")
-# Back to csp for CCCN version
-selectNodes(nodes=extract.gene.names(egfr.transporters), by.col="id", preserve.current.selection = F)
-invertNodeSelection()
-createSubnetwork(subnetwork.name="EGFR transporters composite shortest paths CCCN")
-# Idea: betweenness of nodes between pathways
-egfr.transporters.g <- graph_from_data_frame(egfr.transporters)
-e.t.between <- betweenness(egfr.transporters.g)
-e.t.b.df <- data.frame(Gene.Name=names(e.t.between), betweenness=e.t.between)
-e.t.b.df <- e.t.b.df[order(e.t.b.df$betweenness, decreasing=TRUE),]
-# ***
-# Who is where? And in what family
-between.genes <- e.t.b.df[e.t.b.df$betweenness>0, "Gene.Name"]
-intersect(between.genes,   bioplanet[["Transmembrane transport of small molecules"]]) # 12
-intersect(between.genes,   bioplanet[["EGF/EGFR signaling pathway"]]) # 12
-# 37; EGFR is at the top. Are these related to overall betweenness?
-etb.df <- left_join(e.t.b.df, gzgene.cfn.netatts, by="Gene.Name")
-gz.cf.ppibetween <- gz.cf[which(gz.cf$Node.ID=="gene"), c("Gene.Name", "ppibetween", "norm.ppibetween", "HPRD.Function")]
-etb.df <- left_join(etb.df, gz.cf.ppibetween[, c("Gene.Name", "HPRD.Function")], by="Gene.Name")
-etb.df$enzyme.class <- sapply(etb.df$Gene.Name, function (x) names(zymes.list[grep(x, zymes.list)]))
-
-# Relationships to pathway crosstalk network betweenness from CFN and PPI networks
-plot(etb.df$betweenness~etb.df$ppibetween, pch=19, col="seagreen")
-summary(lm(etb.df$betweenness~etb.df$ppibetween))
-# R-squared:  0.2305 
-plot(etb.df$betweenness~etb.df$norm.ppibetween, pch=19, col="forestgreen")
-# norm.ppibetween is CFN ppibetween/allppibetween
-summary(lm(etb.df$betweenness~etb.df$norm.ppibetween))
-# R-squared: 0.02623
-plot(etb.df$betweenness~etb.df$allppibetween, pch=19, col="forestgreen")
-summary(lm(etb.df$betweenness~etb.df$allppibetween))
-# R-squared: 0.07327
-
-# Which genes are high betweenness relative to total CFN?
-#
-etb.df[which(etb.df$betweenness>etb.df$allppibetween), "Gene.Name"]
-# [1] "CTTN"  "KRT18"
-etb.df[which(etb.df$betweenness>etb.df$ppibetween), "Gene.Name"] -> highbetweeners
-#[1] "CTTN"   "EFNB1"  "OCLN"   "PAK2"   "GJA1"   "BCAR1"  "PRKACA" "PIK3R1" "MAPK14" "EPHB4" "RALA"   "PLAA"   "IL6ST"  "PSAT1"  "KIT"   
-
-selectNodes(highbetweeners, by.col="id", preserve.current.selection = F)
-selectFirstNeighbors()
-# Ask if these are enzymes
-etb.df[etb.df$Gene.Name %in% highbetweeners, c("Gene.Name", "HPRD.Function", "enzyme.class")]
-# Group by enzyme or function
-etb.RNA <- etb.df[grep("RNA", etb.df[,c("HPRD.Function","enzyme.class")], fixed = T), "Gene.Name"]
-etb.kinase <- etb.df[grep("kinase", etb.df[,c("HPRD.Function","enzyme.class")]), "Gene.Name"]
-
-# For figures with no node labels
-setNodeLabelColorDefault(col2hex("transparent"), style.name = "H1781_AfatinibRatio Style",)
-
-#__________________
-gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
-ER_Dev <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9")
-# 
-# 2520  merged edges
-test.ld <- composite.shortest.paths(genes1=a[a %in% ld.gene.key$Gene.Name], genes2=b[b %in% ld.gene.key$Gene.Name], network=ldgene.physical.cfn.merged, exclude="")
-# 1320 edges
-# new graphs
-# graph.cfn.cccn (test.gz, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-cccn1 <- graph.cfn.cccn (ER_Dev, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-all.ratio.styles()
-toggleGraphicsDetails()
-# This is useful to see which clusters are predominantly affected by particular drugs. 
-# What are the edges *between* uniuqe pathway genes?
-ernodev <- a %w/o% b
-devnoer <- b %w/o% a
-look5 <- filter.edges.between(ernodev, devnoer, edge.file=gzalltgene.physical.cfn.merged)
-# 34 edges, including CLTC, EGFR, MAPK9 (JNK2)...
-cccn5 <- graph.cfn.cccn (look5, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-# Note: run all.ratio.styles() if not run above.
-# Edges are messed up: 'shared interaction' is wrong!
-# Doesnt help: 
-edgeDprops.RCy32(); all.ratio.styles() 
-# Replotting also doesn't help. Try restarting cytoscape: This worked for some but not all edges. Glitch!
-# Cytoscape 3.8 doesn't start properly from .sh script. Open manually, try again
-all.ratio.styles()
-toggleGraphicsDetails()
-
-#-------------------------------------------
 dev.new()
 plot(unlist(density.list2) ~ thresh.vec2, col="gray100", pch=16, xlab="Cluster Evidence Threshold", ylab="Pathway Network Density", cex.lab=1.25)
 net.nodes.index <- (net.nodes/10000)
@@ -1184,7 +1273,7 @@ text(topesslhubs[, "allppibetween"], topesslhubs[, "ppibetween"], col="black", c
 
 bioplanetjaccard.g <- bioplanet.g
   
-save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.matrix.union, bioplanet.adj.matrix, bioplanet.jaccard.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetjaccard.g, bioplanetgenes, bioplanetjaccardedges, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, matrix.union, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, pathway.net.list2, density.list2, net.atts.df, filter.pathway.edges, pathway.net.list3, big.path.net, pathway.net.list4, thresh.vec, thresh.vec2, zymes.list, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
+save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.matrix.union, bioplanet.adj.matrix, bioplanet.jaccard.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetjaccard.g, bioplanetgenes, bioplanetjaccardedges, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, matrix.union, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, pathway.net.list2, density.list2, net.atts.df, filter.pathway.edges, pathway.net.list3, big.path.net, pathway.net.list4, thresh.vec, thresh.vec2, zymes.list, create.pathway.network, total.pathway.net, total.pathway.net.no.bp, pathway.crosstalk.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 
 
 ##################################################################################################################
@@ -1216,8 +1305,6 @@ zymes.gzclusters.bioplanet.common <- list.common(zymes.gzclusters.common, zymes.
 # Write this file for inspection
 zymes.crosstalk.filename <- paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "ClusterBioplanetEnzymeIntersect.txt", sep="")
 sink(zymes.crosstalk.filename); print(zymes.gzclusters.bioplanet.common); sink()
-# What are the ubiquitining enzymes
-zymes.list[grep("biquit", names(zymes.list))]
 # What enzymes are most represented?
 gene.clist["38.104.92"] # FYN YES1 SRC PTPRK PLCG1
 # Some more interesting pathways to investigate
@@ -1298,6 +1385,7 @@ gzva <- unlist(vertex_attr(gzalltgene.physical.cfn.merged.g))
 ldva <- unlist(vertex_attr(ldgene.physical.cfn.merged.g))
 setdiff(gzva, ldva)
 setdiff(ldva, gzva)
+
 #*#*#*#*
 #* Hypothesis: clustering mulitiple edges will reveal patterns in interactions
 # * Plot multiple edge weights in 2D or 3D and use minimum spanning tree, single linkage
