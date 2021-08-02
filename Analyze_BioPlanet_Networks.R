@@ -142,9 +142,9 @@ pcnn.bp.hi <- pcnn.bp[pcnn.bp$Weight > 0.2,]
 pcnn.filter1 <- rbind(pcnn.clust.hi, pcnn.bp.lo)
 test3 <- filter.edges.1(focus, pcnn.clust.hi) # 141
 test4 <- filter.edges.1(focus, pcnn.bp.hi) # 9
-focus.deg1.df <- data.frame(id=extract.gene.names.RCy3(test3)) # 73
+#focus.deg1.df <- data.frame(id=extract.gene.names.RCy3(test3)) # 73
 focus.deg1.edges <- rbind(test3, test4)
-focus.deg1.df <- data.frame(id=extract.gene.names.RCy3(focus.deg1.edges))
+focus.deg1.df <- data.frame(id=unique(c(focus.deg1.edges$source, focus.deg1.edges$target)))
 
 focus.deg1.suid <- createNetworkFromDataFrames.check(focus.deg1.df, focus.deg1.edges, title="Focus Trio Degree 1", collection = "Interactions")
 
