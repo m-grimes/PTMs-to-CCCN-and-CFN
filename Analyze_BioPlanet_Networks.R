@@ -121,7 +121,7 @@ intersect(bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["Transmembra
 
 focus.suid <- createNetworkFromDataFrames.check(focus.df, focus.edges, title="Focus Trio Normalized", collection = "Interactions")
 setEdgeWidths.RCy32(focus.edges, factor=30, log=F)         
-# BP edge very thin! with non-normalized, better with normalized
+# BP edge very thin! with non-normalized, better with normalized, but linear is clearer:
 setEdgeWidths.RCy32(focus.edges, factor=2, log=T)  
 setEdgeSelectionColorDefault (col2hex("chartreuse"))
 edgeColors <- c(col2hex("purple"), col2hex("green"))
@@ -147,10 +147,24 @@ focus.deg1.edges <- rbind(test3, test4)
 focus.deg1.df <- data.frame(id=extract.gene.names.RCy3(focus.deg1.edges))
 
 focus.deg1.suid <- createNetworkFromDataFrames.check(focus.deg1.df, focus.deg1.edges, title="Focus Trio Degree 1", collection = "Interactions")
+setEdgeWidths.RCy32(focus.edges, factor=2, log=T)  
+
+intersect(bioplanet[["EGFR1 pathway"]], bioplanet[["EGF/EGFR signaling pathway"]])
+intersect(bioplanet[["Epidermal growth factor receptor (EGFR) pathway"]], bioplanet[["EGF/EGFR signaling pathway"]])
+filter.edges.0(c("EGFR1 pathway","Epidermal growth factor receptor (EGFR) pathway","EGF/EGFR signaling pathway"), pcnn)
+# cluster evidence range 0.03 to 0.073; bp 0.015 to 0.21
 
 
 
-tpn.nbp <- total.pathway.net.no.bp
+
+
+# --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
+
+
+
+
+
+
 
 tpn <- total.pathway.net
 tpn.v.small <- tpn[tpn$Combined.Weight>10,] # 26
