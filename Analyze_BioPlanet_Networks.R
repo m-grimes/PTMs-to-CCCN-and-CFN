@@ -124,7 +124,9 @@ setEdgeWidths.RCy32(focus.edges, factor=30, log=F)
 # BP edge very thin! with non-normalized, better with normalized, but linear is clearer:
 setEdgeWidths.RCy32(focus.edges, factor=2, log=T)  
 setEdgeSelectionColorDefault (col2hex("chartreuse"))
-edgeColors <- c(col2hex("purple"), col2hex("green"))
+setDefaultNodeColor("#33FFFF" ) # bright Cyan
+edgeColors <- c(col2hex(alpha("purple",0.33333)), col2hex("green"))
+edgeColors <- c("#9966FF", col2hex("green"))
 edgeTypes <- c("cluster evidence", "pathway Jaccard similarity")
 setEdgeColorMapping( 'interaction', edgeTypes, edgeColors, 'd', default.color="#FFFFFF")
 style.name <- "PCN style"
@@ -138,7 +140,8 @@ test2 <- filter.edges.1(focus, tpnn)
 # Filter for high cluster weight, low or high bp weight
 pcnn.clust.hi <- pcnn.clust[pcnn.clust$Weight > 0.065,]
 pcnn.bp.lo <- pcnn.bp[pcnn.bp$Weight < max(pcnn.bp$Weight)/10,] # lower than 0.07777778
-pcnn.bp.hi <- pcnn.bp[pcnn.bp$Weight > 0.2,] 
+pcnn.bp.hi <- pcnn.bp[pcnn.bp$Weight > 0.2,] # 3732
+pcnn.bp.v.hi <- pcnn.bp[pcnn.bp$Weight > 0.5,] # 289
 pcnn.filter1 <- rbind(pcnn.clust.hi, pcnn.bp.lo)
 test3 <- filter.edges.1(focus, pcnn.clust.hi) # 141
 test4 <- filter.edges.1(focus, pcnn.bp.hi) # 9
@@ -148,15 +151,36 @@ focus.deg1.df <- data.frame(id=unique(c(focus.deg1.edges$source, focus.deg1.edge
 
 focus.deg1.suid <- createNetworkFromDataFrames.check(focus.deg1.df, focus.deg1.edges, title="Focus Trio Degree 1", collection = "Interactions")
 setEdgeWidths.RCy32(focus.edges, factor=2, log=T)  
+# Filter edges
+hist(focus.deg1.edges$Weight, col="red", breaks=40)
+focus.deg1.bp <- focus.deg1.edges[which(focus.deg1.edges$interaction=="pathway Jaccard similarity"),]
+# gets highly related pathways
+focus.deg1.hiclust <- test3[which(test3$Weight>0.15),]
+focus.deg.hiedges <- rbind(focus.edges, focus.deg1.bp, focus.deg1.hiclust)
+focus.deg1.df2 <- data.frame(id=unique(c(focus.deg.hiedges$source, focus.deg.hiedges$target)))
+focus.deg1.suid2 <- createNetworkFromDataFrames.check(focus.deg1.df2, focus.deg.hiedges, title="Focus Trio Degree 1, filtered", collection = "Interactions")
+
 
 intersect(bioplanet[["EGFR1 pathway"]], bioplanet[["EGF/EGFR signaling pathway"]])
 intersect(bioplanet[["Epidermal growth factor receptor (EGFR) pathway"]], bioplanet[["EGF/EGFR signaling pathway"]])
 filter.edges.0(c("EGFR1 pathway","Epidermal growth factor receptor (EGFR) pathway","EGF/EGFR signaling pathway"), pcnn)
 # cluster evidence range 0.03 to 0.073; bp 0.015 to 0.21
-
-
-
-
+# How to represent the entire network for supplementary figure?
+hist(pcnn$Weight, breaks=1000, col="gray88", ylim=c(0, 100))
+hist(tpnn.no.bp$Weight, breaks=200, col="gray88", ylim=c(0, 100))
+hist(pcnn.bp.hi$Weight, breaks=100, col="green")
+tpnn.no.bp.hi <- tpnn.no.bp[tpnn.no.bp$Weight>0.05,] # 997
+filtered.pcn <- rbind(tpnn.no.bp.hi, pcnn.bp.v.hi)
+filtered.pcn.df <- data.frame(id=unique(c(filtered.pcn$source, filtered.pcn$target)))
+focus.deg1.suid3 <- createNetworkFromDataFrames.check(filtered.pcn.df, filtered.pcn, title="PCN filtered", collection = "Interactions")
+setEdgeWidths.RCy32(filtered.pcn, factor=2, log=T)  
+# *** PCN_Networks_Focus.cys
+# High BP edges are not unexpected and maybe distracting
+tpnn.no.bp.hi.df <- data.frame(id=c(tpnn.no.bp.hi$source, tpnn.no.bp.hi$target))
+focus.deg1.suid4 <- createNetworkFromDataFrames.check(tpnn.no.bp.hi.df, tpnn.no.bp.hi, title="PCN filtered, no bioplanet", collection = "Interactions")
+setEdgeWidths.RCy32(tpnn.no.bp.hi, factor=30, log=F)         
+setEdgeWidths.RCy32(tpnn.no.bp.hi, factor=2, log=T)  
+# **** yFiles Organic layout with adjustments for figure
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
 
