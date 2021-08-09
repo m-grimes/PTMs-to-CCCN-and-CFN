@@ -303,7 +303,7 @@ ab.all <- unique(c(a, b)) # 573
 gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
 egfr.transporters <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9")
 cccn2 <- graph.cfn.cccn.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-#FixEdgeDprops.RCy32()
+FixEdgeDprops.RCy32()
 all.ratio.styles()
 toggleGraphicsDetails()
 # What are the edges *between* uniuqe pathway genes?
@@ -329,19 +329,37 @@ a <- bioplanet[["Transmembrane transport of small molecules"]]
 b <- bioplanet[["EGF/EGFR signaling pathway"]]
 transporter.friends <- filter.edges.1(a, gzalltgene.cfn.rcy3) 
 EGFR.friends <- filter.edges.1(b, gzalltgene.cfn.rcy3) 
-friends.of.friends <- intersect(extract.gene.names(transporter.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
-# 120 mutual friends
+mutual.friends <- intersect(extract.gene.names(transporter.friends), extract.gene.names(EGFR.friends))
+mutual.friends <- mutual.friends %w/o% c(a,b)
+# 120 mutual friends 
 # Network of these
 fof.cfn <- filter.edges.0(c(a,b,friends.of.friends),gzalltgene.cfn.rcy3)
 # 2634 edges
 cfn1 <- graph.cfn.cccn (fof.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 toggleGraphicsDetails()
 # Use simpler merged version and filter.edges.between
-fof.cfn2 <- filter.edges.between(c(a,b),friends.of.friends, gzalltgene.physical.cfn.merged) # now 296 edges
-cfn2 <- graph.cfn.cccn (fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+transporter.friends.physical <- filter.edges.1(a, gzalltgene.physical.cfn.merged) 
+EGFR.friends.physical <- filter.edges.1(b, gzalltgene.physical.cfn.merged) 
+mutual.friends.physical <- intersect(extract.gene.names(transporter.friends.physical), extract.gene.names(EGFR.friends.physical))
+mutual.friends.physical <- mutual.friends.physical %w/o% c(a,b)
+# 54 genes
+fof.cfn2 <- filter.edges.between(c(a,b),mutual.friends.physical, gzalltgene.physical.cfn.merged) # now 232 edges
+cfn2 <- graph.cfn.cccn.check (fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+# Method to determine whether mutual friends connect to both pathways
+mutual.friends.cfn1 <- filter.edges.between(a, friends.of.friends, gzalltgene.physical.cfn.merged)
+mutual.friends.cfn2 <- filter.edges.between(b, friends.of.friends, gzalltgene.physical.cfn.merged)
+mutual.friends.cfn <- rbind(mutual.friends.cfn1, mutual.friends.cfn2)
+# also 296 edges
+identical(mutual.friends.cfn, fof.cfn2) # F
+# Still has single friends
+cfn3 <- graph.cfn.cccn.check (mutual.friends.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# separate out
+selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
+selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+
 # ****
 # Try this with different views, including composite shortest paths and physical between in "EGF transporters.cys"
 selectNodes(nodes=friends.of.friends, by.col="id", preserve.current.selection = F)
@@ -366,6 +384,12 @@ between.genes <- e.t.b.df[e.t.b.df$betweenness>0, "Gene.Name"]
 intersect(between.genes,   bioplanet[["Transmembrane transport of small molecules"]]) # 12
 intersect(between.genes,   bioplanet[["EGF/EGFR signaling pathway"]]) # 12
 # 37; EGFR is at the top. Are these related to overall betweenness?
+intersect(between.genes, mutual.friends)
+#**** 77/120
+intersect(between.genes, mutual.friends.physical) -> mutual.between
+#****46/54
+# 
+selectNodes(mutual.between)
 etb.df <- left_join(e.t.b.df, gzgene.cfn.netatts, by="Gene.Name")
 gz.cf.ppibetween <- gz.cf[which(gz.cf$Node.ID=="gene"), c("Gene.Name", "ppibetween", "norm.ppibetween", "HPRD.Function")]
 etb.df <- left_join(etb.df, gz.cf.ppibetween[, c("Gene.Name", "HPRD.Function")], by="Gene.Name")
@@ -389,15 +413,25 @@ etb.df[which(etb.df$betweenness>etb.df$allppibetween), "Gene.Name"]
 # [1] "CTTN"  "KRT18"
 etb.df[which(etb.df$betweenness>etb.df$ppibetween), "Gene.Name"] -> highbetweeners
 #[1] "CTTN"   "EFNB1"  "OCLN"   "PAK2"   "GJA1"   "BCAR1"  "PRKACA" "PIK3R1" "MAPK14" "EPHB4" "RALA"   "PLAA"   "IL6ST"  "PSAT1"  "KIT"   
-
 selectNodes(highbetweeners, by.col="id", preserve.current.selection = F)
 selectFirstNeighbors()
 # Ask if these are enzymes
 etb.df[etb.df$Gene.Name %in% highbetweeners, c("Gene.Name", "HPRD.Function", "enzyme.class")]
 # Group by enzyme or function
-etb.RNA <- etb.df[grep("RNA", etb.df[,c("HPRD.Function","enzyme.class")], fixed = T), "Gene.Name"]
-etb.kinase <- etb.df[grep("kinase", etb.df[,c("HPRD.Function","enzyme.class")]), "Gene.Name"]
-
+etb.df[unlist(sapply(etb.df, function(x) grep("RNA", x, fixed = T))),]
+etb.RNA <- etb.df[unlist(sapply(etb.df, function(x) grep("RNA", x, fixed = T))), "Gene.Name"]
+etb.df[unlist(sapply(etb.df, function(x) grep("kinase", x, fixed = T))),]
+etb.kinase <- etb.df[unlist(sapply(etb.df, function(x) grep("kinase", x, fixed = T))), "Gene.Name"]
+etb.df[unlist(sapply(etb.df, function(x) grep("biquitin", x, fixed = T))),]
+etb.ubn <- etb.df[unlist(sapply(etb.df, function(x) grep("biquitin", x, fixed = T))), "Gene.Name"]
+# Which are mutual friends?
+mutual.friends.physical[mutual.friends.physical %in% etb.kinase]
+mutual.friends.physical[mutual.friends.physical %in% etb.RNA]
+mutual.friends.physical[mutual.friends.physical %in% etb.ubn]
+etb.df[etb.df$Gene.Name %in% mutual.friends.physical[mutual.friends.physical %in% etb.ubn],]
+etb.mfs <- etb.df[etb.df$Gene.Name %in% mutual.friends.physical,]
+# NOTE: RAN is returned because grep finds anthing with the ame letters. 
+selectNodes(mutual.friends.physical[mutual.friends.physical %in% etb.kinase])
 # For figures with no node labels
 setNodeLabelColorDefault(col2hex("transparent"), style.name = "H1781_AfatinibRatio Style",)
 #__________________
@@ -546,9 +580,9 @@ get.pep.egdes.between.pathways <- function(pathway1, pathway2, only_between=FALS
     a.peps <- NULL
     b.peps <- NULL
     for (j in 1:length(a.genes)) {
-      a.peps[j] <- clustpeps[grep(a.genes[j], clustpeps)] }
+      a.peps[[j]] <- clustpeps[grep(a.genes[[j]], clustpeps)] }
     for (k in 1:length(b.genes)) {
-      b.peps[k] <- clustpeps[grep(b.genes[j], clustpeps)] }
+      b.peps[[k]] <- clustpeps[grep(b.genes[[k]], clustpeps)] }
     if (only_between==TRUE) {
       pepedges.list[[i]] <- filter.edges.between(a.peps, b.peps, cccnedges)
     } else {
@@ -560,10 +594,10 @@ get.pep.egdes.between.pathways <- function(pathway1, pathway2, only_between=FALS
   pepedges <- do.call("rbind", pepedges.list)
   return(pepedges)
 }
-tryit <- get.pep.egdes.between(pathway1="Transmembrane transport of small molecules", pathway2 ="EGF/EGFR signaling pathway")
+tryit <- get.pep.egdes.between.pathways(pathway1="Transmembrane transport of small molecules", pathway2 ="EGF/EGFR signaling pathway")
 # make gene-peptide edges
 # onlynecessary if gzallt.cccn.edges.plus, instead of gzallt.cccnplus, is used:
-#transegf.tryit <- edgeType.to.interaction(tryit)
+transegf.tryit <- edgeType.to.interaction(tryit)
 genenames <- extract.gene.names(tryit) # alternatively:
 genenames <- unique(sapply(c(tryit[,1],tryit[,2]),  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
 # NOTE: Find gz.cf unpruned should be 12K rows! Find on google drive LD_GZ Networks
@@ -583,6 +617,9 @@ transegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges2$source, transegf.e
 outersect(transegf.cf$id, unique(c(transegf.edges$source, transegf.edges$target)))
 # Now zero
 tryit.graph <- createNetworkFromDataFrames.check(transegf.cf, transegf.edges)
+setNodeMapping(transegf.cf)
+nodeDprops.RCy32()
+edgeDprops.RCy32()
 tryit.graph2 <- createNetworkFromDataFrames.check(transegf.cf2, transegf.edges2)
 setdiff (transegf.cf$id, transegf.cf2$id)  # not identical
 # first is a subset so don't need to
@@ -591,7 +628,10 @@ nodeDprops.RCy32()
 edgeDprops.RCy32()
 setNodeMapping(transegf.cf2)
 setCorrEdgeAppearance(transegf.edges2) 
-all.ratio.styles()
+FixEdgeDprops.RCy32()
+toggleGraphicsDetails() 
+setEdgeWidths.RCy32(getAllEdges(), factor=1.25)
+# If not done: all.ratio.styles()
 # Conclusion: a different, possibly better view of the CFN/CCCN.
 # Compare
 #
@@ -600,7 +640,16 @@ focus.nodes <- getAllNodes() # 126 vs. in between network above
 between.nodes <- getAllNodes() # 243 nodes
 outersect(focus.nodes, between.nodes)
 # Getting edges between pathway peptides is superior! ****
-
+# Doesn't return superfluous peptides; can plot CFN, CCCN, or both
+# Save in "EGF transporters networks 2. cys"
+# Arrange CFN/CCCN
+a <- bioplanet[["Transmembrane transport of small molecules"]]
+b <- bioplanet[["EGF/EGFR signaling pathway"]]
+selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
+selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+# What affecgts SLC transporters?
+lookSLC <- gz.cf.pruned[grep("SLC", gz.cf.pruned$Gene.Name),]
+#
 # Test with glycolysis and gluconeogenesis...
 # >>>>>>>>>>>>••••••••••••
 tryit2 <- get.pep.egdes.between.pathways(pathway1="Glycolysis and gluconeogenesis", pathway2 ="EGF/EGFR signaling pathway") #101 edges
