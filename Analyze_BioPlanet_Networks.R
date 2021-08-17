@@ -13,6 +13,8 @@ source(paste(comp_path, "/Dropbox/_Work/R_/MG_packages.R", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
+# Source drug groupings script
+source(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "Drug Groupings.R")
 #
 # Pathway-pathway networks:
 # total.pathway.net: Weight = Weight.clust - Weight.bp; Combined.Weight = Weight.clust + Weight.bp
@@ -301,11 +303,19 @@ ab <- intersect (a, b) #0
 ab.all <- unique(c(a, b)) # 573
 # Method 1: composite shortest paths
 gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
+
 egfr.transporters <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9")
 cccn2 <- graph.cfn.cccn.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# update to use drug medians
+cccn3 <- graph.cfn.cccn.medians.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# NOte: medians has many zeros. Repeate using means
+cccn4 <- graph.cfn.cccn.means.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+nodeDprops.RCy32()
 FixEdgeDprops.RCy32()
-all.ratio.styles()
+#all.ratio.styles()
+drug.groups.ratio.styles()
 toggleGraphicsDetails()
+# Save median styles file in EGF transporters networks 3.cys (medians) and 4 (means)
 # What are the edges *between* uniuqe pathway genes?
 look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 # 13 edges
@@ -314,6 +324,8 @@ selectFirstNeighbors()
 createSubnetwork(subnetwork.name="Edges Between Pathways")
 # Still to complex, try this (again)
 cccn4 <- graph.cfn.cccn (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+cccn5 <- graph.cfn.cccn.medians.check (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+cccn6 <- graph.cfn.cccn.means.check (look4, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 setCorrEdgeAppearance(cccn4) 
 setCorrEdgeAppearance(getTableColumns('edge'))
 FixEdgeDprops.RCy32()
@@ -345,6 +357,10 @@ mutual.friends.physical <- mutual.friends.physical %w/o% c(a,b)
 # 54 genes
 fof.cfn2 <- filter.edges.between(c(a,b),mutual.friends.physical, gzalltgene.physical.cfn.merged) # now 232 edges
 cfn2 <- graph.cfn.cccn.check (fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+cfn3 <- graph.cfn.cccn.medians.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+cfn3 <- graph.cfn.cccn.medians.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+cfn4 <- graph.cfn.cccn.means.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+nodeDprops.RCy32()
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
@@ -389,7 +405,7 @@ intersect(between.genes, mutual.friends)
 intersect(between.genes, mutual.friends.physical) -> mutual.between
 #****46/54
 # 
-selectNodes(mutual.between)
+selectNodes(nodes=mutual.between,  by.col="id", preserve.current.selection = F)
 etb.df <- left_join(e.t.b.df, gzgene.cfn.netatts, by="Gene.Name")
 gz.cf.ppibetween <- gz.cf[which(gz.cf$Node.ID=="gene"), c("Gene.Name", "ppibetween", "norm.ppibetween", "HPRD.Function")]
 etb.df <- left_join(etb.df, gz.cf.ppibetween[, c("Gene.Name", "HPRD.Function")], by="Gene.Name")
@@ -432,10 +448,10 @@ etb.df[etb.df$Gene.Name %in% mutual.friends.physical[mutual.friends.physical %in
 etb.mfs <- etb.df[etb.df$Gene.Name %in% mutual.friends.physical,]
 # NOTE: RAN is returned because grep finds anthing with the ame letters. 
 selectNodes(mutual.friends.physical[mutual.friends.physical %in% etb.kinase])
-# For figures with no node labels
+  # For figures with no node labels
 setNodeLabelColorDefault(col2hex("transparent"), style.name = "H1781_AfatinibRatio Style",)
-#__________________
-#_________________________________________
+#____________________________________________________________________________________________________________
+#____________________________________________________________________________________________________________
 # Interactions with EGF/EGFR signaling pathway
 # Choose Glycolysis and gluconeogenesis (druggable?)
 a <- bioplanet[["Glycolysis and gluconeogenesis"]]
@@ -478,10 +494,27 @@ look5.df$Transporter.path <- sapply(look5.df$Gene.Name, function (x) x %in% a)
 # Use CFN here; keep genetic interactions (gzalltgene.cfn.rcy3)
 a <- bioplanet[["Glycolysis and gluconeogenesis"]]
 b <- bioplanet[["EGF/EGFR signaling pathway"]]
-glycolosis.friends <- filter.edges.1(a, gzalltgene.cfn.rcy3) 
-EGFR.friends <- filter.edges.1(b, gzalltgene.cfn.rcy3) 
-friends.of.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
+# glycolosis.friends <- filter.edges.1(a, gzalltgene.cfn.rcy3) 
+# EGFR.friends <- filter.edges.1(b, gzalltgene.cfn.rcy3) 
 # 142 mutual friends
+friends.of.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
+glycolosis.friends <- filter.edges.1(a, gzalltgene.physical.cfn.merged) 
+EGFR.friends <- filter.edges.1(b, gzalltgene.physical.cfn.merged) 
+mutual.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends))
+mutual.friends <- mutual.friends %w/o% c(a,b)
+# 85 mutual friends
+# Method to determine whether mutual friends connect to both pathways
+mutual.friends.cfn1 <- filter.edges.between(a, mutual.friends, gzalltgene.physical.cfn.merged)
+mutual.friends.cfn2 <- filter.edges.between(b, mutual.friends, gzalltgene.physical.cfn.merged)
+mutual.friends.cfn <- rbind(mutual.friends.cfn1, mutual.friends.cfn2)
+# 396 vs 461 edges w/genetic
+
+cfn7 <- graph.cfn.cccn.check (mutual.friends.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# separate out
+selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
+selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+FixEdgeDprops.RCy32()
+
 # Network of these
 fof.cfn <- filter.edges.0(c(a,b,friends.of.friends),gzalltgene.cfn.rcy3)
 # 3184 edges
@@ -553,7 +586,7 @@ egb.kinase <- egb.df[grep("kinase", egb.df[,c("HPRD.Function","enzyme.class")]),
 setNodeLabelColorDefault(col2hex("transparent"), style.name = "H1781_AfatinibRatio Style",)
 
 
-#------...
+#------::::::::>>>>>>>>>>
 # Another alternitive look: Find peptide edges between pathways.
 get.pep.egdes.between.pathways <- function(pathway1, pathway2, only_between=FALSE, pepclusterlist=eu.sp.sed.gzallt, cccnedges=gzallt.cccnplus, pathway.evidence=cluster.pathway.evidence, ev.threshold=0){
   genes1 <- bioplanet[[pathway1]]
@@ -597,15 +630,20 @@ get.pep.egdes.between.pathways <- function(pathway1, pathway2, only_between=FALS
 tryit <- get.pep.egdes.between.pathways(pathway1="Transmembrane transport of small molecules", pathway2 ="EGF/EGFR signaling pathway")
 # make gene-peptide edges
 # onlynecessary if gzallt.cccn.edges.plus, instead of gzallt.cccnplus, is used:
-transegf.tryit <- edgeType.to.interaction(tryit)
+# transegf.tryit <- edgeType.to.interaction(tryit)
 genenames <- extract.gene.names(tryit) # alternatively:
 genenames <- unique(sapply(c(tryit[,1],tryit[,2]),  function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1]))
 # NOTE: Find gz.cf unpruned should be 12K rows! Find on google drive LD_GZ Networks
 # TenCell.RData - fixed and saved
 cccn.cf <- gz.cf[gz.cf$Gene.Name %in% genenames,]
+# Revised using drug medians, means
+cccn.cf <- gz.drug.medians.pruned[gz.drug.medians.pruned$Gene.Name %in% genenames,]
+cccn.cf <- gz.drug.means.pruned[gz.drug.means.pruned$Gene.Name %in% genenames,]
+
 net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
 net.gpe <- remove.autophos.RCy3(net.gpe)
 # Use only those edges above
+transegf.tryit <- tryit
 net.gpe.pruned <- net.gpe[net.gpe$target %in% unique(c(transegf.tryit$source, transegf.tryit$target)),]
 transegf.between <-filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 transegf.fe0 <- filter.edges.0( c(bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]]), edge.file=gzalltgene.physical.cfn.merged)
@@ -613,14 +651,29 @@ transegf.edges <- rbind(net.gpe.pruned, transegf.between, transegf.tryit)
 transegf.edges2 <- rbind(net.gpe.pruned, transegf.fe0, transegf.tryit)
 transegf.cf <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
 transegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
+# Using medians, means:
+transegf.cf <- gz.drug.means[gz.drug.means$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
+transegf.cf2 <- gz.drug.means[gz.drug.means$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
+
 # Check
 outersect(transegf.cf$id, unique(c(transegf.edges$source, transegf.edges$target)))
-# Now zero
-tryit.graph <- createNetworkFromDataFrames.check(transegf.cf, transegf.edges)
+outersect(transegf.cf2$id, unique(c(transegf.edges2$source, transegf.edges2$target)))
+# Note: not zero if using "pruned"
+tryit.graph <- createNetworkFromDataFrames(transegf.cf, transegf.edges, "EGF transport pep edges between")
 setNodeMapping(transegf.cf)
 nodeDprops.RCy32()
 edgeDprops.RCy32()
-tryit.graph2 <- createNetworkFromDataFrames.check(transegf.cf2, transegf.edges2)
+setCorrEdgeAppearance(transegf.edges) 
+toggleGraphicsDetails() 
+setEdgeWidths.RCy32(getAllEdges(), factor=1.25)
+# Note:there are few directly connected nodes from CFN made by searching for "gene" and making a subnetwork
+selectAllEdges()
+selectNodesConnectedBySelectedEdges()
+connected <- getSelectedNodes()
+# return to EGF transport pep edges between
+selectNodes(nodes=connected, by="id", preserve.current.selection = F)
+# Degree 1 next for comparison
+tryit.graph2 <- createNetworkFromDataFrames.check(transegf.cf2, transegf.edges2, "EGF transport degree 1")
 setdiff (transegf.cf$id, transegf.cf2$id)  # not identical
 # first is a subset so don't need to
 # Merge networks in cytoscape, then
@@ -631,7 +684,7 @@ setCorrEdgeAppearance(transegf.edges2)
 FixEdgeDprops.RCy32()
 toggleGraphicsDetails() 
 setEdgeWidths.RCy32(getAllEdges(), factor=1.25)
-# If not done: all.ratio.styles()
+# If not done: all.ratio.styles() or drug.means.ratio.styles()
 # Conclusion: a different, possibly better view of the CFN/CCCN.
 # Compare
 #
@@ -681,4 +734,81 @@ setdiff (glucegf.cf$id, glucegf.cf2$id)  # not identical
 setNodeMapping(glucegf.cf2)
 setCorrEdgeAppearance(glucegf.edges2) 
 all.ratio.styles()
-#****
+#**** EGF Glycolysis Network.cys
+#*#_______________________________________________________________
+#*#
+#*#xperiment with graphing clusters
+#*Focus on eu.sp.sed.gzallt.data[["130.141.111"]]
+#*# Note essgzallt.data <- eu.sp.sed.gzallt.data
+clusterdata <- eu.sp.sed.gzallt.data[["130.141.111"]]
+# Note this contains raw data too
+# Limited log2 ratios can be found here:
+gzp.data.log2 <- gz.cf.pruned[,17:41]
+rownames(gzp.data.log2) <- gz.cf.pruned$Gene.Name
+# Note this contains genes too! Start with gzdata.allt
+gzratios.allt.log2 <- gzdata.allt[, grep("atio", names(gzdata.allt))]
+gzratios.allt.linear <- 2^gzratios.allt.log2
+clusterdata.log2 <- clust.data.from.vec(eu.sp.sed.gzallt[["130.141.111"]], gzratios.allt.log2)
+clusterdata.linear <- clust.data.from.vec(eu.sp.sed.gzallt[["130.141.111"]], gzratios.allt.linear)
+dev.new()
+x <- graph.cluster.3c(clusterdata.log2)
+dev.new()
+y <- graph.clust6d(clusterdata.log2)
+z <- graph.clust6d(clusterdata.linear)
+# Log2 definately better
+a <- graph.clust5d(clusterdata.log2)
+# This version scales the graph (not recommended:
+b <- graph.clust6(clusterdata.log2)
+# Deal with NA in the way done for tsne dissimilarity
+# Also resize windows 
+xd <- graph.clust6d(clusterdata.log2)
+xd.l <- graph.clust6d.l(clusterdata.log2)
+# Smaller font for tall graphs
+xd.la <- graph.clust6d.la (clusterdata.log2)
+# Still rows incomplete!
+#
+# This version makes a pdf file:
+# Note error figure margins too large!
+xd.l2 <- graph.clust6d.l2 (clusterdata.log2[1:10, 1:10], "/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/130.141.111test.pdf")
+#  version of pdf file maker that doesn't sort
+xd.l3 <- graph.clust6d.l3 (clusterdata.log2, "/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/130.141.111test.pdf")
+# Revised 
+# # see https://sebastianraschka.com/Articles/heatmaps_in_r.html 
+# See this explanation here: https://www.r-graph-gallery.com/38-rcolorbrewers-palettes.html
+ # https://cran.r-project.org/web/packages/viridis/vignettes/intro-to-viridis.html
+# https://cran.r-project.org/web/packages/pals/vignettes/pals_examples.html
+#33333333 Not working:
+graph.clust6d.la2.bad <- function(cluster.data.index, dendro="both") {
+  #  options          dendrogram = c("both","row","column","none"),
+  custer.df <- data.frame(cluster.data.index)
+  if (any(grepl("Gene.Name", colnames(cluster.df)))) {
+    if (!identical(rownames(cluster.df), cluster.df$Gene.Name)) {
+      rownames(cluster.df) <- cluster.df$Gene.Name    }
+    cluster.df	<- cluster.df[, -grep("Gene.Name", colnames(cluster.df))] 
+  }
+  if (ncol(cluster.df) < 2) {
+    cat ("\n","This is a single sample cluster!", "\n") 
+    return (cluster.df) } else {
+      cluster.m <- data.matrix(cluster.df)
+      # optional:
+      #rbyheatcolors <- colorRampPalette(colors=c('#0000FF',  '#FFFF00'), bias=0.25, space="rgb", interpolate = "spline")
+      rbyheatcolors <- colorRampPalette(colors=c('#3333FF', '#FFFF00'), bias=0.25, space="rgb", interpolate = "linear")
+      # royal blue to yellow
+      palette(c(rbyheatcolors(500)))
+      # Use dendrogram to order and modified dist function that makes NA 2*max(is.na(x))
+      dev.new()  # can resize manually
+      heatmap.2(cluster.m, dendrogram=dendro, trace="none", symbreaks=TRUE, na.color="black", labRow=rownames(cluster.m), labCol=colnames(cluster.m), Rowv=TRUE, Colv=TRUE, distfun=dist2, hclustfun=hclust, scale="none", col=palette(), colsep=NULL, rowsep=NULL, sepwidth=c(0,0), revC=FALSE, keysize=0.5, density.info='histogram', cexCol = 0.3 + 1/log10(ncol(cluster.m)), denscol="green", main=names(cluster.data.index)[1], margins=c(14, 10)) 
+      return (cluster.m) }
+}
+
+# test diverging vs sequential pallett
+clusterdata.log2.pos <- abs(cluster.m[1:10, 1:10])
+clusterdata.log2.neg <- -clusterdata.log2.pos
+dev.new()
+look <- graph.clust6d.la2(clusterdata.log2.pos[1:10, 1:10]) # ?
+look <- graph.clust6d.l(clusterdata.log2.pos[1:10, 1:10])
+dev.new()
+look <- graph.clust6d.l(clusterdata.log2.neg[1:10, 1:10])
+
+graph.cluster.3c(clusterdata.log2.pos)
+# scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
