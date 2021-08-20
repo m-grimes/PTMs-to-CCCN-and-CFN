@@ -82,19 +82,19 @@ gz.drug.medians.pruned <- gz.drug.medians[gz.drug.medians$id %in% gz.cf.pruned$i
 drug.medians.ratio.styles <- function(ratiocols=NULL) {
   nodevalues <- getTableColumns('node')
   if(length(ratiocols)==0) {
-    drugcolnames <- names(drug.medians)}
-  for (i in 1:length(drug.medians)){ 
+    drugcolnames <- names(drug.groups)}
+  for (i in 1:length(drugcolnames)){ 
     plotcol <- drugcolnames[i]
     style.name = paste(drugcolnames[i], "Style")
     print(style.name)
     setVisualStyle("default")
-    setNodeColorToRatios(plotcol)    
+    setNodeColorToRatios.log(plotcol)    
     copyVisualStyle('default', style.name)
     setVisualStyle(style.name)
   }
 }
 # Modify graphing function
-graph.cfn.cccn.medians <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE) {
+graph.cfn.cccn.medians <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=FALSE) {
   genenames <- extract.gene.names(edgefile)
   if(pruned==TRUE) {gz.cf <- gz.drug.medians.pruned} else {gz.cf <- gz.drug.medians}
   if (gz==TRUE) {
@@ -131,7 +131,7 @@ graph.cfn.cccn.medians <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, 
   if (only.cfn==FALSE) return(cfn.cccn.edges)
 }
 
-graph.cfn.cccn.medians.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE) {
+graph.cfn.cccn.medians.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=FALSE) {
   for (i in 1:10){
     graph.cfn.cccn.medians(edgefile, ld, gz, only.cfn, pruned) 
     edgeTable <- getTableColumns("edge", c("name", "shared name"))
@@ -160,16 +160,16 @@ gz.drug.means.pruned <- gz.drug.means[gz.drug.means$id %in% gz.cf.pruned$id,]
 # Compare means and medians
 plot(unlist(gz.data.medians[,17:23]),  unlist(gz.data.means[,17:23]), pch=19, col=alpha("blue", 0.24))
 # Funtion to make Cytoscape styles from this
-drug.means.ratio.styles <- function(ratiocols=NULL) {
+drug.means.ratio.styles <- function(ratiocols=NULL, drug.means=gz.drug.means) {
   nodevalues <- getTableColumns('node')
   if(length(ratiocols)==0) {
-    drugcolnames <- names(drug.means)}
-  for (i in 1:length(drug.means)){ 
+    drugcolnames <- names(drug.groups)}
+  for (i in 1:length(drugcolnames)){ 
     plotcol <- drugcolnames[i]
     style.name = paste(drugcolnames[i], "Style")
     print(style.name)
     setVisualStyle("default")
-    setNodeColorToRatios(plotcol)    
+    setNodeColorToRatios.log(plotcol)    
     copyVisualStyle('default', style.name)
     setVisualStyle(style.name)
   }
@@ -222,3 +222,39 @@ graph.cfn.cccn.means.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FAL
         print (paste("Network", i, "passes edge test."))
         break }
   }}
+# Change the way ratios are displayed to reflect log2 data
+# For testing
+cf <- glucegf.cf
+plotcol <- "pc9.erl" 
+setNodeColorToRatios.log <- function(plotcol, logdata=TRUE){
+  cf <- getTableColumns('node')
+  if(!(plotcol %in% getTableColumnNames('node'))){
+    print (getTableColumnNames('node'))
+    cat("\n","\n","\t", "Which attribute will set node size and color?")
+    plotcol <- as.character(readLines(con = stdin(), n = 1))
+  }
+  limits <- range(cf[, plotcol])
+  node.sizes     = c (135, 130, 108, 75, 35, 75, 108, 130, 135)
+  #	RATIO is plotted
+  #	Blue is negative: Yellow positive, Green in middle
+  #		
+  size.control.points = c (-100.0, -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+  color.control.points = c (-100.0, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+  if(limits[1] < min(size.control.points)) {
+    size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, 100.0)
+    color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0)
+  }
+  if(limits[2] > max(size.control.points)) {
+    size.control.points = c (limits[1], -15.0, -5.0, 0.0, 5.0, 15.0, limits[2])
+    color.control.points = c (limits[1]-1, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, limits[2]+1)
+  }
+  if (logdata==TRUE) {
+    size.control.points = c (-log2(100.0), -log2(15.0), -log2(5.0), 0.0, log2(5.0), log2(15.0), log2(100.0))
+    color.control.points = c (-log2(100.0), -log2(10.0), -log2(5.0), -log2(2.25), 0.0, log2(2.25), log2(5.0), log2(10.0), log2(100.0))
+  }
+  ratio.colors = c ('#0099FF', '#007FFF','#00BFFF', '#00CCFF', '#00FFFF', '#00EE00', '#FFFF7E', '#FFFF00', '#FFE600', '#FFD700', '#FFCC00')
+  setNodeColorMapping (names(cf[plotcol]), color.control.points, ratio.colors, 'c')
+  lockNodeDimensions('TRUE')
+  setNodeSizeMapping (names(cf[plotcol]), size.control.points, node.sizes, 'c')
+  setNodeSelectionColorDefault ( "#CC00FF")
+}

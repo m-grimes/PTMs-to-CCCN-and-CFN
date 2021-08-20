@@ -308,14 +308,20 @@ egfr.transporters <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Ge
 cccn2 <- graph.cfn.cccn.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 # update to use drug medians
 cccn3 <- graph.cfn.cccn.medians.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
-# NOte: medians has many zeros. Repeate using means
+# NOte: medians has many zeros (FIXED). Repeate using means
 cccn4 <- graph.cfn.cccn.means.check (egfr.transporters, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 nodeDprops.RCy32()
 FixEdgeDprops.RCy32()
 #all.ratio.styles()
-drug.groups.ratio.styles()
+drug.medians.ratio.styles()
 toggleGraphicsDetails()
 # Save median styles file in EGF transporters networks 3.cys (medians) and 4 (means)
+# look at CFN version
+selectNodes(nodes=extract.gene.names(egfr.transporters), by.col="id", preserve.current.selection = F)
+createSubnetwork(subnetwork.name="EGFR transporters composite shortest paths CFN")
+# separate out
+selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
+selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
 # What are the edges *between* uniuqe pathway genes?
 look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 # 13 edges
@@ -349,6 +355,7 @@ fof.cfn <- filter.edges.0(c(a,b,friends.of.friends),gzalltgene.cfn.rcy3)
 # 2634 edges
 cfn1 <- graph.cfn.cccn (fof.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 toggleGraphicsDetails()
+# >>>>>>>
 # Use simpler merged version and filter.edges.between
 transporter.friends.physical <- filter.edges.1(a, gzalltgene.physical.cfn.merged) 
 EGFR.friends.physical <- filter.edges.1(b, gzalltgene.physical.cfn.merged) 
@@ -357,10 +364,11 @@ mutual.friends.physical <- mutual.friends.physical %w/o% c(a,b)
 # 54 genes
 fof.cfn2 <- filter.edges.between(c(a,b),mutual.friends.physical, gzalltgene.physical.cfn.merged) # now 232 edges
 cfn2 <- graph.cfn.cccn.check (fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
-cfn3 <- graph.cfn.cccn.medians.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+#>>>>>
 cfn3 <- graph.cfn.cccn.medians.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 cfn4 <- graph.cfn.cccn.means.check(fof.cfn2, ld=FALSE, gz=TRUE, only.cfn=TRUE)
 nodeDprops.RCy32()
+FixEdgeDprops.RCy32()
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
@@ -461,10 +469,13 @@ ab.all <- unique(c(a, b)) # 216
 # Method 1: composite shortest paths
 gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
 egfr.glycolosis <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9") #1431
-cccn5 <- graph.cfn.cccn.check (egfr.glycolosis, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# cccn5 <- graph.cfn.cccn.check (egfr.glycolosis, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# Use medians
+cccn5 <- graph.cfn.cccn.medians.check(egfr.glycolosis, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 nodeDprops.RCy32()
 FixEdgeDprops.RCy32()
-all.ratio.styles()
+# all.ratio.styles()
+drug.medians.ratio.styles()
 toggleGraphicsDetails()
 # look at CFN version
 selectNodes(nodes=extract.gene.names(egfr.glycolosis), by.col="id", preserve.current.selection = F)
@@ -497,7 +508,7 @@ b <- bioplanet[["EGF/EGFR signaling pathway"]]
 # glycolosis.friends <- filter.edges.1(a, gzalltgene.cfn.rcy3) 
 # EGFR.friends <- filter.edges.1(b, gzalltgene.cfn.rcy3) 
 # 142 mutual friends
-friends.of.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
+# friends.of.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends)) %w/o% c(a,b)
 glycolosis.friends <- filter.edges.1(a, gzalltgene.physical.cfn.merged) 
 EGFR.friends <- filter.edges.1(b, gzalltgene.physical.cfn.merged) 
 mutual.friends <- intersect(extract.gene.names(glycolosis.friends), extract.gene.names(EGFR.friends))
@@ -510,6 +521,8 @@ mutual.friends.cfn <- rbind(mutual.friends.cfn1, mutual.friends.cfn2)
 # 396 vs 461 edges w/genetic
 
 cfn7 <- graph.cfn.cccn.check (mutual.friends.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE)
+# Try with median
+cfn8 <- graph.cfn.cccn.medians(mutual.friends.cfn, ld=FALSE, gz=TRUE, only.cfn=TRUE, pruned=FALSE)
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
@@ -652,18 +665,23 @@ transegf.edges2 <- rbind(net.gpe.pruned, transegf.fe0, transegf.tryit)
 transegf.cf <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
 transegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
 # Using medians, means:
+transegf.cf <- gz.drug.medians[gz.drug.medians$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
+transegf.cf2 <- gz.drug.medians[gz.drug.medians$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
 transegf.cf <- gz.drug.means[gz.drug.means$id  %in% unique(c(transegf.edges$source, transegf.edges$target)),]
 transegf.cf2 <- gz.drug.means[gz.drug.means$id  %in% unique(c(transegf.edges2$source, transegf.edges2$target)),]
 
 # Check
 outersect(transegf.cf$id, unique(c(transegf.edges$source, transegf.edges$target)))
 outersect(transegf.cf2$id, unique(c(transegf.edges2$source, transegf.edges2$target)))
+intersect(mutual.friends, extract.gene.names.RCy3(transegf.edges)) # Only "RAC2
 # Note: not zero if using "pruned"
 tryit.graph <- createNetworkFromDataFrames(transegf.cf, transegf.edges, "EGF transport pep edges between")
 setNodeMapping(transegf.cf)
 nodeDprops.RCy32()
 edgeDprops.RCy32()
 setCorrEdgeAppearance(transegf.edges) 
+drug.medians.ratio.styles()
+drug.means.ratio.styles()
 toggleGraphicsDetails() 
 setEdgeWidths.RCy32(getAllEdges(), factor=1.25)
 # Note:there are few directly connected nodes from CFN made by searching for "gene" and making a subnetwork
@@ -672,6 +690,15 @@ selectNodesConnectedBySelectedEdges()
 connected <- getSelectedNodes()
 # return to EGF transport pep edges between
 selectNodes(nodes=connected, by="id", preserve.current.selection = F)
+# Examine one cluster at a time
+clusternodes <- getSelectedNodes()
+clustergenes <- extract.genes.from.peplist(clusternodes)
+# return to bigger network
+selectNodes(nodes=c(clusternodes, clustergenes), by.col="id", preserve.current.selection = F)
+ # createSubnetwork(nodes=c(clusternodes, clustergenes), subnetwork.name = "Cluster 1 CFN CCCN")
+ # Doesn't work, do manually.
+
+#-----
 # Degree 1 next for comparison
 tryit.graph2 <- createNetworkFromDataFrames.check(transegf.cf2, transegf.edges2, "EGF transport degree 1")
 setdiff (transegf.cf$id, transegf.cf2$id)  # not identical
@@ -719,22 +746,38 @@ glucegf.between <-filter.edges.between( bioplanet[["Glycolysis and gluconeogenes
 glucegf.fe0 <- filter.edges.0( c(bioplanet[["Glycolysis and gluconeogenesis"]], bioplanet[["EGF/EGFR signaling pathway"]]), edge.file=gzalltgene.physical.cfn.merged)
 glucegf.edges <- rbind(tryit2t.gpe, glucegf.between, tryit2)
 glucegf.edges2 <- rbind(tryit2t.gpe, glucegf.fe0, tryit2)
+#
 glucegf.cf <- gz.cf[gz.cf$id  %in% unique(c(glucegf.edges$source, glucegf.edges$target)),]
 glucegf.cf2 <- gz.cf[gz.cf$id  %in% unique(c(glucegf.edges2$source, glucegf.edges2$target)),]
+# Try with medians
+glucegf.cf <- gz.drug.medians[gz.drug.medians$id  %in% unique(c(glucegf.edges$source, glucegf.edges$target)),]
+glucegf.cf2 <- gz.drug.medians[gz.drug.medians$id  %in% unique(c(glucegf.edges2$source, glucegf.edges2$target)),]
+# 
 # Check
 outersect(glucegf.cf$id, unique(c(glucegf.edges$source, glucegf.edges$target)))
 # Now zero
 tryit2.graph <- createNetworkFromDataFrames.check(glucegf.cf, glucegf.edges)
+setNodeMapping(glucegf.cf)
+nodeDprops.RCy32()
+edgeDprops.RCy32()
+setCorrEdgeAppearance(glucegf.edges) 
+drug.medians.ratio.styles()
+# drug.means.ratio.styles()
+toggleGraphicsDetails() 
+# FE 0
 tryit2.graph2 <- createNetworkFromDataFrames.check(glucegf.cf2, glucegf.edges2)
-setdiff (glucegf.cf$id, glucegf.cf2$id)  # not identical
+setdiff (glucegf.cf$id, glucegf.cf2$id)  
 # first is a subset so don't need to
 # Merge networks in cytoscape, then
-#nodeDprops.RCy32()
-#edgeDprops.RCy32()
+nodeDprops.RCy32()
+edgeDprops.RCy32()
 setNodeMapping(glucegf.cf2)
 setCorrEdgeAppearance(glucegf.edges2) 
-all.ratio.styles()
-#**** EGF Glycolysis Network.cys
+# all.ratio.styles()
+# drug.medians.ratio.styles()
+# ids are the same
+toggleGraphicsDetails() 
+#**** EGF Glycolysis Network.cys; EGFR glycolysis medians.cys
 #*#_______________________________________________________________
 #*#
 #*#xperiment with graphing clusters
@@ -812,3 +855,4 @@ look <- graph.clust6d.l(clusterdata.log2.neg[1:10, 1:10])
 
 graph.cluster.3c(clusterdata.log2.pos)
 # scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
+
