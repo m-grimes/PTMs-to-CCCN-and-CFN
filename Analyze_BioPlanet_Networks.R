@@ -14,7 +14,7 @@ load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Net
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 # Source drug groupings script
-source(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "Drug Groupings.R")
+source(file=paste(comp_path, "/Documents/PTMs-to-CCCN-and-CFN/", "Drug Groupings.R", sep=""))
 #
 # Pathway-pathway networks:
 # total.pathway.net: Weight = Weight.clust - Weight.bp; Combined.Weight = Weight.clust + Weight.bp
@@ -383,6 +383,8 @@ cfn3 <- graph.cfn.cccn.check (mutual.friends.cfn, ld=FALSE, gz=TRUE, only.cfn=TR
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+# For CFN/CCCN figure
+setNodeLabelColorDefault(col2hex("transparent"), style.name = "all.drug Style",)
 
 # ****
 # Try this with different views, including composite shortest paths and physical between in "EGF transporters.cys"
@@ -467,7 +469,7 @@ b <- bioplanet[["EGF/EGFR signaling pathway"]]
 ab <- intersect (a, b) #0
 ab.all <- unique(c(a, b)) # 216
 # Method 1: composite shortest paths
-gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 201
+gzpathgenes <- ab.all[ab.all %in% gzallt.gene.key$Gene.Name] # 111
 egfr.glycolosis <- composite.shortest.paths(genes1=a[a %in% gzallt.gene.key$Gene.Name], genes2=b[b %in% gzallt.gene.key$Gene.Name], network=gzalltgene.physical.cfn.merged, exclude="MYH9") #1431
 # cccn5 <- graph.cfn.cccn.check (egfr.glycolosis, ld=FALSE, gz=TRUE, only.cfn=FALSE)
 # Use medians

@@ -74,7 +74,7 @@ for(i in 1:length(drug.groups)){
 # Convert back into zeros for Cytoscape
 gz.data.medians[is.na(gz.data.medians)] <- 0
 # replace head
-gz.drug.medians <- cbind(gz.cf.head, gz.drug.medians)
+gz.drug.medians <- cbind(gz.cf.head, gz.data.medians)
 # Since this is for graphing also create pruned version that has only cccn nodes
 gz.drug.medians.pruned <- gz.drug.medians[gz.drug.medians$id %in% gz.cf.pruned$id,]
 
@@ -224,8 +224,8 @@ graph.cfn.cccn.means.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FAL
   }}
 # Change the way ratios are displayed to reflect log2 data
 # For testing
-cf <- glucegf.cf
-plotcol <- "pc9.erl" 
+# cf <- glucegf.cf
+# plotcol <- "pc9.erl" 
 setNodeColorToRatios.log <- function(plotcol, logdata=TRUE){
   cf <- getTableColumns('node')
   if(!(plotcol %in% getTableColumnNames('node'))){
