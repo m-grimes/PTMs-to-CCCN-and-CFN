@@ -858,3 +858,22 @@ look <- graph.clust6d.l(clusterdata.log2.neg[1:10, 1:10])
 graph.cluster.3c(clusterdata.log2.pos)
 # scale_color_manual(values = c("#00AFBB", "#E7B800", "#FC4E07"))
 
+
+# From Cuneyt
+graph.name <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/gzall.edges", sep="")
+graph.name2 <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/gld.edges", sep="")
+gz.g <- read_graph(graph.name, format="ncol")
+ld.g <- read_graph(graph.name2, format="ncol")
+gz.edges <- data.frame(as_edgelist(gz.g))
+ld.edges <- data.frame(as_edgelist(ld.g))
+names(gz.edges) <- c("source", "target")
+gz.edges$interaction <- "igraph"
+gz.edges$Weight <- 0.2
+ld.edges$interaction <- "igraph"
+ld.edges$Weight <- 0.2
+
+gz.cf <- data.frame(id=names(V(gz.g)))
+ld.cf <- data.frame(id=names(V(ld.g)))
+
+tryit.graph <- createNetworkFromDataFrames(gz.cf, gz.edges, "Test Cy from igraph")
+
