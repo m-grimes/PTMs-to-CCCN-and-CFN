@@ -47,6 +47,12 @@ pcnn.clust$Weight <- pcnn.clust$Weight/max(pcnn.clust$Weight)
 pcnn.bp <- pcnn[which(pcnn$interaction=="pathway Jaccard similarity"),]
 pcnn <- rbind(pcnn.clust, pcnn.bp)
 # 
+# Write for data export
+write.table(tpnn, file="total.pathway.net.normalized.txt", sep="\t", quote = FALSE, row.names=FALSE)	
+write.table(pcnn, file="pathway.crosstalk.network.normalized.txt", sep="\t", quote = FALSE, row.names=FALSE)	
+write.table(total.pathway.net, file="total.pathway.net.txt", sep="\t", quote = FALSE, row.names=FALSE)	
+write.table(pathway.crosstalk.network, file="pathway.crosstalk.network.txt", sep="\t", quote = FALSE, row.names=FALSE)	
+#
 # What does the entire pathway crostalk network graph look like? Which edge weights to focus on? 
 plot(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust)
 plot(total.pathway.net$Combined.Weight~total.pathway.net$Weight.clust)
@@ -322,6 +328,11 @@ createSubnetwork(subnetwork.name="EGFR transporters composite shortest paths CFN
 # separate out
 selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
+# Find RTKs
+RTKnodes <- getAllNodes()[(getAllNodes() %in% rtklist)]
+selectNodes(nodes=RTKnodes, by.col="id", preserve.current.selection = F)
+selectNodes(nodes=RTKnodes, by.col="id", preserve.current.selection = T)
+
 # What are the edges *between* uniuqe pathway genes?
 look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 # 13 edges
@@ -385,7 +396,9 @@ selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
 # For CFN/CCCN figure
 setNodeLabelColorDefault(col2hex("transparent"), style.name = "all.drug Style",)
-
+# SLC25A5 keeps coming up
+gz.cf[grep('SLC25A5', gz.cf$id), 1:10]
+ # 7 ack; 4 pY; 3 ubi
 # ****
 # Try this with different views, including composite shortest paths and physical between in "EGF transporters.cys"
 selectNodes(nodes=friends.of.friends, by.col="id", preserve.current.selection = F)
