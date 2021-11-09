@@ -1,3 +1,5 @@
+
+# Plot using styles, LD and GZ and combined networks
 # Analysis of BioPlanet Pathway Interaction Networks
 # July 9, 2021
 # Mark Grimes
@@ -15,6 +17,8 @@ load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RD
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 # Source drug groupings script
 source(file=paste(comp_path, "/Documents/PTMs-to-CCCN-and-CFN/", "Drug Groupings.R", sep=""))
+# LD networks
+load(file=paste(comp_path,"/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "LD_NewCFNCCCN_Networks.RData", sep=""))
 #
 # Pathway-pathway networks:
 # total.pathway.net: Weight = Weight.clust - Weight.bp; Combined.Weight = Weight.clust + Weight.bp
@@ -889,4 +893,25 @@ gz.cf <- data.frame(id=names(V(gz.g)))
 ld.cf <- data.frame(id=names(V(ld.g)))
 
 tryit.graph <- createNetworkFromDataFrames(gz.cf, gz.edges, "Test Cy from igraph")
+# LOOK PTMs for high core networks of high core nodes from ld and gz networks
+# /Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/HighCoreNodes.rtf
+corenodes <- c(
+  "EGFR",      "PKM",       "ACTB",      "ACTN4",     "ACTR2",     "AHCY",     
+  "CCT4",      "CLTC",      "DDX5",      "EEF1A1",    "EEF2",      "ENO1",     
+  "FASN",      "GAPDH",     "HNRNPA1",   "HNRNPA2B1", "HNRNPA3",   "HNRNPU",   
+  "HSP90AA1",  "HSP90AB1",  "HSPA1B",    "HSPA8",     "HSPD1",     "IQGAP1",   
+  "LMNA",      "MYH9",      "NCL",       "NPM1",      "PABPC1",    "PGK1",     
+  "PPIA",      "RPL4",      "RPL6",      "SET",       "SLC25A5",   "SRSF6",    
+  "SUMO2",     "TUBA1A",    "TUBA1B",    "TUBB",      "TAGLN2",    "YWHAE",    
+  "YWHAZ")
 
+core.cfn.gz <- filter.edges.0.RCy3(corenodes, gzalltgene.physical.cfn.merged)
+core.cfn.ld <- filter.edges.0.RCy3(corenodes, ldgene.physical.cfn.merged)
+# GZ data
+core.cccn.gz <- graph.cfn.cccn.medians.check (core.cfn.gz, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+drug.medians.ratio.styles()
+toggleGraphicsDetails()
+# Compare to CST data
+core.cccn.ld <- graph.cfn.cccn.medians.check (core.cfn.ld, ld=TRUE, gz=FALSE, only.cfn=FALSE)
+all.ratio.styles() # reverts to manual 
+# 
