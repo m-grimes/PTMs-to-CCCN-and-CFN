@@ -533,6 +533,7 @@ clust.data.from.vec <- function(vec, tbl) {
     names(ats)[1] <- "Gene.Name" } 
   clust.data <- ats
   return (clust.data)	}
+# # >>>>>
 # Examine all clusters
 eu.sp.sed.gzallt.data <- lapply(eu.sp.sed.gzallt, clust.data.from.vec, tbl= gzdata.allt) 
 # This works the second time around. First time produces errors. try this:
@@ -563,6 +564,7 @@ for (i in 1:length(eu.sp.sed.gzallt)) {
       bad.clusterlist[[i]] }
 }
 length(eu.sp.sed.gzallt.data) # 839
+
 # Find any that may be included in clusters
 badptms <- unique(outersect(rownames(gzdata.all), rownames(gzdata.allt))) # 2844
 testnames <- unique(unlist(eu.sp.sed.gzallt))
@@ -574,9 +576,90 @@ removed <- removed[removed>0]
 # note: some entire clusters removed
 essgzallt.2 <- essgzallt.1[essgzallt.1.sizes>0] # now 818 clusters from 839
 essgzallt <- essgzallt.2
+# >>>> Now redo data list
+essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
+
 #
+
+# _________________________
+# # # >>>>>
+# Evalauate clusters
+# use lincsclust.eval; clusterlist=eu.sp.sed.gzallt.data; tbl.sc=gzdata.allt
+lincsclust.eval <- function(clusterlist, tbl.sc) {
+  evaluation <- data.frame(0)
+  names(evaluation)[1] <- "Group"
+  key  <- data.frame(1:length(rownames(tbl.sc)))
+  key$Gene.Name <- rownames(tbl.sc)
+  for (i in 1:length(clusterlist)) {
+    cat("Starting Group", i, "\n")
+    evaluation[i,1] <- i
+    evaluation$Group.Name <- names(clusterlist)[i]
+    #
+    evaluation$no.genes[i] <- length(clusterlist[[i]]$Gene.Name)
+    if(length(clusterlist[[i]]$Gene.Name) == 1) { 
+      at = data.frame(tbl.sc[clusterlist[[i]]$Gene.Name, ])
+    } else {
+      at = data.frame(tbl.sc[key$Gene.Name %in% clusterlist[[i]]$Gene.Name, ]) }
+    # get rid of ratios for evaluation calculations and take absolute value
+    if(any (grepl("to", names(at)))) at = abs(at [,-grep("to", names(at))])
+    # previous use: at <- at[-which(apply(at, 1, filled) == 0),]
+    # better: at[, which(numcolwise(filled)(at) != 0)]
+    # names() doesn't work with single column
+    if (length(which(numcolwise(filled)(at) != 0)) > 1) {
+      acol <- names(at[,which(numcolwise(filled)(at) != 0)])  
+      evaluation$no.samples[i] <- length(acol)
+      at <- at[, acol] } else evaluation$no.samples[i] <- 1
+    evaluation$total.signal[i] <- sum(abs(at), na.rm=TRUE)
+    if (length(which(numcolwise(filled)(at) != 0)) == 1 || length(clusterlist[[i]]$Gene.Name) == 1) {
+      evaluation$culled.by.slope[i] <- length(clusterlist[[i]]$Gene.Name) 
+      evaluation$percent.NA[i] <- 0
+      evaluation$percent.singlesamplegenes[i] <- 100
+      evaluation$percent.singlegenesamples[i] <- 100
+    } else	{
+      evaluation$percent.NA[i] <-  100*(sum(numcolwise(nmissing)(at)) / (dim(at)[1]*dim(at)[2]))
+      #singlesamplegenes <- at[, which(numcolwise(filled)(at) == 1 )]
+      singlesamplegenes <- at[which(apply(at, 1, filled) == 1),]
+      evaluation$percent.singlesamplegenes[i] <- 100*(nrow(singlesamplegenes) / dim(at)[1]) 
+      singlegenesamples <- sum(numcolwise(filled)(at) == 1)
+      evaluation$percent.singlegenesamples[i] <- 100*(singlegenesamples/dim(at)[2])
+      cluster.mo <- at[order(-as.vector(colwise(sum.na)(data.frame(t(abs(at)))))), order(-as.vector(numcolwise(sum.na)(data.frame(abs(at)))))]
+      slope <- apply(cluster.mo, 1, get.slope.a)
+      badslope <- c(names(which(is.na(slope))), names(which(slope > 0)))
+      evaluation$culled.by.slope[i] <- length(badslope)
+      #
+      cat("\n", length(badslope), "genes culled by slope", "\n")
+    }		}	 
+  #  Total signal scaled to percent NA = intensity
+  cleargenes <- evaluation$no.genes - evaluation$culled.by.slope # may be 0
+  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singlegenesamples/100) # may be 0
+  intensity <- evaluation$total.signal - (evaluation$total.signal * evaluation$percent.NA/100)
+  # calibrate intensity according to real samples and clear genes
+  # - goal is to reward a high density of appropriate data
+  evaluation$intensity <- intensity
+  evaluation$Index  <- ((1 + realsamples) * (1 + cleargenes) / (1 + evaluation$percent.NA))/evaluation$no.genes
+  eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.genes",  "culled.by.slope", "percent.singlesamplegenes","no.samples", "percent.singlegenesamples", "total.signal", "percent.NA", "intensity", "Index" )] 
+  return(eval.sort)	
+}
+gzclust.eval.df.1 <- lincsclust.eval(eu.sp.sed.gzallt.data, tbl.sc=gzdata.allt)
+write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+# 143 is bad (NA) ;242 is bad; 426, 431, 536, 611, 640, 644...manually remove & redo above after deleting bad ones
+# OR
+# Better: 
+# Try with already trimmed data above
+# essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
+
+gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Warnings but no NA clusters
+write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""))
+
+# _________________________
+
+save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+##############################################################
+#_____
 which(eu.sp.sed.gzallt.sizes==max(eu.sp.sed.gzallt.sizes)) # 3; 467; 244
 head(eu.sp.sed.gzallt.data[[244]])
+look <- graph.clust6d.l (clust.data.from.vec(eu.sp.sed.gzallt[[244]], tbl=gzdata.allt))
 look <- graph.clust6d.l (clust.data.from.vec(eu.sp.sed.gzallt[[244]], tbl=gzdata.allt))
 efractNA.gzall <- sapply(eu.sp.sed.gzallt.data, fractNA)
 hist(unlist(efractNA.gzall), breaks=89, col="green3")
@@ -594,12 +677,13 @@ which(efractNA.gzall>0.6)
 # 9  84  86  88  90  92 259 261 265 269 295 315 320 339 359 363 420 444 445 448 509 637 710 778
 #  All these have at least two columns in common
 #contrast:
-  look <- graph.clust6d.l (eu.sp.sed.gzallt.data[[778]])
-  graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall>0.5)[5]])
-  which(efractNA.gzall<0.25)
-  graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall<0.25)[1]])
+look <- graph.clust6d.l (eu.sp.sed.gzallt.data[[778]]) # "328.274.205"
+look2 <-  graph.clust6d.l(essgzallt.data["328.274.205"])
+graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall>0.5)[5]])
+which(efractNA.gzall<0.25)
+graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall<0.25)[1]])
 # The tencell data suggests we should cull clusters with sparse data
-  # But with gzallt it looks  better
+# But with gzallt it looks  better
 #
 
 fractNA(gzdata.all) # 81% vs 
@@ -616,9 +700,7 @@ testcontents <- eu.sp.sed.gzallt
 names(testcontents) <- NULL
 identical(testrownames, testcontents) # Still FALSE
 setdiff(testrownames, testcontents) # Several clusters with NAs
-essgzallt.data <- eu.sp.sed.gzallt.data
-
-save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste("/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+# _____
 # neg cor edges and netatts from KGnegcorredges2.R
 ###################################################################################################
 # Compare different results from different data sets/treatments
