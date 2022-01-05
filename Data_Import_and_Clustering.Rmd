@@ -1,0 +1,302 @@
+---
+title: "Data Clustering"
+author: "Mark Grimes"
+date: "1/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+Mass spectrometry data from two large experiments are imported, treatment:control ratios are calculated, and the data are clustered using t-SNE embeddings from Euclidean distance, Spearman dissimilarity, and a combination of those, which we call Spearman-Euclidean dissimlarity (SED). Functions are in separate documents: Data_Input_Formatting.R; Dissimilarity_Calculations.R; Drug Groupings.R
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r read in first data sets for multiple PTMs}
+##___________________________________________________________________________________________
+# Task 1: read new data and check for overlap with existing PTM data from lung cancer cell lines.
+#
+newdatapath <- "/Users/Mark_Grimes/Dropbox/_Work/R_/_LINCS/_KarenGuolin/unnormalized_separate_septm/"
+# phosdataname <- "phospho_cleaned.txt" 
+# Newest data mapped:
+phosdataname <- "phospho_cleaned_mapped.txt" 
+newphos <- read.table(paste(newdatapath, phosdataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newphos)
+# !!! [1] 1123  753 original
+# now 933 170 with two new column names
+# I can't figure out where the sites are named in this file. Try one page from the spreadsheet (exported as tab-delimited text file).
+#phosdataname <- "Guolin_TKI sensitivity_SEPTM_for Cathy_20170505_Tyr.txt"
+#newphos <- read.table(paste(newdatapath, phosdataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+# dim(newphos)
+# [1] 911  68
+# Key 
+#Modification     Optimal pulldown columns
+#Phosphoylation  pTyr
+#Acetylation        Ack
+#Ubiquitination     Ubi
+#C = Crizotinib
+#D = DMSO
+#E = Erlotinib
+#Pr = PR171
+# For Intensity columns 23-129
+#C1-1: Crizotinib biological replicate 1- technical replicate 1
+#C1-2: Crizotinib biological replicate 1- technical replicate 2
+#C2-1: Crizotinib biological replicate 2- technical replicate 1
+#C2-2: Crizotinib biological replicate 2- technical replicate 2
+#C3-1: Crizotinib biological replicate 3- technical replicate 1
+#C3-2: Crizotinib biological replicate 3- technical replicate 2
+# Gene name is in "Symbol" column; in some cases multiple symbols separated by space as in "ANXA2 ANXA2P2" or "HSP90AA1 HSP90AB1 HSP90AA2P HSP90AB2P HSP90AB3P"
+# "Amino Acid" has the modsite, e.g. S,T, etc.; 
+# "Position" has the sequence postion; "Positions" and "Positions Within Proteins" have multiple possible postions separated by ";". Assume singular value in Position is for the first gene name. "Modification Type" has Phosphorylation" etc.
+unique(newphos$Modification.Type)
+# [1] "Phosphorylation (STY)"
+length(newphos$Symbol[grep(" ", newphos$Symbol, fixed=T)]) # 109
+length(newphos$Position[grep(" ", newphos$Position, fixed=T)]) # 0
+length(newphos$Position[grep(";", newphos$Position, fixed=T)]) # 0
+length(newphos$Amino.Acid[grep(";", newphos$Amino.Acid, fixed=T)]) # 0 
+length(newphos$Amino.Acid[grep(" ", newphos$Amino.Acid, fixed=T)]) # 0
+length(newphos$Positions[grep(";", newphos$Positions, fixed=T)]) # 27
+length(newphos$Positions.Within.Proteins[grep(";", newphos$Positions.Within.Proteins, fixed=T)]) # 104
+newphos$Symbol[grep(";", newphos$Positions.Within.Proteins, fixed=T)]
+newphos$Positions.Within.Proteins[grep(" ", newphos$Symbol, fixed=T)]
+# Note discrepancies
+
+# Start with the simplest version first.
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newphos.head <- newphos[,headercols]
+# 
+# Make peptide names using this function: 
+name.peptide <- function (genes, modification="p", sites, aa)	{
+     genes.v <- unlist(strsplit(genes, " ", fixed = TRUE))
+     sites.v <- unlist(strsplit(sites, ";", fixed = TRUE))
+     sites.v <- sapply(sites.v, function (x) paste (aa, x, sep=""))
+     Peptide.v <- as.character(noquote(paste(genes.v[1:length(genes.v)], modification, sites.v[1:length(sites.v)], sep=" ")))
+     Peptide <- paste(unique(Peptide.v), collapse="; ")
+     return(Peptide)
+}
+newphos.head$Peptide.Name <- mapply(name.peptide, genes=newphos.head$Symbol, sites= newphos.head$Positions.Within.Proteins, aa=newphos.head$Amino.Acid)
+length(intersect(newphos.head$Peptide.Name, rownames(ld.ratio))) # 463; better than previous 326!
+# Data columns
+newphosdata <- newphos[,grep("Intensity", names(newphos))]
+names(newphosdata) <- sapply(names(newphosdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newphosdata==0, arr.ind = TRUE)
+newphosdata <- replace (newphosdata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newphosdata)[grep(".1", names(newphosdata), fixed=TRUE)] 
+tr2 <- names(newphosdata)[grep(".2", names(newphosdata), fixed=TRUE)] 
+# Eric: The non-optimal pulldowns are no good, not because the identifications were not confident, but because the abundance levels between different pulldown types are not comparable. The optimal pulldown columns are straightforward to identify by the pulldown strings present in the sample names (they are also identifiable by zooming out and looking at the patterns of missing data, the optimal pulldowns, as a group, have the least missing data).
+tr1.opt <- tr1[grep("pTyr", tr1)]
+tr2.opt <- tr2[grep("pTyr", tr2)]
+# Use this function to average technical replciates:
+merge2cols <- function (colv1, colv2) {
+     newcolv=NA
+     if (is.na(colv1) & is.na(colv2)) {
+          newcolv=NA 
+          return(newcolv)} else
+               if (is.na(colv1) | is.na(colv2)) {
+                    newcolv <- sum(colv1, colv2, na.rm=TRUE)
+                    return(newcolv) } else
+                         newcolv <- (colv1 + colv2)/2
+                              return(newcolv) }
+newphosdata.merged <- data.frame(matrix(nrow=nrow(newphosdata), ncol=18))
+     for(i in 1:length(tr1.opt)) {
+          newphosdata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newphosdata[, tr1.opt[i]]), colv2=as.numeric(newphosdata[,tr2.opt[i]])) 
+     }
+names(newphosdata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newphosdata.merged)
+# [1] 933  18
+boxplot(log2(newphosdata.merged))
+# Reasonable distribution.
+# Merge with header
+kgphosdatafile <- cbind(newphos.head, newphosdata.merged)
+# remove reverse sequences 
+length(grep("---", kgphosdatafile$Symbol))  # 25
+kgphosdatafile <- kgphosdatafile[-grep("---", kgphosdatafile$Symbol),] # now 908
+kgphosdata <- kgphosdatafile[,6:23]
+rownames(kgphosdata) <- kgphosdatafile$Peptide.Name
+######################
+# Repeat with aceltylation data
+ackdataname <- "acetyl_cleaned.txt"
+newack <- read.table(paste(newdatapath, ackdataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newack) # [1] 852 168
+unique(newack$Modification.Type)
+# "Acetyl (K)"
+length(newack$Symbol[grep(" ", newack$Symbol, fixed=T)]) # 92
+length(newack$Position[grep(" ", newack$Position, fixed=T)]) # 0
+length(newack$Position[grep(";", newack$Position, fixed=T)]) # 0
+length(newack$Amino.Acid[grep(";", newack$Amino.Acid, fixed=T)]) # 0 
+length(newack$Amino.Acid[grep(" ", newack$Amino.Acid, fixed=T)]) # 0
+length(newack$Positions[grep(";", newack$Positions, fixed=T)]) # 55
+length(newack$Positions.Within.Proteins[grep(";", newack$Positions.Within.Proteins, fixed=T)]) # 99
+newack$Symbol[grep(";", newack$Positions.Within.Proteins, fixed=T)]
+newack$Positions.Within.Proteins[grep(" ", newack$Symbol, fixed=T)]
+# Note discrepancies
+
+# Start with the simplest version first.
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newack.head <- newack[,headercols]
+# 
+# Make peptide names using name.peptide: 
+newack.head$Peptide.Name <- mapply(name.peptide, modification="ack", genes=newack.head$Symbol, sites= newack.head$Positions.Within.Proteins, aa=newack.head$Amino.Acid)
+length(intersect(newack.head$Peptide.Name, rownames(ld.ratio))) # 244; better than previous 200!
+# Data columns
+newackdata <- newack[,grep("Intensity", names(newack))]
+names(newackdata) <- sapply(names(newackdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newackdata==0, arr.ind = TRUE)
+newackdata <- replace (newackdata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newackdata)[grep(".1", names(newackdata), fixed=TRUE)] 
+tr2 <- names(newackdata)[grep(".2", names(newackdata), fixed=TRUE)] 
+# Select correct pulldown lanes
+tr1.opt <- tr1[grep("AcK", tr1)]
+tr2.opt <- tr2[grep("AcK", tr2)]
+# Use merge2cols function to average technical replciates:
+newackdata.merged <- data.frame(matrix(nrow=nrow(newackdata), ncol=18))
+for(i in 1:length(tr1.opt)) {
+     newackdata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newackdata[, tr1.opt[i]]), colv2=as.numeric(newackdata[,tr2.opt[i]])) 
+}
+names(newackdata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newackdata.merged)
+# [1] 852  18
+boxplot(log2(newackdata.merged))
+# Reasonable distribution.
+# Merge with header
+kgackdatafile <- cbind(newack.head, newackdata.merged)
+# remove reverse sequences 
+length(grep("---", kgackdatafile$Symbol))  # 52
+kgackdatafile <- kgackdatafile[-grep("---", kgackdatafile$Symbol),] # now 800
+kgackdata <- kgackdatafile[,6:23]
+rownames(kgackdata) <- kgackdatafile$Peptide.Name
+######################
+# Repeat with UB data
+ubidataname <- "glygly_cleaned.txt"
+newubi <- read.table(paste(newdatapath, ubidataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newubi) # 1480  168
+unique(newubi$Modification.Type)
+# [1] "GlyGly (K)"
+length(newubi$Symbol[grep(" ", newubi$Symbol, fixed=T)]) # 181
+length(newubi$Position[grep(" ", newubi$Position, fixed=T)]) # 0
+length(newubi$Position[grep(";", newubi$Position, fixed=T)]) # 0
+length(newubi$Amino.Acid[grep(";", newubi$Amino.Acid, fixed=T)]) # 0 
+length(newubi$Amino.Acid[grep(" ", newubi$Amino.Acid, fixed=T)]) # 0
+length(newubi$Positions[grep(";", newubi$Positions, fixed=T)]) # 83
+length(newubi$Positions.Within.Proteins[grep(";", newubi$Positions.Within.Proteins, fixed=T)]) # 199
+newubi$Symbol[grep(";", newubi$Positions.Within.Proteins, fixed=T)]
+newubi$Positions.Within.Proteins[grep(" ", newubi$Symbol, fixed=T)]
+# Note discrepancies
+
+# Start with the simplest version first.
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newubi.head <- newubi[,headercols]
+# 
+# Make peptide names using name.peptide: 
+newubi.head$Peptide.Name <- mapply(name.peptide, modification="ubi", genes=newubi.head$Symbol, sites= newubi.head$Positions.Within.Proteins, aa=newubi.head$Amino.Acid)
+length(intersect(newubi.head$Peptide.Name, rownames(ld.ratio))) # 0 obvioulsy
+# Data columns
+newubidata <- newubi[,grep("Intensity", names(newubi))]
+names(newubidata) <- sapply(names(newubidata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newubidata==0, arr.ind = TRUE)
+newubidata <- replace (newubidata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newubidata)[grep(".1", names(newubidata), fixed=TRUE)] 
+tr2 <- names(newubidata)[grep(".2", names(newubidata), fixed=TRUE)] 
+# Select correct pulldown lanes
+tr1.opt <- tr1[grep("Ubi", tr1)]
+tr2.opt <- tr2[grep("Ubi", tr2)]
+# Use merge2cols function to average technical replciates:
+newubidata.merged <- data.frame(matrix(nrow=nrow(newubidata), ncol=18))
+for(i in 1:length(tr1.opt)) {
+     newubidata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newubidata[, tr1.opt[i]]), colv2=as.numeric(newubidata[,tr2.opt[i]])) 
+}
+names(newubidata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newubidata.merged)
+# [1] 1480  18
+boxplot(log2(newubidata.merged))
+# Reasonable distribution.
+# Merge with header
+kgubidatafile <- cbind(newubi.head, newubidata.merged)
+# remove reverse sequences 
+length(grep("---", kgubidatafile$Symbol))  # 29
+kgubidatafile <- kgubidatafile[-grep("---", kgubidatafile$Symbol),] # now 1451
+kgubidata <- kgubidatafile[,6:23]
+rownames(kgubidata) <- kgubidatafile$Peptide.Name
+######################
+# Put them together.
+# Make column names common
+kgp <- kgphosdata
+kga <- kgackdata
+kgu <- kgubidata
+names(kgp) <- sapply(names(kgp), function (x) paste(unlist(strsplit(x, "_pTyr"))[1], unlist(strsplit(x, "_pTyr"))[2], sep=""))
+names(kga) <- sapply(names(kga), function (x) paste(unlist(strsplit(x, "_AcK"))[1], unlist(strsplit(x, "_AcK"))[2], sep=""))
+names(kgu) <- sapply(names(kgu), function (x) paste(unlist(strsplit(x, "_Ubi"))[1], unlist(strsplit(x, "_Ubi"))[2], sep=""))
+identical(names(kgp), names(kga))
+#
+kgdata <- rbind (kgp, kga, kgu) # 3159   18
+# Reorder here
+kgdata <- kgdata[order(rownames(kgdata)),]
+nmissing(kgdata)/(dim(kgdata)[1]*dim(kgdata)[2])
+# [1] 0.414653
+kglog2data <- log2(kgdata)
+# Revised: Explore using ratios where control=rowMeans (D1, D2, D3)
+# NOTE: if we assume individual drug experiments are under the same conditions as DMSO 1-3, ratios do not correlate between experiments.
+#
+plot(log2(kgphosdata$H3122SEPTM_pTyr.C1), log2(kgphosdata$H3122SEPTM_pTyr.C2))
+plot(log2(kgphosdata$H3122SEPTM_pTyr.C1), log2(kgphosdata$H3122SEPTM_pTyr.D1))
+plot(log2(kgphosdata$H3122SEPTM_pTyr.C1), log2(kgphosdata$H3122SEPTM_pTyr.D1))
+# Calculate treatment/control
+# Revised: Test whether ratios obtained using the average of controls (D1-D3) have better correlations than ratios calculated from individual experiments.
+H3122control <- rowMeans(kgdata[, names(kgdata)[grep("H3122SEPTM.D", names(kgdata))]], na.rm=TRUE)
+H3122control[is.nan(H3122control)] <- NA
+identical(names(H3122control), rownames(kgdata))
+# TRUE
+H3122SEPTM.C1.ratio <- kgdata$H3122SEPTM.C1/H3122control
+H3122SEPTM.C2.ratio <- kgdata$H3122SEPTM.C2/H3122control
+H3122SEPTM.C3.ratio <- kgdata$H3122SEPTM.C3/H3122control
+H3122SEPTM.PR1.ratio <- kgdata$H3122SEPTM.PR1/H3122control
+H3122SEPTM.PR2.ratio <- kgdata$H3122SEPTM.PR2/H3122control
+H3122SEPTM.PR3.ratio <- kgdata$H3122SEPTM.PR3/H3122control
+PC9control <- rowMeans(kgdata[, names(kgdata)[grep("PC9SEPTM.D", names(kgdata))]], na.rm=TRUE)
+PC9control[is.nan(PC9control)] <- NA
+identical(names(PC9control), rownames(kgdata))
+# TRUE
+PC9SEPTM.E1.ratio <- kgdata$PC9SEPTM.E1/PC9control
+PC9SEPTM.E2.ratio <- kgdata$PC9SEPTM.E2/PC9control
+PC9SEPTM.E3.ratio <- kgdata$PC9SEPTM.E3/PC9control
+PC9SEPTM.PR1.ratio <- kgdata$PC9SEPTM.PR1/PC9control
+PC9SEPTM.PR2.ratio <- kgdata$PC9SEPTM.PR2/PC9control
+PC9SEPTM.PR3.ratio <- kgdata$PC9SEPTM.PR3/PC9control
+kgratios <- data.frame(H3122SEPTM.C1.ratio, H3122SEPTM.C2.ratio, H3122SEPTM.C3.ratio, H3122SEPTM.PR1.ratio, H3122SEPTM.PR2.ratio, H3122SEPTM.PR3.ratio, PC9SEPTM.E1.ratio, PC9SEPTM.E2.ratio, PC9SEPTM.E3.ratio, PC9SEPTM.PR1.ratio, PC9SEPTM.PR2.ratio, PC9SEPTM.PR3.ratio)
+identical(rownames(kgdata), rownames(kgratios))
+# TRUE
+# Make limits to unweight extreme values
+hi.ratio <- which(kgratios>=100, arr.ind = TRUE)
+low.ratio <- which(kgratios <=1/100, arr.ind = TRUE)
+kgratios.lim <- replace (kgratios, hi.ratio, 100) 
+kgratios.lim <- replace (kgratios.lim, low.ratio, 1/100) 
+# log2
+kgratios.log2 <- log2(kgratios)
+kgratios.lim.log2 <- log2(kgratios.lim)
+nmissing(kgratios.lim.log2)/(dim(kgratios.lim.log2)[1]*dim(kgratios.lim.log2)[2])
+# [1] 0.4614066 
+identical(rownames(kgratios.lim.log2), rownames(kgdata))
+# [1] TRUE
+boxplot(kgratios.lim.log2)
+# save(kgackdata, kgackdatafile, kgdata, kglog2data, kgp, kgphosdata, kgphosdatafile, kgu, kgubidata, kgubidatafile, kgratios, kgratios.log2, kgratios.lim.log2, file="NewKGData.Rdata")
+#
+#======================================================================
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -584,7 +584,7 @@ essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt)
 # _________________________
 # # # >>>>>
 # Evalauate clusters
-# use lincsclust.eval; clusterlist=eu.sp.sed.gzallt.data; tbl.sc=gzdata.allt
+# use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
 lincsclust.eval <- function(clusterlist, tbl.sc) {
   evaluation <- data.frame(0)
   names(evaluation)[1] <- "Group"
@@ -593,7 +593,7 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
   for (i in 1:length(clusterlist)) {
     cat("Starting Group", i, "\n")
     evaluation[i,1] <- i
-    evaluation$Group.Name <- names(clusterlist)[i]
+    evaluation$Group.Name[i] <- names(clusterlist)[i]
     #
     evaluation$no.genes[i] <- length(clusterlist[[i]]$Gene.Name)
     if(length(clusterlist[[i]]$Gene.Name) == 1) { 
@@ -641,7 +641,6 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
   return(eval.sort)	
 }
 gzclust.eval.df.1 <- lincsclust.eval(eu.sp.sed.gzallt.data, tbl.sc=gzdata.allt)
-write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 # 143 is bad (NA) ;242 is bad; 426, 431, 536, 611, 640, 644...manually remove & redo above after deleting bad ones
 # OR
 # Better: 
@@ -651,7 +650,11 @@ write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_Ka
 gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
 # Warnings but no NA clusters
 write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""))
-
+# loop to examine heatmaps
+for (i in 818:810){
+  graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[i]]])
+}
+graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[818]]])
 # _________________________
 
 save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
