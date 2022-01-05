@@ -601,7 +601,7 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
     } else {
       at = data.frame(tbl.sc[key$Gene.Name %in% clusterlist[[i]]$Gene.Name, ]) }
     # get rid of ratios for evaluation calculations and take absolute value
-    if(any (grepl("to", names(at)))) at = abs(at [,-grep("to", names(at))])
+    if(any (grepl("atio", names(at)))) at = abs(at [,-grep("atio", names(at))])
     # previous use: at <- at[-which(apply(at, 1, filled) == 0),]
     # better: at[, which(numcolwise(filled)(at) != 0)]
     # names() doesn't work with single column
