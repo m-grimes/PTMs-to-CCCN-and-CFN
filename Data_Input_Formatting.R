@@ -195,7 +195,89 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
   eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.genes",  "culled.by.slope", "percent.singlesamplegenes","no.samples", "percent.singlegenesamples", "total.signal", "percent.NA", "intensity", "Index" )] 
   return(eval.sort)	
 }
-# end lincsclust.eval
+# end
+# Modified to name ptms instead of genes:
+ptmsclust.eval <- function(clusterlist, tbl.sc) {
+  evaluation <- data.frame(0)
+  names(evaluation)[1] <- "Group"
+  #key  <- data.frame(1:length(rownames(tbl.sc)))
+  #key$Gene.Name <- rownames(tbl.sc)
+  for (i in 1:length(clusterlist)) {
+    cat("Starting Group", i, "\n")
+    evaluation[i,1] <- i
+    evaluation$Group.Name[i] <- names(clusterlist)[i]
+    #
+    evaluation$no.ptms[i] <- length(clusterlist[[i]]$Gene.Name)
+    if(length(clusterlist[[i]]$Gene.Name) == 1) { 
+      at = data.frame(tbl.sc[clusterlist[[i]]$Gene.Name, ])
+    } else {
+      at = data.frame(tbl.sc[key$Gene.Name %in% clusterlist[[i]]$Gene.Name, ]) }
+    # get rid of ratios for evaluation calculations and take absolute value
+    if(any (grepl("atio", names(at)))) at = abs(at [,-grep("atio", names(at))])
+    if (length(which(numcolwise(filled)(at) != 0)) > 1) {
+      acol <- names(at[,which(numcolwise(filled)(at) != 0)])  
+      evaluation$no.samples[i] <- length(acol)
+      at <- at[, acol] } else evaluation$no.samples[i] <- 1
+    evaluation$total.signal[i] <- sum(abs(at), na.rm=TRUE)
+    if (length(which(numcolwise(filled)(at) != 0)) == 1 || length(clusterlist[[i]]$Gene.Name) == 1) {
+      evaluation$culled.by.slope[i] <- length(clusterlist[[i]]$Gene.Name) 
+      evaluation$percent.NA[i] <- 0
+      evaluation$percent.singlesampleptms[i] <- 100
+      evaluation$percent.singleptmsamples[i] <- 100
+    } else	{
+      evaluation$percent.NA[i] <-  round(100*(sum(numcolwise(nmissing)(at)) / (dim(at)[1]*dim(at)[2])), 1)
+      singlesampleptms <- at[which(apply(at[,2:ncol(at)], 1, filled) == 1),]
+      evaluation$percent.singlesampleptms[i] <- 100*(nrow(singlesampleptms) / dim(at)[1]) 
+      singleptmsamples <- sum(numcolwise(filled)(at) == 1)
+      evaluation$percent.singleptmsamples[i] <- round(100*(singleptmsamples/dim(at)[2]),1)
+      cluster.mo <- at[order(-as.vector(colwise(sum.na)(data.frame(t(abs(at)))))), order(-as.vector(numcolwise(sum.na)(data.frame(abs(at)))))]
+      slope <- apply(cluster.mo, 1, get.slope.a)
+      badslope <- c(names(which(is.na(slope))), names(which(slope > 0)))
+      evaluation$culled.by.slope[i] <- length(badslope)
+      #
+      cat("\n", length(badslope), "genes culled by slope", "\n")
+    }		}	 
+  #  Total signal scaled to percent NA = intensity
+  cleargenes <- evaluation$no.ptms - evaluation$culled.by.slope # may be 0
+  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singleptmsamples/100) # may be 0
+  intensity <- evaluation$total.signal - (evaluation$total.signal * evaluation$percent.NA/100)
+  # calibrate intensity according to real samples and clear genes
+  # - goal is to reward a high density of appropriate data
+  evaluation$intensity <- round(intensity, 1)
+  evaluation$Index  <- round(((1 + realsamples) * (1 + cleargenes) / (1 + evaluation$percent.NA))/evaluation$no.ptms,1)
+  eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.ptms",  "culled.by.slope", "percent.singlesampleptms","no.samples", "percent.singleptmsamples", "total.signal", "percent.NA", "intensity", "Index" )] 
+  return(eval.sort)	
+}
+# end ptmssclust.eval
+
+# Modified similar function to evaluate the ratio data in clusters
+ratioclust.eval <- function(clusterlist) {
+  evaluation <- data.frame(0)
+  names(evaluation)[1] <- "Group"
+  for (i in 1:length(clusterlist)) {
+    cat("Starting Group", i, "\n")
+    evaluation[i,"Group"] <- i
+    evaluation$Group.Name[i] <- names(clusterlist)[i]
+    at <- clusterlist[[i]]
+    evaluation$no.ptms[i] <- dim(at)[1]
+    evaluation$no.samples[i] <- dim(at)[2]
+    evaluation$total.signal[i] <- sum(abs(at), na.rm=TRUE)
+    evaluation$percent.NA[i] <-  100*(sum(numcolwise(nmissing)(at)) / (dim(at)[1]*dim(at)[2]))
+    singlesampleptms <- at[which(apply(at, 1, filled) == 1),]
+    evaluation$percent.singlesampleptms[i] <- 100*(nrow(singlesampleptms) / dim(at)[1]) 
+    singleptmsamples <- sum(numcolwise(filled)(at) == 1)
+    evaluation$percent.singleptmsamples[i] <- 100*(singleptmsamples/dim(at)[2])
+  }
+  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singleptmsamples/100) # may be 0
+  intensity <- evaluation$total.signal - (evaluation$total.signal * evaluation$percent.NA/100)
+  # - goal is to reward a high density of appropriate data
+  evaluation$intensity <- intensity
+  eval.sort <- evaluation[order(-evaluation$intensity, evaluation$percent.NA), c("Group", "Group.Name", "no.ptms", "no.samples", "percent.singlesampleptms", "percent.singleptmsamples", "total.signal", "percent.NA", "intensity" )] 
+  eval.sort[, 5:9] <- round (eval.sort[, 5:9] ,1)
+  return(eval.sort)	
+}
+  # end ratioclust.eval
+  
 ##########################################################################################
 
 # Heatmap graphing functions

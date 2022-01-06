@@ -688,9 +688,23 @@ essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt)
 ## Evalauate clusters
 
 ```{r evaluate clusters}
-# use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
-
-# Try with trimmed data above
+# To evaluate clusters, use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
+# Employ with trimmed data above
 gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
-# Save table
+# Save table for sharing
 write.table(gzclust.eval.df, file= "gzclust.eval.df.txt")
+# In about a third of the data from either treatment or control PTMs missing. Find clusters that have two or more ratio columns.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x))])
+# In about a third of the data from either treatment or control PTMs missing. Find clusters that have two or more ratio columns.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x))])
+edr.cols <- sapply(essgzallt.data.ratios, function (x) dim(x)[2])
+hist(unlist(edr.cols), breaks=20, col="turquoise")
+# 
+edr.1 <- essgzallt.data.ratios[which(unlist(edr.cols)>2)]
+# Some list elements are not data frames (only one row returned)
+edr.class <- sapply(edr.1, class)
+edr <- edr.1[-which(edr.class=="numeric")]  # 440 clusters / 818
+gzclust.eval.df$contains.ratio.data <- sapply(gzclust.eval.df$Group.Name, function (y) y %in% names(edr))
+# Evaluate ratio clusters with modified function ratioclust.eval:
+ratioclust.eval.df <- ratioclust.eval(clusterlist=edr)
+write.table(ratioclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzratioclusters.eval.df.txt", sep=""),row.names = FALSE, sep="\t")

@@ -589,17 +589,17 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
   evaluation <- data.frame(0)
   names(evaluation)[1] <- "Group"
   key  <- data.frame(1:length(rownames(tbl.sc)))
-  key$Gene.Name <- rownames(tbl.sc)
+  key$ptm.Name <- rownames(tbl.sc)
   for (i in 1:length(clusterlist)) {
     cat("Starting Group", i, "\n")
     evaluation[i,1] <- i
     evaluation$Group.Name[i] <- names(clusterlist)[i]
     #
-    evaluation$no.genes[i] <- length(clusterlist[[i]]$Gene.Name)
-    if(length(clusterlist[[i]]$Gene.Name) == 1) { 
-      at = data.frame(tbl.sc[clusterlist[[i]]$Gene.Name, ])
+    evaluation$no.ptms[i] <- length(clusterlist[[i]]$ptm.Name)
+    if(length(clusterlist[[i]]$ptm.Name) == 1) { 
+      at = data.frame(tbl.sc[clusterlist[[i]]$ptm.Name, ])
     } else {
-      at = data.frame(tbl.sc[key$Gene.Name %in% clusterlist[[i]]$Gene.Name, ]) }
+      at = data.frame(tbl.sc[key$ptm.Name %in% clusterlist[[i]]$ptm.Name, ]) }
     # get rid of ratios for evaluation calculations and take absolute value
     if(any (grepl("atio", names(at)))) at = abs(at [,-grep("atio", names(at))])
     # previous use: at <- at[-which(apply(at, 1, filled) == 0),]
@@ -610,34 +610,34 @@ lincsclust.eval <- function(clusterlist, tbl.sc) {
       evaluation$no.samples[i] <- length(acol)
       at <- at[, acol] } else evaluation$no.samples[i] <- 1
     evaluation$total.signal[i] <- sum(abs(at), na.rm=TRUE)
-    if (length(which(numcolwise(filled)(at) != 0)) == 1 || length(clusterlist[[i]]$Gene.Name) == 1) {
-      evaluation$culled.by.slope[i] <- length(clusterlist[[i]]$Gene.Name) 
+    if (length(which(numcolwise(filled)(at) != 0)) == 1 || length(clusterlist[[i]]$ptm.Name) == 1) {
+      evaluation$culled.by.slope[i] <- length(clusterlist[[i]]$ptm.Name) 
       evaluation$percent.NA[i] <- 0
-      evaluation$percent.singlesamplegenes[i] <- 100
-      evaluation$percent.singlegenesamples[i] <- 100
+      evaluation$percent.singlesampleptms[i] <- 100
+      evaluation$percent.singleptmsamples[i] <- 100
     } else	{
       evaluation$percent.NA[i] <-  100*(sum(numcolwise(nmissing)(at)) / (dim(at)[1]*dim(at)[2]))
-      #singlesamplegenes <- at[, which(numcolwise(filled)(at) == 1 )]
-      singlesamplegenes <- at[which(apply(at, 1, filled) == 1),]
-      evaluation$percent.singlesamplegenes[i] <- 100*(nrow(singlesamplegenes) / dim(at)[1]) 
-      singlegenesamples <- sum(numcolwise(filled)(at) == 1)
-      evaluation$percent.singlegenesamples[i] <- 100*(singlegenesamples/dim(at)[2])
+      #singlesampleptms <- at[, which(numcolwise(filled)(at) == 1 )]
+      singlesampleptms <- at[which(apply(at, 1, filled) == 1),]
+      evaluation$percent.singlesampleptms[i] <- 100*(nrow(singlesampleptms) / dim(at)[1]) 
+      singleptmsamples <- sum(numcolwise(filled)(at) == 1)
+      evaluation$percent.singleptmsamples[i] <- 100*(singleptmsamples/dim(at)[2])
       cluster.mo <- at[order(-as.vector(colwise(sum.na)(data.frame(t(abs(at)))))), order(-as.vector(numcolwise(sum.na)(data.frame(abs(at)))))]
       slope <- apply(cluster.mo, 1, get.slope.a)
       badslope <- c(names(which(is.na(slope))), names(which(slope > 0)))
       evaluation$culled.by.slope[i] <- length(badslope)
       #
-      cat("\n", length(badslope), "genes culled by slope", "\n")
+      cat("\n", length(badslope), "ptms culled by slope", "\n")
     }		}	 
   #  Total signal scaled to percent NA = intensity
-  cleargenes <- evaluation$no.genes - evaluation$culled.by.slope # may be 0
-  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singlegenesamples/100) # may be 0
+  clearptms <- evaluation$no.ptms - evaluation$culled.by.slope # may be 0
+  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singleptmsamples/100) # may be 0
   intensity <- evaluation$total.signal - (evaluation$total.signal * evaluation$percent.NA/100)
-  # calibrate intensity according to real samples and clear genes
+  # calibrate intensity according to real samples and clear ptms
   # - goal is to reward a high density of appropriate data
   evaluation$intensity <- intensity
-  evaluation$Index  <- ((1 + realsamples) * (1 + cleargenes) / (1 + evaluation$percent.NA))/evaluation$no.genes
-  eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.genes",  "culled.by.slope", "percent.singlesamplegenes","no.samples", "percent.singlegenesamples", "total.signal", "percent.NA", "intensity", "Index" )] 
+  evaluation$Index  <- ((1 + realsamples) * (1 + clearptms) / (1 + evaluation$percent.NA))/evaluation$no.ptms
+  eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.ptms",  "culled.by.slope", "percent.singlesampleptms","no.samples", "percent.singleptmsamples", "total.signal", "percent.NA", "intensity", "Index" )] 
   return(eval.sort)	
 }
 gzclust.eval.df.1 <- lincsclust.eval(eu.sp.sed.gzallt.data, tbl.sc=gzdata.allt)
@@ -647,14 +647,41 @@ gzclust.eval.df.1 <- lincsclust.eval(eu.sp.sed.gzallt.data, tbl.sc=gzdata.allt)
 # Try with already trimmed data above
 # essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
 
-gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+gzclust.eval.df.test <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Test new version with names changed
+gzclust.eval.df <- ptmsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
 # Warnings but no NA clusters
-write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""))
 # loop to examine heatmaps
 for (i in 818:810){
   graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[i]]])
 }
 graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[818]]])
+# As noted above: 
+# In about a third of the data from either treatment or control PTMs missing.
+# Find clusters that have two or more ratio columns.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x))])
+edr.cols <- sapply(essgzallt.data.ratios, function (x) dim(x)[2])
+hist(unlist(edr.cols), breaks=20, col="turquoise")
+# 
+edr.1 <- essgzallt.data.ratios[which(unlist(edr.cols)>2)] # 524
+# Some list elements are not data frames (only one row returned)
+edr.class <- sapply(edr.1, class)
+edr.2 <- edr.1[-which(edr.class=="numeric")]  # 440 clusters / 818
+# Some still not removed because NULL was returned above; use sums
+edr.total.signal <- sapply(edr.2, function (x) sum(abs(x), na.rm=TRUE))
+edr <- edr.2[-which(edr.total.signal==0)] # now 408 clusters
+
+gzclust.eval.df$contains.ratio.data <- sapply(gzclust.eval.df$Group.Name, function (y) y %in% names(edr))
+write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""), row.names = FALSE, sep="\t")
+
+# Evaluate ratio clusters with modified function
+ratioclust.eval.df <- ratioclust.eval(clusterlist=edr)
+write.table(ratioclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzratioclusters.eval.df.txt", sep=""),row.names = FALSE, sep="\t")
+graph.clust6d.l(edr["118.227.333"])
+# loop to examine heatmaps
+for (i in 1:10){
+  graph.clust6d.l(edr[[ratioclust.eval.df$Group.Name[i]]])
+}
 # _________________________
 
 save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
