@@ -659,32 +659,38 @@ graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[818]]])
 # As noted above: 
 # In about a third of the data from either treatment or control PTMs missing.
 # Find clusters that have two or more ratio columns.
-essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x))])
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x)), drop=FALSE])
 edr.cols <- sapply(essgzallt.data.ratios, function (x) dim(x)[2])
 hist(unlist(edr.cols), breaks=20, col="turquoise")
-# 
-edr.1 <- essgzallt.data.ratios[which(unlist(edr.cols)>2)] # 524
-# Some list elements are not data frames (only one row returned)
-edr.class <- sapply(edr.1, class)
-edr.2 <- edr.1[-which(edr.class=="numeric")]  # 440 clusters / 818
-# Some still not removed because NULL was returned above; use sums
-edr.total.signal <- sapply(edr.2, function (x) sum(abs(x), na.rm=TRUE))
-edr <- edr.2[-which(edr.total.signal==0)] # now 408 clusters
+range(edr.cols)
+essgzallt.data.ratios <-  essgzallt.data.ratios[which(unlist(edr.cols)>0)] # 767
+
 
 gzclust.eval.df$contains.ratio.data <- sapply(gzclust.eval.df$Group.Name, function (y) y %in% names(edr))
+# remove this and just add no. ratio cols.
+gzclust.eval.df <- gzclust.eval.df[ , names(gzclust.eval.df) %w/o% "contains.ratio.data"]
+gzclust.eval.df$no.ratio.cols <- edr.cols
 write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""), row.names = FALSE, sep="\t")
 
-# Evaluate ratio clusters with modified function
-ratioclust.eval.df <- ratioclust.eval(clusterlist=edr)
+# Evaluate ratio clusters with more than three data columns with modified function
+essgzallt.data.ratios.3cols <- essgzallt.data.ratios[which(unlist(edr.cols)>2)] # 524
+ratioclust.eval.df <- ratioclust.eval(clusterlist=essgzallt.data.ratios.3cols)
 write.table(ratioclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzratioclusters.eval.df.txt", sep=""),row.names = FALSE, sep="\t")
 graph.clust6d.l(edr["118.227.333"])
 # loop to examine heatmaps
 for (i in 1:10){
   graph.clust6d.l(edr[[ratioclust.eval.df$Group.Name[i]]])
 }
-# _________________________
+# _
+graph.clust6d.l(edr[["27.282.215"]])
+graph.clust6d.l(essgzallt.data[["27.282.215"]])
+graph.clust6d.l(essgzallt.data.ratios[["27.282.215"]])
+graph.clust6d.l(essgzallt.data.ratios[["2.58.53"]])
+graph.clust6d.l(essgzallt.data[["1.225.171"]])
 
-save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+#________________________
+
+save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, essgzallt.data.ratios, gzclust.eval.df, ratioclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 ##############################################################
 #_____
 which(eu.sp.sed.gzallt.sizes==max(eu.sp.sed.gzallt.sizes)) # 3; 467; 244
