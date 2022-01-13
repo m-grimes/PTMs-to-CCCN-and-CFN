@@ -1,0 +1,711 @@
+---
+title: "Data Import and Clustering Procdure"
+author: "Mark Grimes"
+date: "1/5/2022"
+output: html_document
+Note: When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. 
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+Mass spectrometry data from two large experiments are imported, treatment:control ratios are calculated, and the data are clustered using t-SNE embeddings from Euclidean distance, Spearman dissimilarity, and a combination of those, which we call Spearman-Euclidean dissimlarity (SED). Functions are in separate documents: Data_Input_Formatting.R; Dissimilarity_Calculations.R; Drug Groupings.R
+
+
+```{r read in first data sets for multiple PTMs}
+##___________________________________________________________________________________________
+# Task 1: read new data and check for overlap with existing PTM data from lung cancer cell lines.
+#
+newdatapath <- # define directory where data files are stored
+# phosdataname <- "phospho_cleaned.txt" 
+# Newest data mapped:
+phosdataname <- "phospho_cleaned_mapped.txt" 
+newphos <- read.table(paste(newdatapath, phosdataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newphos)
+# [1] 911  68
+# Key 
+#Modification     Optimal pulldown columns
+#Phosphoylation  pTyr
+#Acetylation        Ack
+#Ubiquitination     Ubi
+#C = Crizotinib
+#D = DMSO
+#E = Erlotinib
+#Pr = PR171
+# For Intensity columns 23-129
+#C1-1: Crizotinib biological replicate 1- technical replicate 1
+#C1-2: Crizotinib biological replicate 1- technical replicate 2
+#C2-1: Crizotinib biological replicate 2- technical replicate 1
+#C2-2: Crizotinib biological replicate 2- technical replicate 2
+#C3-1: Crizotinib biological replicate 3- technical replicate 1
+#C3-2: Crizotinib biological replicate 3- technical replicate 2
+# Gene name is in "Symbol" column; in some cases multiple symbols separated by space as in "ANXA2 ANXA2P2" or "HSP90AA1 HSP90AB1 HSP90AA2P HSP90AB2P HSP90AB3P"
+# "Amino Acid" has the modsite, e.g. S,T, etc.; 
+# "Position" has the sequence postion; "Positions" and "Positions Within Proteins" have multiple possible postions separated by ";". Assume singular value in Position is for the first gene name. "Modification Type" has Phosphorylation" etc.
+unique(newphos$Modification.Type)
+# [1] "Phosphorylation (STY)"
+length(newphos$Symbol[grep(" ", newphos$Symbol, fixed=T)]) # 109
+length(newphos$Position[grep(" ", newphos$Position, fixed=T)]) # 0
+length(newphos$Position[grep(";", newphos$Position, fixed=T)]) # 0
+length(newphos$Amino.Acid[grep(";", newphos$Amino.Acid, fixed=T)]) # 0 
+length(newphos$Amino.Acid[grep(" ", newphos$Amino.Acid, fixed=T)]) # 0
+length(newphos$Positions[grep(";", newphos$Positions, fixed=T)]) # 27
+length(newphos$Positions.Within.Proteins[grep(";", newphos$Positions.Within.Proteins, fixed=T)]) # 104
+newphos$Symbol[grep(";", newphos$Positions.Within.Proteins, fixed=T)]
+newphos$Positions.Within.Proteins[grep(" ", newphos$Symbol, fixed=T)]
+# Note discrepancies
+
+# Start with the simplest version first.
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newphos.head <- newphos[,headercols]
+# 
+# Make peptide names using name.peptide() function: 
+newphos.head$Peptide.Name <- mapply(name.peptide, genes=newphos.head$Symbol, sites= newphos.head$Positions.Within.Proteins, aa=newphos.head$Amino.Acid)
+length(intersect(newphos.head$Peptide.Name, rownames(ld.ratio))) # 463; better than previous 326!
+# Data columns
+newphosdata <- newphos[,grep("Intensity", names(newphos))]
+names(newphosdata) <- sapply(names(newphosdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newphosdata==0, arr.ind = TRUE)
+newphosdata <- replace (newphosdata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newphosdata)[grep(".1", names(newphosdata), fixed=TRUE)] 
+tr2 <- names(newphosdata)[grep(".2", names(newphosdata), fixed=TRUE)] 
+# Eric: The non-optimal pulldowns are no good, not because the identifications were not confident, but because the abundance levels between different pulldown types are not comparable. The optimal pulldown columns are straightforward to identify by the pulldown strings present in the sample names (they are also identifiable by zooming out and looking at the patterns of missing data, the optimal pulldowns, as a group, have the least missing data).
+tr1.opt <- tr1[grep("pTyr", tr1)]
+tr2.opt <- tr2[grep("pTyr", tr2)]
+# Use merge2cols() function to average technical replciates:
+newphosdata.merged <- data.frame(matrix(nrow=nrow(newphosdata), ncol=18))
+     for(i in 1:length(tr1.opt)) {
+          newphosdata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newphosdata[, tr1.opt[i]]), colv2=as.numeric(newphosdata[,tr2.opt[i]])) 
+     }
+names(newphosdata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newphosdata.merged)
+# [1] 933  18
+boxplot(log2(newphosdata.merged), echo=FALSE)
+# Reasonable distribution.
+# Merge with header
+kgphosdatafile <- cbind(newphos.head, newphosdata.merged)
+# remove reverse sequences 
+length(grep("---", kgphosdatafile$Symbol))  # 25
+kgphosdatafile <- kgphosdatafile[-grep("---", kgphosdatafile$Symbol),] # now 908
+kgphosdata <- kgphosdatafile[,6:23]
+rownames(kgphosdata) <- kgphosdatafile$Peptide.Name
+######################
+# Repeat with aceltylation data
+ackdataname <- "acetyl_cleaned.txt"
+newack <- read.table(paste(newdatapath, ackdataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newack) # [1] 852 168
+unique(newack$Modification.Type)
+# "Acetyl (K)"
+length(newack$Symbol[grep(" ", newack$Symbol, fixed=T)]) # 92
+length(newack$Position[grep(" ", newack$Position, fixed=T)]) # 0
+length(newack$Position[grep(";", newack$Position, fixed=T)]) # 0
+length(newack$Amino.Acid[grep(";", newack$Amino.Acid, fixed=T)]) # 0 
+length(newack$Amino.Acid[grep(" ", newack$Amino.Acid, fixed=T)]) # 0
+length(newack$Positions[grep(";", newack$Positions, fixed=T)]) # 55
+length(newack$Positions.Within.Proteins[grep(";", newack$Positions.Within.Proteins, fixed=T)]) # 99
+newack$Symbol[grep(";", newack$Positions.Within.Proteins, fixed=T)]
+newack$Positions.Within.Proteins[grep(" ", newack$Symbol, fixed=T)]
+# Start with the simplest version first.
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newack.head <- newack[,headercols]
+# 
+# Make peptide names using name.peptide: 
+newack.head$Peptide.Name <- mapply(name.peptide, modification="ack", genes=newack.head$Symbol, sites= newack.head$Positions.Within.Proteins, aa=newack.head$Amino.Acid)
+length(intersect(newack.head$Peptide.Name, rownames(ld.ratio))) # 244; better than previous 200!
+# Data columns
+newackdata <- newack[,grep("Intensity", names(newack))]
+names(newackdata) <- sapply(names(newackdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newackdata==0, arr.ind = TRUE)
+newackdata <- replace (newackdata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newackdata)[grep(".1", names(newackdata), fixed=TRUE)] 
+tr2 <- names(newackdata)[grep(".2", names(newackdata), fixed=TRUE)] 
+# Select correct pulldown lanes
+tr1.opt <- tr1[grep("AcK", tr1)]
+tr2.opt <- tr2[grep("AcK", tr2)]
+# Use merge2cols function to average technical replciates:
+newackdata.merged <- data.frame(matrix(nrow=nrow(newackdata), ncol=18))
+for(i in 1:length(tr1.opt)) {
+     newackdata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newackdata[, tr1.opt[i]]), colv2=as.numeric(newackdata[,tr2.opt[i]])) 
+}
+names(newackdata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newackdata.merged)
+# [1] 852  18
+boxplot(log2(newackdata.merged), echo=F)
+# Reasonable distribution.
+# Merge with header
+kgackdatafile <- cbind(newack.head, newackdata.merged)
+# remove reverse sequences 
+length(grep("---", kgackdatafile$Symbol))  # 52
+kgackdatafile <- kgackdatafile[-grep("---", kgackdatafile$Symbol),] # now 800
+kgackdata <- kgackdatafile[,6:23]
+rownames(kgackdata) <- kgackdatafile$Peptide.Name
+######################
+# Repeat with UB data
+ubidataname <- "glygly_cleaned.txt"
+newubi <- read.table(paste(newdatapath, ubidataname, sep=""),, sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(newubi) # 1480  168
+unique(newubi$Modification.Type)
+# [1] "GlyGly (K)"
+length(newubi$Symbol[grep(" ", newubi$Symbol, fixed=T)]) # 181
+length(newubi$Position[grep(" ", newubi$Position, fixed=T)]) # 0
+length(newubi$Position[grep(";", newubi$Position, fixed=T)]) # 0
+length(newubi$Amino.Acid[grep(";", newubi$Amino.Acid, fixed=T)]) # 0 
+length(newubi$Amino.Acid[grep(" ", newubi$Amino.Acid, fixed=T)]) # 0
+length(newubi$Positions[grep(";", newubi$Positions, fixed=T)]) # 83
+length(newubi$Positions.Within.Proteins[grep(";", newubi$Positions.Within.Proteins, fixed=T)]) # 199
+newubi$Symbol[grep(";", newubi$Positions.Within.Proteins, fixed=T)]
+newubi$Positions.Within.Proteins[grep(" ", newubi$Symbol, fixed=T)]
+#  
+headercols <- c("Symbol", "Amino.Acid", "Position", "Positions.Within.Proteins")
+newubi.head <- newubi[,headercols]
+# 
+# Make peptide names using name.peptide: 
+newubi.head$Peptide.Name <- mapply(name.peptide, modification="ubi", genes=newubi.head$Symbol, sites= newubi.head$Positions.Within.Proteins, aa=newubi.head$Amino.Acid)
+length(intersect(newubi.head$Peptide.Name, rownames(ld.ratio))) # 0 obvioulsy
+# Data columns
+newubidata <- newubi[,grep("Intensity", names(newubi))]
+names(newubidata) <- sapply(names(newubidata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0 <- which(newubidata==0, arr.ind = TRUE)
+newubidata <- replace (newubidata, zer0, NA)
+# Define technical replicates
+tr1 <- names(newubidata)[grep(".1", names(newubidata), fixed=TRUE)] 
+tr2 <- names(newubidata)[grep(".2", names(newubidata), fixed=TRUE)] 
+# Select correct pulldown lanes
+tr1.opt <- tr1[grep("Ubi", tr1)]
+tr2.opt <- tr2[grep("Ubi", tr2)]
+# Use merge2cols function to average technical replciates:
+newubidata.merged <- data.frame(matrix(nrow=nrow(newubidata), ncol=18))
+for(i in 1:length(tr1.opt)) {
+     newubidata.merged[,i] <- mapply(merge2cols, colv1=as.numeric(newubidata[, tr1.opt[i]]), colv2=as.numeric(newubidata[,tr2.opt[i]])) 
+}
+names(newubidata.merged) <- sapply(tr1.opt, function(x) substr(x, start=1, stop=nchar(x)-2))
+dim(newubidata.merged)
+# [1] 1480  18
+boxplot(log2(newubidata.merged))
+# Reasonable distribution.
+# Merge with header
+kgubidatafile <- cbind(newubi.head, newubidata.merged)
+# remove reverse sequences 
+length(grep("---", kgubidatafile$Symbol))  # 29
+kgubidatafile <- kgubidatafile[-grep("---", kgubidatafile$Symbol),] # now 1451
+kgubidata <- kgubidatafile[,6:23]
+rownames(kgubidata) <- kgubidatafile$Peptide.Name
+######################
+# Put them together.
+# Make column names common
+kgp <- kgphosdata
+kga <- kgackdata
+kgu <- kgubidata
+names(kgp) <- sapply(names(kgp), function (x) paste(unlist(strsplit(x, "_pTyr"))[1], unlist(strsplit(x, "_pTyr"))[2], sep=""))
+names(kga) <- sapply(names(kga), function (x) paste(unlist(strsplit(x, "_AcK"))[1], unlist(strsplit(x, "_AcK"))[2], sep=""))
+names(kgu) <- sapply(names(kgu), function (x) paste(unlist(strsplit(x, "_Ubi"))[1], unlist(strsplit(x, "_Ubi"))[2], sep=""))
+identical(names(kgp), names(kga))
+#
+kgdata <- rbind (kgp, kga, kgu) # 3159   18
+# Reorder here
+kgdata <- kgdata[order(rownames(kgdata)),]
+nmissing(kgdata)/(dim(kgdata)[1]*dim(kgdata)[2])
+# [1] 0.414653
+kglog2data <- log2(kgdata)
+# Explore using ratios where control=rowMeans (D1, D2, D3)
+# 
+# Calculate treatment/control
+# TRUE
+H3122SEPTM.C1.ratio <- kgdata$H3122SEPTM.C1/H3122control
+H3122SEPTM.C2.ratio <- kgdata$H3122SEPTM.C2/H3122control
+H3122SEPTM.C3.ratio <- kgdata$H3122SEPTM.C3/H3122control
+H3122SEPTM.PR1.ratio <- kgdata$H3122SEPTM.PR1/H3122control
+H3122SEPTM.PR2.ratio <- kgdata$H3122SEPTM.PR2/H3122control
+H3122SEPTM.PR3.ratio <- kgdata$H3122SEPTM.PR3/H3122control
+PC9control <- rowMeans(kgdata[, names(kgdata)[grep("PC9SEPTM.D", names(kgdata))]], na.rm=TRUE)
+PC9control[is.nan(PC9control)] <- NA
+identical(names(PC9control), rownames(kgdata))
+# TRUE
+PC9SEPTM.E1.ratio <- kgdata$PC9SEPTM.E1/PC9control
+PC9SEPTM.E2.ratio <- kgdata$PC9SEPTM.E2/PC9control
+PC9SEPTM.E3.ratio <- kgdata$PC9SEPTM.E3/PC9control
+PC9SEPTM.PR1.ratio <- kgdata$PC9SEPTM.PR1/PC9control
+PC9SEPTM.PR2.ratio <- kgdata$PC9SEPTM.PR2/PC9control
+PC9SEPTM.PR3.ratio <- kgdata$PC9SEPTM.PR3/PC9control
+kgratios <- data.frame(H3122SEPTM.C1.ratio, H3122SEPTM.C2.ratio, H3122SEPTM.C3.ratio, H3122SEPTM.PR1.ratio, H3122SEPTM.PR2.ratio, H3122SEPTM.PR3.ratio, PC9SEPTM.E1.ratio, PC9SEPTM.E2.ratio, PC9SEPTM.E3.ratio, PC9SEPTM.PR1.ratio, PC9SEPTM.PR2.ratio, PC9SEPTM.PR3.ratio)
+identical(rownames(kgdata), rownames(kgratios))
+# TRUE
+# Make limits to unweight extreme values
+hi.ratio <- which(kgratios>=100, arr.ind = TRUE)
+low.ratio <- which(kgratios <=1/100, arr.ind = TRUE)
+kgratios.lim <- replace (kgratios, hi.ratio, 100) 
+kgratios.lim <- replace (kgratios.lim, low.ratio, 1/100) 
+# log2
+kgratios.log2 <- log2(kgratios)
+kgratios.lim.log2 <- log2(kgratios.lim)
+nmissing(kgratios.lim.log2)/(dim(kgratios.lim.log2)[1]*dim(kgratios.lim.log2)[2])
+# [1] 0.4614066 
+identical(rownames(kgratios.lim.log2), rownames(kgdata))
+# [1] TRUE
+boxplot(kgratios.lim.log2)
+# Now merge intensity and ratio data
+gzdata <- cbind(kglog2data, kgratios.lim.log2)
+# 
+#======================================================================
+```
+
+## Read in second data set, "TenCell"
+
+```{r read TenCell data, calculate ratios}
+# Task 1: read new data and check for overlap with existing PTM data from lung cancer cell lines.
+#
+tencellpath <- # define where data files are stored
+tencellphosname <- "TenCellPhosphoSites_mapped_shorten.txt"
+tencellphos <- read.table(paste(tencellpath, tencellphosname, sep="/"), sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(tencellphos)
+# 5941  383; after curation 3404
+any(is.na(tencellphos$LeadingGeneSymbols))  # [1] TRUE
+# there are some NAs in LeadingGeneSymbol
+tail(tencellphos[order(tencellphos$LeadingGeneSymbols),  c(1:3, ncol(tencellphos))], 35 )
+# Delete the NA rows
+tencellphos <- tencellphos[!is.na(tencellphos$LeadingGeneSymbols),]
+dim(tencellphos)  # 3373
+headercols <- c("LeadingGeneSymbols", "Amino.acid", "Positions")
+tencellphos.head <- tencellphos[,headercols]
+# 
+tencellphos.head[is.na(tencellphos.head$LeadingGeneSymbols),]
+# All removed now
+tencellphos.head[grep("-Sep", tencellphos.head$LeadingGeneSymbols),] # Some
+tencellphos.head[grep("-Oct", tencellphos.head$LeadingGeneSymbols),] # 0
+tencellphos.head[grep("-Mar", tencellphos.head$LeadingGeneSymbols),] # 0
+# Excel goo: used fix.excel()
+tencellphos.head$LeadingGeneSymbols <- sapply(tencellphos.head$LeadingGeneSymbols, fix.excel)
+# 
+# Make peptide names using name.peptide 
+tencellphos.head$Peptide.Name <- mapply(name.peptide, genes=tencellphos.head$LeadingGeneSymbols, sites= tencellphos.head$Positions, aa=tencellphos.head$Amino.acid)
+# Check duplicates
+any(duplicated(tencellphos.head$Peptide.Name)) # T
+tencellphos.head$Peptide.Name[duplicated(tencellphos.head$Peptide.Name)]
+# "HLA-A p Y344" "HLA-A p Y344"
+tencellphos.head[grep("HLA-A", tencellphos.head$Peptide.Name), ]
+tencellphos[grep("HLA-A", tencellphos$LeadingGeneSymbols), grep("Intensity", names(tencellphos))]
+tencellphos.head[grep("HLA-A p Y344", tencellphos.head$Peptide.Name), ]
+# These have different alpha chain isoforms that share a common peptide seq. Name by the number of possibilities
+tencellphos.head[grep("HLA-A p Y344", tencellphos.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-A.4 p Y344"
+tencellphos.head[grep("HLA-A p Y344", tencellphos.head$Peptide.Name)[2], "Peptide.Name"] <- "HLA-A.2 p Y344"
+any(is.na(tencellphos.head$Peptide.Name))  # [1] FALSE
+tencellphosdata <- tencellphos[,grep("Intensity", names(tencellphos))]
+names(tencellphosdata) <- sapply(names(tencellphosdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# To make column names identical, remove dates on the left and the last three characters
+names(tencellphosdata) <- sapply(names(tencellphosdata), function (x) unlist(strsplit(x, "GZ_"))[2])
+tcdnames <- names(tencellphosdata)
+tcdnames <- make.unique(str_sub(tcdnames, 1, str_length(tcdnames)-3))
+names(tencellphosdata) <- tcdnames
+# make zero into NA, which it is.
+zer0.tc <- which(tencellphosdata==0, arr.ind = TRUE)
+tencellphosdata <- replace (tencellphosdata, zer0.tc, NA)
+nmissing(tencellphosdata)/(dim(tencellphosdata)[1]*dim(tencellphosdata)[2])
+# 71% NA
+# Add rownames, first check above
+# add rownames to data
+rownames(tencellphosdata) <- tencellphos.head$Peptide.Name
+hist(tencellphosdata, col="yellow", breaks=100)
+########################################################################################
+# Repeat with aceltylation data
+tencellackname <- "AcetylSites_mapped_shorten_.txt"
+tencellack <- read.table(paste(tencellpath, tencellackname, sep="/"), sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(tencellack)
+# 2568  after curation 
+# Delete the NA rows if necessary
+tencellack[is.na(tencellack$LeadingGeneSymbols),] # 0
+any(is.na(tencellack$LeadingGeneSymbols)) # F
+headercols <- c("LeadingGeneSymbols", "Amino.acid", "Positions")
+tencellack.head <- tencellack[,headercols]
+# 
+tencellack.head[is.na(tencellack.head$LeadingGeneSymbols),]
+# All gone
+tencellack.head[grep("-Sep", tencellack.head$LeadingGeneSymbols),] # Some
+tencellack.head[grep("-Oct", tencellack.head$LeadingGeneSymbols),] # 0
+tencellack.head[grep("-Mar", tencellack.head$LeadingGeneSymbols),] # 0
+# Excel goo: used fix.excel()
+tencellack.head$LeadingGeneSymbols <- sapply(tencellack.head$LeadingGeneSymbols, fix.excel)
+# Okay!
+tencellack.head$Peptide.Name <- mapply(name.peptide, genes=tencellack.head$LeadingGeneSymbols, sites= tencellack.head$Positions, modification="ack", aa=tencellack.head$Amino.acid)
+# 528 after fix.excel 
+length(intersect(tencellack.head$Peptide.Name, rownames(kgdata)))
+# 464
+# Check duplicates
+any(duplicated(tencellack.head$Peptide.Name)) # F
+tencellack.head$Peptide.Name[duplicated(tencellack.head$Peptide.Name)] # 0
+tencellackdata <- tencellack[,grep("Intensity", names(tencellack))]
+dim(tencellackdata) # 2568   26
+names(tencellackdata) <- sapply(names(tencellackdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0.tc <- which(tencellackdata==0, arr.ind = TRUE)
+tencellackdata <- replace (tencellackdata, zer0.tc, NA)
+nmissing(tencellackdata)/(dim(tencellackdata)[1]*dim(tencellackdata)[2])
+# 73% NA
+# To make column names identical, remove dates on the left and the last three characters
+names(tencellackdata) <- sapply(names(tencellackdata), function (x) unlist(strsplit(x, "GZ_"))[2])
+tcdnames <- names(tencellackdata)
+tcdnames <- make.unique(str_sub(tcdnames, 1, str_length(tcdnames)-3))
+names(tencellackdata) <- tcdnames
+identical(names(tencellphosdata), names(tencellackdata))  # FALSE
+data.frame(names(tencellphosdata), names(tencellackdata))
+# Column names are out of order!
+# add rownames to data
+rownames(tencellackdata) <- tencellack.head$Peptide.Name
+########################################################################################
+# Repeat with ubiquitination data
+tencellubname <- "GlyGlySites_mapped_shorten.txt"
+tencellub <- read.table(paste(tencellpath, tencellubname, sep="/"), sep = "\t", skip = 0, header=TRUE, blank.lines.skip=T, fill=T, quote="\"", dec=".", comment.char = "", stringsAsFactors=F)
+dim(tencellub) # 4736  383
+# Delete the NA rows if necessary
+any(is.na(tencellub$LeadingGeneSymbols))  # TRUE
+tencellub <- tencellub[!is.na(tencellub$LeadingGeneSymbols),]
+dim(tencellub)  # 4683
+headercols <- c("LeadingGeneSymbols", "Amino.acid", "Positions")
+tencellub.head <- tencellub[,headercols]
+tencellub.head[is.na(tencellub.head$LeadingGeneSymbols),]
+# All gone
+tencellub.head[grep("-Sep", tencellub.head$LeadingGeneSymbols),] # Some
+tencellub.head[grep("-Oct", tencellub.head$LeadingGeneSymbols),] # 0
+tencellub.head[grep("-Mar", tencellub.head$LeadingGeneSymbols),] # 0
+# Excel goo: used fix.excel()
+tencellub.head$LeadingGeneSymbols <- sapply(tencellub.head$LeadingGeneSymbols, fix.excel)
+# 
+tencellub.head$Peptide.Name <- mapply(name.peptide, genes=tencellub.head$LeadingGeneSymbols, sites= tencellub.head$Positions, modification="ubi", aa=tencellub.head$Amino.acid)
+length(intersect(tencellub.head$Peptide.Name, rownames(ld.ratio))) 
+# 0 
+length(intersect(tencellub.head$Peptide.Name, rownames(kgdata)))
+# 625
+# Check duplicates
+any(duplicated(tencellub.head$Peptide.Name)) # T
+tencellub.head$Peptide.Name[duplicated(tencellub.head$Peptide.Name)]
+# several HLAs:
+# "HLA-A ubi K364" "HLA-A ubi K340" "HLA-A ubi K364" "HLA-C ubi K365" "HLA-A ubi K340" "HLA-B ubi K340"
+#
+tencellub.head[grep("HLA-A", tencellub.head$Peptide.Name), ]
+# These have different alpha chain isoforms that share a common peptide seq. Name by the number of possibilities
+tencellub.head[grep("HLA-A ubi K364", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-A.4 ubi K364"
+tencellub.head[grep("HLA-A ubi K364", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-A.2 ubi K364"
+tencellub.head[grep("HLA-A ubi K340", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-A.4 ubi Y344"
+tencellub.head[grep("HLA-A ubi K340", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-A.2 ubi Y344"
+any(duplicated(tencellub.head$Peptide.Name)) # T
+tencellub.head[grep("HLA-B", tencellub.head$Peptide.Name), ]
+tencellub.head[grep("HLA-B ubi K340", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-B.7 ubi Y344"
+tencellub.head[grep("HLA-B ubi K340", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-B.4 ubi Y344"
+tencellub.head[grep("HLA-C", tencellub.head$Peptide.Name), ]
+tencellub.head[grep("HLA-C ubi K365", tencellub.head$Peptide.Name)[1], "Peptide.Name"] <- "HLA-C.4 ubi  K365"
+any(duplicated(tencellub.head$Peptide.Name)) #  FALSE!
+# Okay, proceed
+tencellubdata <- tencellub[,grep("Intensity", names(tencellub))]
+dim(tencellubdata) # 4683   26
+names(tencellubdata) <- sapply(names(tencellubdata), function (x) unlist(strsplit(x, "Intensity."))[2])
+# make zero into NA, which it is.
+zer0.tc <- which(tencellubdata==0, arr.ind = TRUE)
+tencellubdata <- replace (tencellubdata, zer0.tc, NA)
+nmissing(tencellubdata)/(dim(tencellubdata)[1]*dim(tencellubdata)[2])
+# 78% NA
+# To make column names identical, remove dates on the left and the last three characters
+names(tencellubdata) <- sapply(names(tencellubdata), function (x) unlist(strsplit(x, "GZ_"))[2])
+tcdnames <- names(tencellubdata)
+tcdnames <- make.unique(str_sub(tcdnames, 1, str_length(tcdnames)-3))
+names(tencellubdata) <- tcdnames
+# add rownames to data
+rownames(tencellubdata) <- tencellub.head$Peptide.Name
+# Check column names
+identical(names(tencellphosdata), names(tencellubdata))  # FALSE
+data.frame(names(tencellphosdata), names(tencellackdata), names(tencellubdata))
+# Columns are out of order; fix below
+# 
+names(tencellphosdata)[c(1:14,16,15,17:26)] # check
+tencellphosdata.1 <- tencellphosdata[, c(1:14,16,15,17:26)]
+data.frame(names(tencellphosdata.1), names(tencellackdata), names(tencellubdata))
+# Fix typos
+names(tencellphosdata.1)[15] <- "H2286_Dasatinib"
+names(tencellackdata)[19] <- "H366_Dasatinib"
+names(tencellackdata)[20] <- "H366_DMSO"
+tencelldata <- rbind(tencellphosdata.1, tencellackdata, tencellubdata)
+dim(tencelldata)
+# [1] 10624    26
+any(is.na(rownames(tencelldata))) # F
+# How many PTMs are detected more than twice?
+tencellsamples <- apply(tencelldata, 1, filled)
+hist(tencellsamples, breaks=50, col="magenta", echo=F)
+# Focus on PTMs that were detected in at least 2 experiments
+tencelltrimmed <- tencelldata[which(tencellsamples>2),]
+dim(tencelltrimmed) # now 7847
+#######################################################################################
+# Ratios
+# What is the overlap between data colums used to calculate ratios?
+#
+H2228CrizRatio <- tencelldata[, "H2228_Crizotinib"]/tencelldata[, "H2228_DMSO"]
+nmissing (tencelldata[, "H2228_Crizotinib"]); nmissing(tencelldata[, "H2228_DMSO"]); nmissing (H2228CrizRatio)
+filled (tencelldata[, "H2228_Crizotinib"]); filled(tencelldata[, "H2228_DMSO"]); filled (H2228CrizRatio)
+filled (tencelldata[, "H2228_Crizotinib"])/length(tencelldata[, "H2228_Crizotinib"]); filled(tencelldata[, "H2228_DMSO"])/length(tencelldata[, "H2228_DMSO"]); filled (H2228CrizRatio)/length(H2228CrizRatio)
+# There is a loss of about a third of the data from either treatment or control PTMs missing
+H2228CrizotinibRatio <- tencelldata[, "H2228_Crizotinib"]/tencelldata[, "H2228_DMSO"]
+H3122CrizotinibRatio <- tencelldata[, "H3122_Crizotinib"]/tencelldata[, "H3122_DMSO"]
+H2228CrizotinibRatio <- tencelldata[, "H2228_Crizotinib"]/tencelldata[, "H2228_DMSO"]
+HCC4006_ErlotinibRatio <- tencelldata[, "HCC4006_Erlotinib"]/tencelldata[, "HCC4006_DMSO"]
+HCC78_CrizotinibRatio <- tencelldata[, "HCC78_Crizotinib"]/tencelldata[, "HCC78_DMSO"]
+HCC827_ErlotinibRatio <- tencelldata[, "HCC827_Erlotinib"]/tencelldata[, "HCC827_DMSO"]
+PC9_ErlotinibRatio <- tencelldata[, "PC9_Erlotinib"]/tencelldata[, "PC9_DMSO"]
+H1781_AfatinibRatio <- tencelldata[, "H1781_Afatinib"]/tencelldata[, "H1781_DMSO"]
+H2286_DasatinibRatio <- tencelldata[, "H2286_Dasatinib"]/tencelldata[, "H2286_DMSO"]
+H3122_Crizotinib.1Ratio <- tencelldata[, "H3122_Crizotinib.1"]/tencelldata[, "H3122_DMSO.1"]
+H366_DasatinibRatio <- tencelldata[, "H366_Dasatinib"]/tencelldata[, "H366_DMSO"]
+HCC78_Crizotinib.1Ratio <- tencelldata[, "HCC78_Crizotinib.1"]/tencelldata[, "HCC78_DMSO.1"]
+PC9_Erlotinib.1Ratio <- tencelldata[, "PC9_Erlotinib.1"]/tencelldata[, "PC9_DMSO.1"]
+STE.1_CrizotinibRatio <- tencelldata[, "STE.1_Crizotinib"]/tencelldata[, "STE.1_DMSO"]
+tencellratios <- data.frame(H1781_AfatinibRatio, H2228CrizotinibRatio, H2286_DasatinibRatio, H3122_Crizotinib.1Ratio, H3122CrizotinibRatio, H366_DasatinibRatio, HCC4006_ErlotinibRatio, HCC78_Crizotinib.1Ratio, HCC78_CrizotinibRatio, HCC827_ErlotinibRatio, PC9_Erlotinib.1Ratio, PC9_ErlotinibRatio, STE.1_CrizotinibRatio)
+#
+rownames(tencellratios) <- rownames(tencelldata)
+identical(rownames(tencelldata), rownames(tencellratios))
+# TRUE
+# Make limits to reduce influence of extreme values
+hi.ratio <- which(tencellratios>=100, arr.ind = TRUE)
+low.ratio <- which(tencellratios <=1/100, arr.ind = TRUE)
+tencellratios.lim <- replace (tencellratios, hi.ratio, 100) 
+tencellratios.lim <- replace (tencellratios.lim, low.ratio, 1/100) 
+# log2
+tencellratios.log2 <- log2(tencellratios)
+tencellratios.lim.log2 <- log2(tencellratios.lim)
+nmissing(tencellratios.lim.log2)/(dim(tencellratios.lim.log2)[1]*dim(tencellratios.lim.log2)[2])
+# [1] 84% NA 
+identical(rownames(tencellratios.lim.log2), rownames(tencelldata))
+# [1] TRUE
+boxplot(tencellratios.lim.log2, echo=F)
+#
+tencelldata.log2 <- log2(tencelldata)
+boxplot(tencelldata.log2)
+nmissing(tencelldata.log2)/(dim(tencelldata.log2)[1]*dim(tencelldata.log2)[2])
+# 74% NA - about 10% data is lost from ratios
+identical(rownames(tencellratios.lim.log2), rownames(tencelldata.log2))
+# True
+# Check for NA in names
+whichrowNA <- which(grepl("NA ", rownames(tencellratios.lim.log2)))
+rownames(tencellratios.lim.log2)[whichrowNA] 
+# "NA ubi K162; NA ubi K132" "NA ubi K359" "NA ubi K252; NA ubi K338; ...  
+whichrowNAd <- which(grepl("NA ", rownames(tencelldata.log2)))
+rownames(tencelldata.log2)[whichrowNAd]    
+# NA ubi K162; NA ubi K132"    "NA ubi K252; NA ubi K338;...[66] "NA ubi K359"    
+badnames <- c("NA ubi K162; NA ubi K132", "NA ubi K359", "NA ubi K252; NA ubi K338; TUBB4A ubi K252; TUBB ubi K252; TUBB4B ubi K252; TUBB3 ubi K252; TUBB2A ubi K252; TUBB8 ubi K252; TUBB6 ubi K252; TUBB2B ubi K252")
+# Make trimmed version
+tencellratios.lim.log2.trimmed <- tencellratios.lim.log2[which(tencellsamples>2),]
+#######################################################################################
+# Merge with gzdata 
+gztencelldata <- cbind(tencelldata.log2, tencellratios.lim.log2)
+gzdata.all <- merge(gzdata, gztencelldata, by="row.names", all=TRUE)
+dim(gzdata.all) #  12059    70
+rownames(gzdata.all) <- gzdata.all$Row.names
+gzdata.allz <- gzdata.all[,2:ncol(gzdata.all)]
+nmissing(gzdata.allz)/(dim(gzdata.allz)[1]*dim(gzdata.allz)[2])
+# (Note that the function fractNA() is a wrapper for the above line.) 
+# 83% NA
+# Focus on PTMs that were detected in at least 2 experiments
+gztencelldata.trimmed <- cbind(log2(tencelltrimmed), tencellratios.lim.log2.trimmed)
+gzdata.all.trimmed <- merge(gzdata, gztencelldata.trimmed, by="row.names", all=TRUE)
+whichrowNA <- which(grepl("NA ", rownames(gzdata.allt))
+                    rownames(gzdata.allt)[whichrowNA]                    
+                    
+rownames(gzdata.all.trimmed) <- gzdata.all.trimmed$Row.names
+gzdata.allt <- gzdata.all.trimmed[,2:ncol(gzdata.all.trimmed)]
+nmissing(gzdata.allt)/(dim(gzdata.allt)[1]*dim(gzdata.allt)[2])
+# now 78% NA; tencell trimmed is 71%
+#======================================================================
+```
+
+## Prepare for t-SNE and clustering: Calculate Spearman dissimilarity, Euclidean distance, and SED
+
+```{r dissimilarity matrices}
+gzallt.cor <- cor(t(gzdata.allt), use = "pairwise.complete.obs", method = "spearman")
+# Pearson Works, though there were many zero std. deviations
+diag(gzallt.cor) <- NA
+dissimilarity.gzallt <- 1 - abs(gzallt.cor)
+diss.gzallt.noabs <- 1 - gzallt.cor
+# set NA to two orders of magnitude higher than max distance
+dissimilarity.gzallt[is.na(dissimilarity.gzallt)] <- 100*max(dissimilarity.gzallt, na.rm=T)
+diss.gzallt.noabs[is.na(diss.gzallt.noabs)] <- 50*max(diss.gzallt.noabs, na.rm=T) 
+# check
+max(dissimilarity.gzallt)
+max(diss.gzallt.noabs)
+# now max=100
+# Euclid	
+gzallt.dist = as.matrix (dist (gzdata.allt), method = "euclidean")  
+# check 
+max.na(gzallt.dist)	# Check for Inf values here
+gzallt.dist[is.na(gzallt.dist)] <- 100*max(gzallt.dist, na.rm=T)
+gzallt.dist.1 <- 100*gzallt.dist/max(gzallt.dist, na.rm=T)  # now max=100
+# SED: combinde Euclid and Spearman w/o taking absolute value.	
+gzallt.sed <- (gzallt.dist.1 + diss.gzallt.noabs)/2
+#
+# Save these because they took a long time: 2.17 GB
+#
+# Check that only PTMs from >2 experiments for CCCN construction
+if(dim(gzallt.cor)[1]==9400) {
+  gzallt.cor.1 <- gzallt.cor[rownames(gzallt.cor) %in% rownames(gzdata.allt), colnames(gzallt.cor) %in% rownames(gzdata.allt)]  }
+gzallt.cor <- gzallt.cor.1
+# 
+#======================================================================
+```
+
+## Calculate t-SNE embeddings from Spearman dissimilarity, Euclidean distance, and SED
+
+```{r t-SNE embeddings}
+# Rtsne: Barnes-Hut implementation of t-Distributed Stochastic Neighbor Embedding
+require(Rtsne)
+#
+# Do with perplexity = 15 for slightly more resolution; theta = 0.25 for slightly more accuracy, max_iter=5000, for stabiliztion of groups
+eu.gzall.tsne.list <- Rtsne(as.matrix(gzall.dist), dims = 3, perplexity = 15, theta = 0.25, check_duplicates = FALSE, pca=FALSE)
+eu.gzallt.tsne.list <- Rtsne(as.matrix(gzallt.dist), dims = 3, perplexity = 15, theta = 0.25, max_iter=5000, check_duplicates = FALSE, pca=FALSE)
+#    
+eu.gzall.tsne <- eu.gzall.tsne.list$Y
+eu.gzallt.tsne <- eu.gzallt.tsne.list$Y
+#
+sp.gzall.tsne.list <- Rtsne(as.matrix(dissimilarity.gzall), dims = 3, perplexity = 15, theta = 0.25, check_duplicates = FALSE, pca=FALSE)
+sp.gzallt.tsne.list <- Rtsne(as.matrix(dissimilarity.gzallt), dims = 3, perplexity = 15, theta = 0.25, max_iter=5000, check_duplicates = FALSE, pca=FALSE)
+#   
+sp.gzall.tsne <- sp.gzall.tsne.list$Y
+sp.gzallt.tsne <- sp.gzallt.tsne.list$Y
+# SED without abs(cor)
+sed.gzall.tsne.list <- Rtsne(as.matrix(gzall.sed), dims = 3, perplexity = 15, theta = 0.25, max_iter=5000, check_duplicates = FALSE, pca=FALSE)
+sed.gzallt.tsne.list <- Rtsne(as.matrix(gzallt.sed), dims = 3, perplexity = 15, theta = 0.25, check_duplicates = FALSE, pca=FALSE)
+#   
+sed.gzall.tsne <- sed.gzall.tsne.list$Y
+sed.gzallt.tsne <- sed.gzallt.tsne.list$Y
+#    
+#######################################################################################
+# A view of the t-SNE embeddings can be obtained by plotting in three dimensions:
+plot3d(eu.gzallt.tsne, type="s", radius=1.5, col="forestgreen")
+plot3d(sp.gzallt.tsne, type="s", radius=1.5, col="green")
+plot3d(sed.gzallt.tsne, , type="s", radius=1.5, col="red")
+
+##########################################################################################
+# Function make.clusterlist() is used to generate a list of PTM clusters from the t-SNE embedding
+# Note that some tweaking of the toolong variable is necessary to obtain resonable cluster sizes.
+eu.gzall.list <- make.clusterlist(eu.gzall.tsne, 3.5, gzdata.allz) # 216 groups
+esizes.gzall <- sapply(eu.gzall.list, function(x) dim(x)[1])
+sp.gzall.list <- make.clusterlist(sp.gzall.tsne, 3.5, gzdata.allz) # 171 groups
+spsizes.gzall <- sapply(sp.gzall.list, function(x) dim(x)[1])
+sed.gzall.list <- make.clusterlist(sed.gzall.tsne, 3.5, gzdata.allz) # 224 groups
+sedsizes.gzall <- sapply(sed.gzall.list, function(x) dim(x)[1])
+#
+eu.gzallt.list <- make.clusterlist(eu.gzallt.tsne, 3.8, gzdata.allt) 
+# 261 groups round 1; 497 round 2 @ 3.5; 415 @ 3.8
+esizes.gzallt <- sapply(eu.gzallt.list, function(x) dim(x)[1])
+sp.gzallt.list <- make.clusterlist(sp.gzallt.tsne, 3.8, gzdata.allt) 
+# 290 groups round 1;  593 round 2 @ 3.5; 504 @ 3.8
+spsizes.gzallt <- sapply(sp.gzallt.list, function(x) dim(x)[1])
+sed.gzallt.list <- make.clusterlist(sed.gzallt.tsne, 3.0, gzdata.allt) 
+# 284 groups round 1: 266 round 2 @ 3.5; 345 @ 3.0
+sedsizes.gzallt <- sapply(sed.gzallt.list, function(x) dim(x)[1])
+#
+hist(esizes.gzall, breaks=100, col="green". echo=F) 
+# note several large clusters that should be broken up
+hist(spsizes.gzall, breaks=100, col="yellow". echo=F) 
+# note several large clusters that should be broken up
+hist(sedsizes.gzall, breaks=100, col="blue") 
+# note several large clusters that should be broken up
+hist(esizes.gzallt, breaks=100, col="red")
+hist(spsizes.gzallt, breaks=100, col="blue")
+hist(sedsizes.gzallt, breaks=100, col="green")
+
+# Focus on intersect of all clusters from Euclid, Spearman, and SED using list.common()
+#  Concatenate group list files
+#		make group names unique
+eu.gzallt.df <- ldply(eu.gzallt.list)[,2:3]
+sp.gzallt.df <- ldply(sp.gzallt.list)[,2:3]
+sed.gzallt.df <- ldply(sed.gzallt.list)[,2:3]	# Further partition large groups
+eu.gzallt.df $group <- paste(noquote(eu.gzallt.df $group), noquote("e"), sep="", collapse=NULL)
+sp.gzallt.df $group <- paste(noquote(sp.gzallt.df $group), noquote("s"), sep="", collapse=NULL)
+sed.gzallt.df $group <- paste(noquote(sed.gzallt.df $group), noquote("sed"), sep="", collapse=NULL)
+gzalltgroups.df <- rbind(eu.gzallt.df, sed.gzallt.df, sp.gzallt.df)
+# For checking:
+gzalltgroups.tab <- table(gzalltgroups.df)	
+# Get the gene nemase from PTM clusters
+eu.gzallt.genes <- lapply(eu.gzallt.list, extract.genes.from.clist)
+sp.gzallt.genes <- lapply(sp.gzallt.list, extract.genes.from.clist)
+sed.gzallt.genes <- lapply(sed.gzallt.list, extract.genes.from.clist)
+# Extract the PTM names
+eu.gzallt.peps <- lapply(eu.gzallt.list, extract.peps.from.clist)
+sp.gzallt.peps <- lapply(sp.gzallt.list, extract.peps.from.clist)
+sed.gzallt.peps <- lapply(sed.gzallt.list, extract.peps.from.clist)
+#
+eu.sp.gzallt <- list.common(eu.gzallt.peps, sp.gzallt.peps, keeplength=2)
+eu.sp.gzallt.sizes <- sapply(eu.sp.gzallt, length)
+eu.sp.sed.gzallt <- list.common(eu.sp.gzallt, sed.gzallt.peps, keeplength=2)
+eu.sp.sed.gzallt.sizes <- sapply(eu.sp.sed.gzallt, length) 
+hist(eu.sp.sed.gzallt.sizes, breaks=100, col="gold", echo=F)
+# max = 111; length = 612; round 2 max 88, length 878; 111 and 839 round 3
+# 
+# Examine all clusters
+eu.sp.sed.gzallt.data <- list()
+for (i in 1:length(eu.sp.sed.gzallt)) {
+  if (length(intersect(eu.sp.sed.gzallt[[i]], rownames(gzdata.allt)))==0) next
+  at <- gzdata.allt[unlist(eu.sp.sed.gzallt[[i]]),]
+  if(dim(at)[1]<2 | dim(at)[2]<2) next
+  eu.sp.sed.gzallt.data[[i]] <- clust.data.from.vec(eu.sp.sed.gzallt[[i]], tbl=gzdata.allt)
+  print(i)
+}
+# Check: 
+gzdata.allt[rownames(gzdata.allt) %in% eu.sp.sed.gzallt[[i]],]
+#  Some have data in only one column - -
+# Note that first data set (gzdata above) was not trimmed for PTMs that were detected in more than two experiments
+alltsamples <- apply(gzdata.allt, 1, filled)
+ #hist(alltsamples, breaks=50, col="magenta")
+gzdata.allt.t <- gzdata.allt[which(alltsamples>2),]
+dim(gzdata.allt.t) # now 9215 from 9400
+gzdata.allt <- gzdata.allt.t
+# Repair here because t-SNE steps took a very long time
+# Print out and delete bad ones
+bad.clusterlist <- list()
+for (i in 1:length(eu.sp.sed.gzallt)) {
+  if (length(intersect(eu.sp.sed.gzallt[[i]], rownames(gzdata.allt)))==0)  {
+    print(i)
+      bad.clusterlist[[i]] }
+}
+# Find any that may be included in clusters
+badptms <- unique(outersect(rownames(gzdata.all), rownames(gzdata.allt))) # 2844
+testnames <- unique(unlist(eu.sp.sed.gzallt))
+length(intersect (badptms, testnames))  # 181
+essgzallt.1 <- lapply(eu.sp.sed.gzallt, function(x) x %w/o% badptms)
+essgzallt.1.sizes <- sapply(essgzallt.1, length)
+removed <- eu.sp.sed.gzallt.sizes - essgzallt.1.sizes
+removed <- removed[removed>0]
+# note: some entire clusters removed
+essgzallt.2 <- essgzallt.1[essgzallt.1.sizes>0] # now 818 clusters from 839
+essgzallt <- essgzallt.2
+# Create data list for evaluation of clusters
+essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
+
+```
+
+## Evalauate clusters
+
+```{r evaluate clusters}
+# To evaluate clusters, use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
+# Employ with trimmed data above
+gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Save table for sharing
+write.table(gzclust.eval.df, file= "gzclust.eval.df.txt")
+# In about a third of the data from either treatment or control PTMs missing. Find clusters that have two or more ratio columns.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x))])
+# In about a third of the data from either treatment or control PTMs missing. 
+# Find clusters that have ratio data.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x)), drop=FALSE])
+edr.cols <- sapply(essgzallt.data.ratios, function (x) dim(x)[2])
+# Document this in the evaluation file
+gzclust.eval.df$no.ratio.cols <- edr.cols
+# Trim ratio data list to remove empty elements.
+essgzallt.data.ratios <-  essgzallt.data.ratios[which(unlist(edr.cols)>0)] # 767
+# Evaluate ratio clusters with modified function ratioclust.eval:
+ratioclust.eval.df <- ratioclust.eval(clusterlist=edr)
+write.table(ratioclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzratioclusters.eval.df.txt", sep=""),row.names = FALSE, sep="\t")
+# Evaluate ratio clusters with more than three data columns with modified function
+essgzallt.data.ratios.3cols <- essgzallt.data.ratios[which(unlist(edr.cols)>2)] # 524
+ratioclust.eval.df <- ratioclust.eval(clusterlist=essgzallt.data.ratios.3cols)

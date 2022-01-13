@@ -533,11 +533,12 @@ clust.data.from.vec <- function(vec, tbl) {
     names(ats)[1] <- "Gene.Name" } 
   clust.data <- ats
   return (clust.data)	}
+# # >>>>>
 # Examine all clusters
 eu.sp.sed.gzallt.data <- lapply(eu.sp.sed.gzallt, clust.data.from.vec, tbl= gzdata.allt) 
-# produces errors. try this:
-eu.sp.sed.gzallt.data <- list()
-for (i in 1:length(eu.sp.sed.gzallt)) {
+# This works the second time around. First time produces errors. try this:
+# eu.sp.sed.gzallt.data <- list()
+# for (i in 1:length(eu.sp.sed.gzallt)) {
   if (length(intersect(eu.sp.sed.gzallt[[i]], rownames(gzdata.allt)))==0) next
   at <- gzdata.allt[unlist(eu.sp.sed.gzallt[[i]]),]
   if(dim(at)[1]<2 | dim(at)[2]<2) next
@@ -545,6 +546,7 @@ for (i in 1:length(eu.sp.sed.gzallt)) {
   print(i)
 }
 # error at 243 (fixed above)
+# Note : names missing.
 gzdata.allt[rownames(gzdata.allt) %in% eu.sp.sed.gzallt[[i]],]
 # data in only one column! xxxx
 # first data set was not trimmed for PTMs are detected more than twice
@@ -562,6 +564,7 @@ for (i in 1:length(eu.sp.sed.gzallt)) {
       bad.clusterlist[[i]] }
 }
 length(eu.sp.sed.gzallt.data) # 839
+
 # Find any that may be included in clusters
 badptms <- unique(outersect(rownames(gzdata.all), rownames(gzdata.allt))) # 2844
 testnames <- unique(unlist(eu.sp.sed.gzallt))
@@ -573,9 +576,126 @@ removed <- removed[removed>0]
 # note: some entire clusters removed
 essgzallt.2 <- essgzallt.1[essgzallt.1.sizes>0] # now 818 clusters from 839
 essgzallt <- essgzallt.2
+# >>>> Now redo data list
+essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
+
 #
+
+# _________________________
+# # # >>>>>
+# Evalauate clusters
+# use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
+lincsclust.eval <- function(clusterlist, tbl.sc) {
+  evaluation <- data.frame(0)
+  names(evaluation)[1] <- "Group"
+  key  <- data.frame(1:length(rownames(tbl.sc)))
+  key$ptm.Name <- rownames(tbl.sc)
+  for (i in 1:length(clusterlist)) {
+    cat("Starting Group", i, "\n")
+    evaluation[i,1] <- i
+    evaluation$Group.Name[i] <- names(clusterlist)[i]
+    #
+    evaluation$no.ptms[i] <- length(clusterlist[[i]]$ptm.Name)
+    if(length(clusterlist[[i]]$ptm.Name) == 1) { 
+      at = data.frame(tbl.sc[clusterlist[[i]]$ptm.Name, ])
+    } else {
+      at = data.frame(tbl.sc[key$ptm.Name %in% clusterlist[[i]]$ptm.Name, ]) }
+    # get rid of ratios for evaluation calculations and take absolute value
+    if(any (grepl("atio", names(at)))) at = abs(at [,-grep("atio", names(at))])
+    # previous use: at <- at[-which(apply(at, 1, filled) == 0),]
+    # better: at[, which(numcolwise(filled)(at) != 0)]
+    # names() doesn't work with single column
+    if (length(which(numcolwise(filled)(at) != 0)) > 1) {
+      acol <- names(at[,which(numcolwise(filled)(at) != 0)])  
+      evaluation$no.samples[i] <- length(acol)
+      at <- at[, acol] } else evaluation$no.samples[i] <- 1
+    evaluation$total.signal[i] <- sum(abs(at), na.rm=TRUE)
+    if (length(which(numcolwise(filled)(at) != 0)) == 1 || length(clusterlist[[i]]$ptm.Name) == 1) {
+      evaluation$culled.by.slope[i] <- length(clusterlist[[i]]$ptm.Name) 
+      evaluation$percent.NA[i] <- 0
+      evaluation$percent.singlesampleptms[i] <- 100
+      evaluation$percent.singleptmsamples[i] <- 100
+    } else	{
+      evaluation$percent.NA[i] <-  100*(sum(numcolwise(nmissing)(at)) / (dim(at)[1]*dim(at)[2]))
+      #singlesampleptms <- at[, which(numcolwise(filled)(at) == 1 )]
+      singlesampleptms <- at[which(apply(at, 1, filled) == 1),]
+      evaluation$percent.singlesampleptms[i] <- 100*(nrow(singlesampleptms) / dim(at)[1]) 
+      singleptmsamples <- sum(numcolwise(filled)(at) == 1)
+      evaluation$percent.singleptmsamples[i] <- 100*(singleptmsamples/dim(at)[2])
+      cluster.mo <- at[order(-as.vector(colwise(sum.na)(data.frame(t(abs(at)))))), order(-as.vector(numcolwise(sum.na)(data.frame(abs(at)))))]
+      slope <- apply(cluster.mo, 1, get.slope.a)
+      badslope <- c(names(which(is.na(slope))), names(which(slope > 0)))
+      evaluation$culled.by.slope[i] <- length(badslope)
+      #
+      cat("\n", length(badslope), "ptms culled by slope", "\n")
+    }		}	 
+  #  Total signal scaled to percent NA = intensity
+  clearptms <- evaluation$no.ptms - evaluation$culled.by.slope # may be 0
+  realsamples <- evaluation$no.samples - (evaluation$no.samples * evaluation$percent.singleptmsamples/100) # may be 0
+  intensity <- evaluation$total.signal - (evaluation$total.signal * evaluation$percent.NA/100)
+  # calibrate intensity according to real samples and clear ptms
+  # - goal is to reward a high density of appropriate data
+  evaluation$intensity <- intensity
+  evaluation$Index  <- ((1 + realsamples) * (1 + clearptms) / (1 + evaluation$percent.NA))/evaluation$no.ptms
+  eval.sort <- evaluation[order(-evaluation$Index, evaluation$percent.NA), c("Group", "Group.Name", "no.ptms",  "culled.by.slope", "percent.singlesampleptms","no.samples", "percent.singleptmsamples", "total.signal", "percent.NA", "intensity", "Index" )] 
+  return(eval.sort)	
+}
+gzclust.eval.df.1 <- lincsclust.eval(eu.sp.sed.gzallt.data, tbl.sc=gzdata.allt)
+# 143 is bad (NA) ;242 is bad; 426, 431, 536, 611, 640, 644...manually remove & redo above after deleting bad ones
+# OR
+# Better: 
+# Try with already trimmed data above
+# essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt) 
+
+gzclust.eval.df.test <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Test new version with names changed
+gzclust.eval.df <- ptmsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Warnings but no NA clusters
+# loop to examine heatmaps
+for (i in 818:810){
+  graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[i]]])
+}
+graph.clust6d.l(essgzallt.data[[gzclust.eval.df$Group.Name[818]]])
+# As noted above: 
+# In about a third of the data from either treatment or control PTMs missing.
+# Find clusters that have two or more ratio columns.
+essgzallt.data.ratios <- lapply(essgzallt.data, function (x) x[, grepl("atio", names(x)), drop=FALSE])
+edr.cols <- sapply(essgzallt.data.ratios, function (x) dim(x)[2])
+hist(unlist(edr.cols), breaks=20, col="turquoise")
+range(edr.cols)
+essgzallt.data.ratios <-  essgzallt.data.ratios[which(unlist(edr.cols)>0)] # 767
+
+
+gzclust.eval.df$contains.ratio.data <- sapply(gzclust.eval.df$Group.Name, function (y) y %in% names(edr))
+# remove this and just add no. ratio cols.
+gzclust.eval.df <- gzclust.eval.df[ , names(gzclust.eval.df) %w/o% "contains.ratio.data"]
+gzclust.eval.df$no.ratio.cols <- edr.cols
+write.table(gzclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzclust.eval.df.txt", sep=""), row.names = FALSE, sep="\t")
+
+# Evaluate ratio clusters with more than three data columns with modified function
+essgzallt.data.ratios.3cols <- essgzallt.data.ratios[which(unlist(edr.cols)>2)] # 524
+ratioclust.eval.df <- ratioclust.eval(clusterlist=essgzallt.data.ratios.3cols)
+write.table(ratioclust.eval.df, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "gzratioclusters.eval.df.txt", sep=""),row.names = FALSE, sep="\t")
+graph.clust6d.l(edr["118.227.333"])
+# loop to examine heatmaps
+for (i in 1:10){
+  graph.clust6d.l(edr[[ratioclust.eval.df$Group.Name[i]]])
+}
+# _
+graph.clust6d.l(edr[["27.282.215"]])
+graph.clust6d.l(essgzallt.data[["27.282.215"]])
+graph.clust6d.l(essgzallt.data.ratios[["27.282.215"]])
+graph.clust6d.l(essgzallt.data.ratios[["2.58.53"]])
+graph.clust6d.l(essgzallt.data[["1.225.171"]])
+
+#________________________
+
+save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, essgzallt.data.ratios, gzclust.eval.df, ratioclust.eval.df, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+##############################################################
+#_____
 which(eu.sp.sed.gzallt.sizes==max(eu.sp.sed.gzallt.sizes)) # 3; 467; 244
 head(eu.sp.sed.gzallt.data[[244]])
+look <- graph.clust6d.l (clust.data.from.vec(eu.sp.sed.gzallt[[244]], tbl=gzdata.allt))
 look <- graph.clust6d.l (clust.data.from.vec(eu.sp.sed.gzallt[[244]], tbl=gzdata.allt))
 efractNA.gzall <- sapply(eu.sp.sed.gzallt.data, fractNA)
 hist(unlist(efractNA.gzall), breaks=89, col="green3")
@@ -593,12 +713,13 @@ which(efractNA.gzall>0.6)
 # 9  84  86  88  90  92 259 261 265 269 295 315 320 339 359 363 420 444 445 448 509 637 710 778
 #  All these have at least two columns in common
 #contrast:
-  look <- graph.clust6d.l (eu.sp.sed.gzallt.data[[778]])
-  graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall>0.5)[5]])
-  which(efractNA.gzall<0.25)
-  graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall<0.25)[1]])
+look <- graph.clust6d.l (eu.sp.sed.gzallt.data[[778]]) # "328.274.205"
+look2 <-  graph.clust6d.l(essgzallt.data["328.274.205"])
+graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall>0.5)[5]])
+which(efractNA.gzall<0.25)
+graph.clust6d.l (eu.sp.sed.gzallt.data[which(efractNA.gzall<0.25)[1]])
 # The tencell data suggests we should cull clusters with sparse data
-  # But with gzallt it looks  better
+# But with gzallt it looks  better
 #
 
 fractNA(gzdata.all) # 81% vs 
@@ -606,9 +727,16 @@ fractNA(gztencelldata.trimmed)  # .7079
 fractNA(gzdata.allt) # 0.77679
 # Make more convenient names
 # essgzallt <- eu.sp.sed.gzallt # trimmmed above
-essgzallt.data <- eu.sp.sed.gzallt.data
-
-save(tencellack, tencellack.head, tencellackdata, tencellackname, tencellpath, tencellphos, tencellphos.head, tencellphosdata, tencellphosdata.1, tencellphosname, tencellub, tencellub.head, tencellubname, tencelldata, tencelldata.log2, tencellratios.lim, tencellratios.log2, tencellratios.lim.log2, gzdata.all, gzdata.allz, gzdata.all.raw, eu.gzall.tsne, sp.gzall.tsne, sed.gzall.tsne, gzdata.all.trimmed, gztencelldata.trimmed, tencellratios.lim.log2.trimmed, tencelltrimmed, gzdata.allt, eu.gzallt.tsne, sp.gzallt.tsne, sed.gzallt.tsne, eu.gzall.list, sp.gzall.list, sed.gzall.list, esizes.gzall, spsizes.gzall, sedsizes.gzall, eu.gzallt.list, sp.gzallt.list, sed.gzallt.list, esizes.gzallt, eu.sp.sed.gzallt, eu.sp.sed.gzallt.sizes, eu.sp.sed.gzallt.data, spsizes.gzallt, eu.gztencell.tsne, sp.gztencell.tsne, sed.gztencell.tsne, sedsizes.gzallt, eu.sp.sed.gztencell, eu.sp.sed.gztencell.data, essgzallt, essgzallt.data, gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn0, gzallt.gene.cccn.na, gzallt.cccn.g, gzallt.cccn, pepcorredges.dual.neg.v1, pepcorredges.dual, pepcorredges.dual.neg, dualmodgenes.vneg, gzallt.cccn.edges, gzallt.cccn.edges.plus, dualpack.vneg, dualpubi.vneg, dualackubi.vneg, gzallt.key, gzallt.gene.key, gzalltgene.data, gzalltgene.ave.ratios, gzgene.cfn.netatts, gzcccn.netatts, gzalltgene.cfn, gzalltgene.cfn.g, gz.cfn, gzallt.all.cf, gzalltgene.all.cf, gz.cf, gzallt.network, file=paste("_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+# Check names, which were lost in proceudre to make the data list
+head(eu.sp.sed.gzallt)
+lapply(eu.sp.sed.gzallt.data[1:5], rownames) # looks okay, check all
+testrownames <- lapply(eu.sp.sed.gzallt.data, rownames)
+identical (testrownames, eu.sp.sed.gzallt) # FALSE because names are differet
+testcontents <- eu.sp.sed.gzallt
+names(testcontents) <- NULL
+identical(testrownames, testcontents) # Still FALSE
+setdiff(testrownames, testcontents) # Several clusters with NAs
+# _____
 # neg cor edges and netatts from KGnegcorredges2.R
 ###################################################################################################
 # Compare different results from different data sets/treatments

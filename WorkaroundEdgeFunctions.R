@@ -1,3 +1,85 @@
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install(version = "3.12")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+BiocManager::install("RCy3") # returns 
+install.packages("devtools")
+library(devtools)
+install_github('cytoscape/RCy3', build_vignettes=TRUE)
+#If installation fails due to package 'XXX' not found,
+# then run install.packages("XXX") and then try install_github('cytoscape/RCy3') again
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+# The following initializes usage of Bioc devel
+BiocManager::install(version='devel')
+
+BiocManager::install("RCy3", version='devel')
+
+
+library(RCy3)
+
+# Workaround function for RCy3 glitches
+delete.bad.networks <- function(){
+  pingtest=cytoscapePing()
+  if (!grepl("connected", pingtest)) {
+    print("You are NOT conncected to Cytoscape!")
+    break } else {
+      networks <- getNetworkList()
+      for (i in 1:length(networks)) {
+        edgeTable <- getTableColumns("edge", c("name", "shared name"), network=networks[i])
+        if(!identical(edgeTable[,1], edgeTable[,2])) {
+          print(paste('Network', networks[i], "is bad."))
+          deleteNetwork(networks[i])} else {
+            print (paste("Network", networks[i], "passes edge test."))
+          } 
+      }
+    }
+}
+detect.bad.networks <- function(){
+  pingtest=cytoscapePing()
+  if (!grepl("connected", pingtest)) {
+    print("You are NOT conncected to Cytoscape!")
+    break } else {
+      networks <- getNetworkList()
+      for (i in 1:length(networks)) {
+        edgeTable <- getTableColumns("edge", c("name", "shared name"), network=networks[i])
+        if(!identical(edgeTable[,1], edgeTable[,2])) {
+          print(paste('Network', networks[i], "is bad."))
+          } else {
+            print (paste("Network", networks[i], "passes edge test."))
+          } 
+      }
+    }
+}
+# Add a check for graph.cfn.cccn() with limit of 10 tries
+graph.cfn.cccn.check <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=TRUE) {
+  for (i in 1:10){
+   graph.cfn.cccn(edgefile, ld, gz, only.cfn, pruned) 
+    edgeTable <- getTableColumns("edge", c("name", "shared name"))
+    if(!identical(edgeTable[,1], edgeTable[,2])) {
+      print(paste('Network', i, "is bad."))
+      deleteNetwork()} else {
+        print (paste("Network", i, "passes edge test."))
+        break }
+  }}
+#Same for createNetworkFromDataFrames
+createNetworkFromDataFrames.check <- function(nodes, edges, title="Checked", collection="Checked interactions") {
+  for (i in 1:10){
+    createNetworkFromDataFrames(nodes, edges, title, collection) 
+    edgeTable <- getTableColumns("edge", c("name", "shared name"))
+    if(!identical(edgeTable[,1], edgeTable[,2])) {
+      print(paste('Network', i, "is bad."))
+      deleteNetwork()} else {
+        print (paste("Network", i, "passes edge test."))
+        break }
+  }}
+
+  
+  
+  
 # Workaround for edge mapping problem in Cytoscape
 FixEdgeDprops.RCy32 <- function() {
   setEdgeLineWidthDefault (3)
@@ -54,3 +136,11 @@ setCorrEdgeAppearance <- function(edgefile) {
     setEdgeColorMapping( 'shared interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF") 
     FixEdgeDprops.RCy32() }
 } 
+
+
+# GitHup token update: see: 
+# https://stackoverflow.com/questions/66065099/how-to-update-github-authentification-token-on-rstudio-to-match-the-new-policy
+# https://happygitwithr.com/credential-caching.html#credential-caching
+install.packages("gitcreds")
+library(gitcreds)
+gitcreds_set()

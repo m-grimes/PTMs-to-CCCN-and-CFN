@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<vizmap id="VizMap-2020_06_26-11_46" documentVersion="3.0">
+    <visualStyle name="H2286_DasatinibRatio Style">
+        <network>
+            <visualProperty default="0.0" name="NETWORK_CENTER_Y_LOCATION"/>
+            <visualProperty default="true" name="NETWORK_EDGE_SELECTION"/>
+            <visualProperty default="false" name="NETWORK_FORCE_HIGH_DETAIL"/>
+            <visualProperty default="400.0" name="NETWORK_HEIGHT"/>
+            <visualProperty default="" name="NETWORK_TITLE"/>
+            <visualProperty default="false" name="NETWORK_ANNOTATION_SELECTION"/>
+            <visualProperty default="#949494" name="NETWORK_BACKGROUND_PAINT"/>
+            <visualProperty default="0.0" name="NETWORK_DEPTH"/>
+            <visualProperty default="550.0" name="NETWORK_SIZE"/>
+            <visualProperty default="1.0" name="NETWORK_SCALE_FACTOR"/>
+            <visualProperty default="0.0" name="NETWORK_CENTER_X_LOCATION"/>
+            <visualProperty default="false" name="NETWORK_NODE_LABEL_SELECTION"/>
+            <visualProperty default="0.0" name="NETWORK_CENTER_Z_LOCATION"/>
+            <visualProperty default="true" name="NETWORK_NODE_SELECTION"/>
+            <visualProperty default="550.0" name="NETWORK_WIDTH"/>
+        </network>
+        <node>
+            <dependency value="true" name="nodeCustomGraphicsSizeSync"/>
+            <dependency value="true" name="nodeSizeLocked"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_6"/>
+            <visualProperty default="0.0" name="NODE_Z_LOCATION"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_9"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_4"/>
+            <visualProperty default="SansSerif,plain,12" name="NODE_LABEL_FONT_FACE"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_4, name=Node Custom Paint 4)" name="NODE_CUSTOMPAINT_4"/>
+            <visualProperty default="true" name="NODE_VISIBLE"/>
+            <visualProperty default="10.0" name="COMPOUND_NODE_PADDING"/>
+            <visualProperty default="#888888" name="NODE_BORDER_PAINT"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_8"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_2, name=Node Custom Paint 2)" name="NODE_CUSTOMPAINT_2"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_2"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_5"/>
+            <visualProperty default="0.0" name="NODE_X_LOCATION"/>
+            <visualProperty default="255" name="NODE_LABEL_TRANSPARENCY"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_4"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_5"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_1"/>
+            <visualProperty default="true" name="NODE_NESTED_NETWORK_IMAGE_VISIBLE"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_2"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_5, name=Node Custom Paint 5)" name="NODE_CUSTOMPAINT_5"/>
+            <visualProperty default="#1E90FF" name="NODE_PAINT"/>
+            <visualProperty default="255" name="NODE_BORDER_TRANSPARENCY"/>
+            <visualProperty default="" name="NODE_TOOLTIP"/>
+            <visualProperty default="35.0" name="NODE_HEIGHT"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_8"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_2"/>
+            <visualProperty default="false" name="NODE_SELECTED"/>
+            <visualProperty default="" name="NODE_LABEL">
+                <passthroughMapping attributeName="name" attributeType="string"/>
+            </visualProperty>
+            <visualProperty default="75.0" name="NODE_WIDTH"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_9, name=Node Custom Paint 9)" name="NODE_CUSTOMPAINT_9"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_3"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_6"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_6, name=Node Custom Paint 6)" name="NODE_CUSTOMPAINT_6"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_7"/>
+            <visualProperty default="#CC00FF" name="NODE_SELECTED_PAINT"/>
+            <visualProperty default="ELLIPSE" name="NODE_SHAPE">
+                <discreteMapping attributeName="nodeType" attributeType="string">
+                    <discreteMappingEntry attributeValue="transcription factor" value="PARALLELOGRAM"/>
+                    <discreteMappingEntry attributeValue="kinase" value="OCTAGON"/>
+                    <discreteMappingEntry attributeValue="SH2 protein" value="VEE"/>
+                    <discreteMappingEntry attributeValue="tyrosine kinase" value="HEXAGON"/>
+                    <discreteMappingEntry attributeValue="RNA binding protein" value="RECTANGLE"/>
+                    <discreteMappingEntry attributeValue="SRC-family kinase" value="DIAMOND"/>
+                    <discreteMappingEntry attributeValue="receptor tyrosine kinase" value="ROUND_RECTANGLE"/>
+                    <discreteMappingEntry attributeValue="phosphatase" value="OCTAGON"/>
+                    <discreteMappingEntry attributeValue="SH3 protein" value="TRIANGLE"/>
+                    <discreteMappingEntry attributeValue="SH2-SH3 protein" value="VEE"/>
+                    <discreteMappingEntry attributeValue="unknown" value="ELLIPSE"/>
+                </discreteMapping>
+            </visualProperty>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_8"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_9"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_3, name=Node Custom Paint 3)" name="NODE_CUSTOMPAINT_3"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_1"/>
+            <visualProperty default="SOLID" name="NODE_BORDER_STROKE"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_5"/>
+            <visualProperty default="4.0" name="NODE_BORDER_WIDTH">
+                <discreteMapping attributeName="nodeType" attributeType="string">
+                    <discreteMappingEntry attributeValue="G protein-coupled receptor" value="16.0"/>
+                    <discreteMappingEntry attributeValue="kinase" value="12.0"/>
+                    <discreteMappingEntry attributeValue="methyltransferase" value="12.0"/>
+                    <discreteMappingEntry attributeValue="tyrosine kinase" value="12.0"/>
+                    <discreteMappingEntry attributeValue="membrane protein" value="8.0"/>
+                    <discreteMappingEntry attributeValue="SRC-family kinase" value="12.0"/>
+                    <discreteMappingEntry attributeValue="receptor tyrosine kinase" value="16.0"/>
+                    <discreteMappingEntry attributeValue="phosphatase" value="14.0"/>
+                    <discreteMappingEntry attributeValue="deacetylase" value="4.0"/>
+                    <discreteMappingEntry attributeValue="demethylase" value="4.0"/>
+                    <discreteMappingEntry attributeValue="acetyltransferase" value="12.0"/>
+                </discreteMapping>
+            </visualProperty>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_7, name=Node Custom Paint 7)" name="NODE_CUSTOMPAINT_7"/>
+            <visualProperty default="255" name="NODE_TRANSPARENCY"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_3"/>
+            <visualProperty default="0.0" name="NODE_Y_LOCATION"/>
+            <visualProperty default="100.0" name="NODE_SIZE">
+                <continuousMapping attributeName="H2286_DasatinibRatio" attributeType="float">
+                    <continuousMappingPoint attrValue="-100.0" equalValue="130.0" greaterValue="130.0" lesserValue="135.0"/>
+                    <continuousMappingPoint attrValue="-15.0" equalValue="108.0" greaterValue="108.0" lesserValue="108.0"/>
+                    <continuousMappingPoint attrValue="-5.0" equalValue="75.0" greaterValue="75.0" lesserValue="75.0"/>
+                    <continuousMappingPoint attrValue="0.0" equalValue="35.0" greaterValue="35.0" lesserValue="35.0"/>
+                    <continuousMappingPoint attrValue="5.0" equalValue="75.0" greaterValue="75.0" lesserValue="75.0"/>
+                    <continuousMappingPoint attrValue="15.0" equalValue="108.0" greaterValue="108.0" lesserValue="108.0"/>
+                    <continuousMappingPoint attrValue="100.0" equalValue="130.0" greaterValue="135.0" lesserValue="130.0"/>
+                </continuousMapping>
+            </visualProperty>
+            <visualProperty default="200.0" name="NODE_LABEL_WIDTH"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_LABEL_POSITION"/>
+            <visualProperty default="0.0" name="NODE_DEPTH"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_6"/>
+            <visualProperty default="#F0FFFF" name="NODE_FILL_COLOR">
+                <continuousMapping attributeName="H2286_DasatinibRatio" attributeType="float">
+                    <continuousMappingPoint attrValue="-100.0" equalValue="#007FFF" greaterValue="#007FFF" lesserValue="#0099FF"/>
+                    <continuousMappingPoint attrValue="-10.0" equalValue="#00BFFF" greaterValue="#00BFFF" lesserValue="#00BFFF"/>
+                    <continuousMappingPoint attrValue="-5.0" equalValue="#00CCFF" greaterValue="#00CCFF" lesserValue="#00CCFF"/>
+                    <continuousMappingPoint attrValue="-2.25" equalValue="#00FFFF" greaterValue="#00FFFF" lesserValue="#00FFFF"/>
+                    <continuousMappingPoint attrValue="0.0" equalValue="#00EE00" greaterValue="#00EE00" lesserValue="#00EE00"/>
+                    <continuousMappingPoint attrValue="2.25" equalValue="#FFFF7E" greaterValue="#FFFF7E" lesserValue="#FFFF7E"/>
+                    <continuousMappingPoint attrValue="5.0" equalValue="#FFFF00" greaterValue="#FFFF00" lesserValue="#FFFF00"/>
+                    <continuousMappingPoint attrValue="10.0" equalValue="#FFE600" greaterValue="#FFE600" lesserValue="#FFE600"/>
+                    <continuousMappingPoint attrValue="100.0" equalValue="#FFD700" greaterValue="#FFCC00" lesserValue="#FFD700"/>
+                </continuousMapping>
+            </visualProperty>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_3"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_8, name=Node Custom Paint 8)" name="NODE_CUSTOMPAINT_8"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_1"/>
+            <visualProperty default="DefaultVisualizableVisualProperty(id=NODE_CUSTOMPAINT_1, name=Node Custom Paint 1)" name="NODE_CUSTOMPAINT_1"/>
+            <visualProperty default="C,C,c,0.00,0.00" name="NODE_CUSTOMGRAPHICS_POSITION_7"/>
+            <visualProperty default="22" name="NODE_LABEL_FONT_SIZE"/>
+            <visualProperty default="ROUND_RECTANGLE" name="COMPOUND_NODE_SHAPE"/>
+            <visualProperty default="#000000" name="NODE_LABEL_COLOR"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_9"/>
+            <visualProperty default="org.cytoscape.ding.customgraphics.NullCustomGraphics,0,[ Remove Graphics ]," name="NODE_CUSTOMGRAPHICS_7"/>
+            <visualProperty default="50.0" name="NODE_CUSTOMGRAPHICS_SIZE_4"/>
+        </node>
+        <edge>
+            <dependency value="true" name="arrowColorMatchesEdge"/>
+            <visualProperty default="3.0" name="EDGE_WIDTH">
+                <passthroughMapping attributeName="Width" attributeType="float"/>
+            </visualProperty>
+            <visualProperty default="#FFFFFF" name="EDGE_UNSELECTED_PAINT">
+                <discreteMapping attributeName="interaction" attributeType="string">
+                    <discreteMappingEntry attributeValue="pp" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="Predicted" value="#00EEEE"/>
+                    <discreteMappingEntry attributeValue="homology" value="#FFA500"/>
+                    <discreteMappingEntry attributeValue="PHOSPHORYLATION" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="Pathway" value="#00E5EE"/>
+                    <discreteMappingEntry attributeValue="experiments" value="#76EEC6"/>
+                    <discreteMappingEntry attributeValue="positive correlation" value="#FFFF00"/>
+                    <discreteMappingEntry attributeValue="controls-expression-of" value="#FF00FF"/>
+                    <discreteMappingEntry attributeValue="database" value="#00FFFF"/>
+                    <discreteMappingEntry attributeValue="Genetic interactions" value="#20B2AA"/>
+                    <discreteMappingEntry attributeValue="negative correlation" value="#0000FF"/>
+                    <discreteMappingEntry attributeValue="in-complex-with" value="#00CD00"/>
+                    <discreteMappingEntry attributeValue="Physical interactions" value="#00FF00"/>
+                    <discreteMappingEntry attributeValue="peptide" value="#000000"/>
+                    <discreteMappingEntry attributeValue="Shared protein domains" value="#EE9A00"/>
+                    <discreteMappingEntry attributeValue="controls-state-change-of" value="#A020F0"/>
+                    <discreteMappingEntry attributeValue="intersect" value="#BEBEBE"/>
+                    <discreteMappingEntry attributeValue="ACETYLATION" value="#FF7F00"/>
+                    <discreteMappingEntry attributeValue="controls-transport-of" value="#EE82EE"/>
+                    <discreteMappingEntry attributeValue="merged" value="#2F4F4F"/>
+                    <discreteMappingEntry attributeValue="combined_score" value="#708090"/>
+                    <discreteMappingEntry attributeValue="correlation" value="#FFD700"/>
+                    <discreteMappingEntry attributeValue="controls-phosphorylation-of" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="BioPlex" value="#00EE00"/>
+                </discreteMapping>
+            </visualProperty>
+            <visualProperty default="#FF0000" name="EDGE_STROKE_SELECTED_PAINT"/>
+            <visualProperty default="#FFFF00" name="EDGE_TARGET_ARROW_SELECTED_PAINT"/>
+            <visualProperty default="SOLID" name="EDGE_LINE_TYPE"/>
+            <visualProperty default="Dialog,plain,10" name="EDGE_LABEL_FONT_FACE"/>
+            <visualProperty default="6.0" name="EDGE_SOURCE_ARROW_SIZE"/>
+            <visualProperty default="#323232" name="EDGE_PAINT"/>
+            <visualProperty default="10" name="EDGE_LABEL_FONT_SIZE"/>
+            <visualProperty default="false" name="EDGE_SELECTED"/>
+            <visualProperty default="" name="EDGE_BEND"/>
+            <visualProperty default="#000000" name="EDGE_TARGET_ARROW_UNSELECTED_PAINT"/>
+            <visualProperty default="255" name="EDGE_TRANSPARENCY"/>
+            <visualProperty default="200.0" name="EDGE_LABEL_WIDTH"/>
+            <visualProperty default="" name="EDGE_LABEL"/>
+            <visualProperty default="true" name="EDGE_CURVED"/>
+            <visualProperty default="#000000" name="EDGE_SOURCE_ARROW_UNSELECTED_PAINT"/>
+            <visualProperty default="6.0" name="EDGE_TARGET_ARROW_SIZE"/>
+            <visualProperty default="" name="EDGE_TOOLTIP"/>
+            <visualProperty default="#FFFF00" name="EDGE_SOURCE_ARROW_SELECTED_PAINT"/>
+            <visualProperty default="true" name="EDGE_VISIBLE"/>
+            <visualProperty default="NONE" name="EDGE_TARGET_ARROW_SHAPE">
+                <discreteMapping attributeName="interaction" attributeType="string">
+                    <discreteMappingEntry attributeValue="pp" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="Predicted" value="NONE"/>
+                    <discreteMappingEntry attributeValue="homology" value="NONE"/>
+                    <discreteMappingEntry attributeValue="PHOSPHORYLATION" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="Pathway" value="NONE"/>
+                    <discreteMappingEntry attributeValue="experiments" value="NONE"/>
+                    <discreteMappingEntry attributeValue="positive correlation" value="NONE"/>
+                    <discreteMappingEntry attributeValue="controls-expression-of" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="database" value="NONE"/>
+                    <discreteMappingEntry attributeValue="Genetic interactions" value="NONE"/>
+                    <discreteMappingEntry attributeValue="negative correlation" value="NONE"/>
+                    <discreteMappingEntry attributeValue="in-complex-with" value="NONE"/>
+                    <discreteMappingEntry attributeValue="Physical interactions" value="NONE"/>
+                    <discreteMappingEntry attributeValue="peptide" value="NONE"/>
+                    <discreteMappingEntry attributeValue="Shared protein domains" value="NONE"/>
+                    <discreteMappingEntry attributeValue="controls-state-change-of" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="intersect" value="NONE"/>
+                    <discreteMappingEntry attributeValue="ACETYLATION" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="controls-transport-of" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="merged" value="NONE"/>
+                    <discreteMappingEntry attributeValue="combined_score" value="NONE"/>
+                    <discreteMappingEntry attributeValue="correlation" value="NONE"/>
+                    <discreteMappingEntry attributeValue="controls-phosphorylation-of" value="ARROW"/>
+                    <discreteMappingEntry attributeValue="BioPlex" value="NONE"/>
+                </discreteMapping>
+            </visualProperty>
+            <visualProperty default="NONE" name="EDGE_SOURCE_ARROW_SHAPE"/>
+            <visualProperty default="#FFFFFF" name="EDGE_STROKE_UNSELECTED_PAINT">
+                <discreteMapping attributeName="interaction" attributeType="string">
+                    <discreteMappingEntry attributeValue="pp" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="Predicted" value="#00EEEE"/>
+                    <discreteMappingEntry attributeValue="homology" value="#FFA500"/>
+                    <discreteMappingEntry attributeValue="PHOSPHORYLATION" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="Pathway" value="#00E5EE"/>
+                    <discreteMappingEntry attributeValue="experiments" value="#76EEC6"/>
+                    <discreteMappingEntry attributeValue="positive correlation" value="#FFFF00"/>
+                    <discreteMappingEntry attributeValue="controls-expression-of" value="#FF00FF"/>
+                    <discreteMappingEntry attributeValue="database" value="#00FFFF"/>
+                    <discreteMappingEntry attributeValue="Genetic interactions" value="#20B2AA"/>
+                    <discreteMappingEntry attributeValue="negative correlation" value="#0000FF"/>
+                    <discreteMappingEntry attributeValue="in-complex-with" value="#00CD00"/>
+                    <discreteMappingEntry attributeValue="Physical interactions" value="#00FF00"/>
+                    <discreteMappingEntry attributeValue="peptide" value="#000000"/>
+                    <discreteMappingEntry attributeValue="Shared protein domains" value="#EE9A00"/>
+                    <discreteMappingEntry attributeValue="controls-state-change-of" value="#A020F0"/>
+                    <discreteMappingEntry attributeValue="intersect" value="#BEBEBE"/>
+                    <discreteMappingEntry attributeValue="ACETYLATION" value="#FF7F00"/>
+                    <discreteMappingEntry attributeValue="controls-transport-of" value="#EE82EE"/>
+                    <discreteMappingEntry attributeValue="merged" value="#2F4F4F"/>
+                    <discreteMappingEntry attributeValue="combined_score" value="#708090"/>
+                    <discreteMappingEntry attributeValue="correlation" value="#FFD700"/>
+                    <discreteMappingEntry attributeValue="controls-phosphorylation-of" value="#FF0000"/>
+                    <discreteMappingEntry attributeValue="BioPlex" value="#00EE00"/>
+                </discreteMapping>
+            </visualProperty>
+            <visualProperty default="#000000" name="EDGE_LABEL_COLOR"/>
+            <visualProperty default="#7FFF00" name="EDGE_SELECTED_PAINT"/>
+            <visualProperty default="255" name="EDGE_LABEL_TRANSPARENCY"/>
+        </edge>
+    </visualStyle>
+</vizmap>
