@@ -689,8 +689,8 @@ essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt)
 
 ```{r evaluate clusters}
 # To evaluate clusters, use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
-# Employ with trimmed data above
-gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Employ ptmsclust.eval() with names changed to reflect PTMs
+gzclust.eval.df <- ptmsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
 # Save table for sharing
 write.table(gzclust.eval.df, file= "gzclust.eval.df.txt")
 # In about a third of the data from either treatment or control PTMs missing. Find clusters that have two or more ratio columns.

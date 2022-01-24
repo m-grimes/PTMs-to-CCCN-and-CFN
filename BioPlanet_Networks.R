@@ -176,9 +176,11 @@ plot(bioplanetreledges$Weight~bioplanetjaccardedges$Weight, pch=19, col=alpha("f
 # Apply this approach to determine evidence for pathways based on the CCCN
 # Cluster Pathway Evidence = ∑( PTMs from gene(i) pathway in cluster /  total number of Pathways for gene(i)
 #
-# PTM cluster list is eu.sp.sed.gzallt; 
+# PTM cluster list is eu.sp.sed.gzallt; Revised renamed> essgzallt
+length(essgzallt.data) #818
+length(essgzallt) #818
 # Make a list of genes in clusters.
-pep.clist <- eu.sp.sed.gzallt
+pep.clist <- essgzallt.data
 # Two considerations:
 # 1. We want genes with different PTMs to count towards evidence.
 # 2. Do we want ambiguous PTMs (e.g. "TUBB p Y106; TUBB4B p Y106; TUBB3 p Y106; TUBB2A p Y106; TUBB2B p Y106") to count only proportionally to their ambigous representation? 
