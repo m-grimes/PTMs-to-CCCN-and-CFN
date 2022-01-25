@@ -1,0 +1,970 @@
+---
+title: "Cluster Enrichment"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load_packages}
+
+library(plyr)
+library(dplyr)
+library(gplots)
+library(RColorBrewer)
+
+
+```
+
+```{r load file paths data objects and functions}
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+
+sig_site_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/SigSites/"
+
+results_table_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/"
+
+cytoscape_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/CFNCytoscapeFiles/"
+
+heatmap_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterHeatmaps/"
+heatmap_path_reps <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterHeatmaps-RepExpts/"
+
+heatmap_path_meds <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised2/ClusterHeatmapsMeds/"
+
+
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701 and has gzalltgene.physical.cfn.merged
+
+source(paste(code_path, "cluster-enrichment-functions-v1.R", sep=""))
+
+```
+
+
+## Cluster Enrichment Analysis
+
+The goal is identify clusters for each drug/cell-line combo that have more drug-affected sites than expected by chance.
+A drug-affected site is defined as a site that is 2.25-fold changed. When replicates are available, we will select sites that changed at least 2.25-fold in the same direction in at least two experiments. These are the drug/cell line combos:
+H3122/Crizotinib: 5 experiments
+H2228/Crizotinib: 1 experiment
+STE.1/Crizotinib: 1 experiment
+HCC78/Crizotinib: 2 experiments
+
+PC9/Erlotinib: 5 experiments
+HCC4006/Erlotinib: 1 experiment
+HCC827/Erlotinib: 1 experiment
+
+H3122/PR1: 3 experiments
+PC9/PR1: 3 experiments
+
+H1781/Afatinib: 1 experiment
+
+H2286_Dasatinib: 1 experiment
+H366_Dasatinib: 1 experiment
+
+For each experiment (drug/cell-line combo):
+1. Get the list of significantly changed sites
+
+2. Map the sites to clusters
+
+3. Calculate values for the 2x2 contingency matrix: number of significantly changes sites in the cluster, number of significantly changed sites not in the cluster, number of "unchanged" sites in the cluster, number of "unchanged sites not in the cluster
+
+4. Perform a one-sided Fisher test to look for clusters with more significantly changed sites than expected by chance. To improve the statistical power (limit the number of tests), only do the analysis on clusters that have at least three significantly changed sites. 
+
+## Count the number of sites in each cluster
+Here we will compute the number of sites in each cluster in the CCCN. To do this, we will use the file sites_by_cluster.txt that lists each site in the CCCN in one column and the cluster it belongs to in a second column. We will use the count function in the plyr package to count the number of rows (sites) for each cluster. (This function will create a new dataframe with one column containing the cluster names and the second column containing the number of rows (sites) for each cluster. Then, for each cluster we will calculate the number of sites in the CCCN that are not in the cluster--the will be the total sites in the CCCN minus the number of sites in the cluster. 
+
+```{r tally_clusters}
+
+#Load the file with the cluster assignments for each site
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+
+#Tally the number of sites in each cluster
+all_tally <- plyr::count(CCCN_sites, var = "Cluster")
+colnames(all_tally)[2] <- "AllNumInCluster"
+
+
+#Now calculate the number of sites that are not in each cluster. First find the total number of sites. Then
+#subtract the number in each cluster from the total.
+num_sites <- nrow(CCCN_sites)
+all_tally$AllNumOutCluster <- num_sites - all_tally$AllNumInCluster
+
+```
+
+## Perform the Enrichment Analysis on Each Drug/Cell Line Combo
+```{r process_sig_site_data}
+
+#For each experiment, identify the significant sites, write list of sig sites to a file, and perform the enrichment
+
+#H3122/Crizotinib
+h3122.criz.columns <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio", "H3122_Crizotinib.1Ratio", "H3122CrizotinibRatio")
+h3122.criz.sig.sites <- get.sig.sites(columns = h3122.criz.columns)
+nrow(h3122.criz.sig.sites)
+write.table(h3122.criz.sig.sites, file = paste(sig_site_file_path, "H3122-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h3122.criz.enrich <- cluster_enrichment(CCCN_sites, h3122.criz.sig.sites, all_tally)
+
+#HCC78/Crizotinib
+hcc78.criz.columns <- c("id", "Gene.Name", "HCC78_Crizotinib.1Ratio", "HCC78_CrizotinibRatio")
+hcc78.criz.sig.sites <- get.sig.sites(columns = hcc78.criz.columns)
+nrow(hcc78.criz.sig.sites)
+write.table(hcc78.criz.sig.sites, file = paste(sig_site_file_path, "HCC78-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+hcc78.criz.enrich <- cluster_enrichment(CCCN_sites, hcc78.criz.sig.sites, all_tally)
+
+#H2228/Crizotinib
+h2228.criz.columns <- c("id", "Gene.Name", "H2228CrizotinibRatio")
+h2228.criz.sig.sites <- get.sig.sites(columns = h2228.criz.columns)
+nrow(h2228.criz.sig.sites)
+write.table(h2228.criz.sig.sites, file = paste(sig_site_file_path, "H2228-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h2228.criz.enrich <- cluster_enrichment(CCCN_sites, h2228.criz.sig.sites, all_tally)
+
+#STE1/Crizotinib
+ste1.criz.columns <- c("id", "Gene.Name", "STE.1_CrizotinibRatio")
+ste1.criz.sig.sites <- get.sig.sites(columns = ste1.criz.columns)
+nrow(ste1.criz.sig.sites)
+write.table(ste1.criz.sig.sites, file = paste(sig_site_file_path, "STE1-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+ste1.criz.enrich <- cluster_enrichment(CCCN_sites, ste1.criz.sig.sites, all_tally)
+
+#PC9/Erlotinib
+pc9.erl.columns <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
+pc9.erl.sig.sites <- get.sig.sites(columns = pc9.erl.columns)
+nrow(pc9.erl.sig.sites)
+write.table(pc9.erl.sig.sites, file = paste(sig_site_file_path, "PC9-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+pc9.erl.enrich <- cluster_enrichment(CCCN_sites, pc9.erl.sig.sites, all_tally)
+
+#HCC4006/Erlotinib
+hcc4006.erl.columns <- c("id", "Gene.Name", "HCC4006_ErlotinibRatio")
+hcc4006.erl.sig.sites <- get.sig.sites(columns = hcc4006.erl.columns)
+nrow(hcc4006.erl.sig.sites)
+write.table(hcc4006.erl.sig.sites, file = paste(sig_site_file_path, "HCC4006-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+hcc4006.erl.enrich <- cluster_enrichment(CCCN_sites, hcc4006.erl.sig.sites, all_tally)
+
+#HCC827/Erlotinib
+hcc827.erl.columns <- c("id", "Gene.Name", "HCC827_ErlotinibRatio")
+hcc827.erl.sig.sites <- get.sig.sites(columns = hcc827.erl.columns)
+nrow(hcc827.erl.sig.sites)
+write.table(hcc827.erl.sig.sites, file = paste(sig_site_file_path, "HCC827-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+hcc827.erl.enrich <- cluster_enrichment(CCCN_sites, hcc827.erl.sig.sites, all_tally)
+
+#H3122/PR
+h3122.pr.columns <- c("id", "Gene.Name", "H3122SEPTM.PR1.ratio", "H3122SEPTM.PR2.ratio", "H3122SEPTM.PR3.ratio")
+h3122.pr.sig.sites <- get.sig.sites(columns = h3122.pr.columns)
+nrow(h3122.pr.sig.sites)
+write.table(h3122.pr.sig.sites, file = paste(sig_site_file_path, "H3122-PR-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h3122.pr.enrich <- cluster_enrichment(CCCN_sites, h3122.pr.sig.sites, all_tally)
+
+#PC9/PR
+pc9.pr.columns <- c("id", "Gene.Name", "PC9SEPTM.PR1.ratio", "PC9SEPTM.PR2.ratio", "PC9SEPTM.PR3.ratio")
+pc9.pr.sig.sites <- get.sig.sites(columns = pc9.pr.columns)
+nrow(pc9.pr.sig.sites)
+write.table(pc9.pr.sig.sites, file = paste(sig_site_file_path, "PC9-PR-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+pc9.pr.enrich <- cluster_enrichment(CCCN_sites, pc9.pr.sig.sites, all_tally)
+
+#H1781/Afatinib
+h1781.afat.columns <- c("id", "Gene.Name", "H1781_AfatinibRatio")
+h1781.afat.sig.sites <- get.sig.sites(columns = h1781.afat.columns)
+nrow(h1781.afat.sig.sites)
+write.table(h1781.afat.sig.sites, file = paste(sig_site_file_path, "H1781-afat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h1781.afat.enrich <- cluster_enrichment(CCCN_sites, h1781.afat.sig.sites, all_tally)
+
+#H2286/Dasatinib
+h2286.dasat.columns <- c("id", "Gene.Name", "H2286_DasatinibRatio")
+h2286.dasat.sig.sites <- get.sig.sites(columns = h2286.dasat.columns)
+nrow(h2286.dasat.sig.sites)
+write.table(h2286.dasat.sig.sites, file = paste(sig_site_file_path, "H2286-dasat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h2286.dasat.enrich <- cluster_enrichment(CCCN_sites, h2286.dasat.sig.sites, all_tally)
+
+#H366/Dasatinib
+h366.dasat.columns <- c("id", "Gene.Name", "H366_DasatinibRatio")
+h366.dasat.sig.sites <- get.sig.sites(columns = h366.dasat.columns)
+nrow(h366.dasat.sig.sites)
+write.table(h366.dasat.sig.sites, file = paste(sig_site_file_path, "H366-dasat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h366.dasat.enrich <- cluster_enrichment(CCCN_sites, h366.dasat.sig.sites, all_tally)
+```
+
+## Make a Table Showing Clusters that Meet a p-value Threshold for Each Drug/Cell Line Combo
+```{r make_all_result_table}
+#Run the formatting function on the enrichment results for all 12 drug-cell-line combos and then join into one big table
+
+h3122.criz.enrich.format <- format_enrichment_table(h3122.criz.enrich, "h3122.criz", p_value = 0.01)
+all_results <- h3122.criz.enrich.format
+
+hcc78.criz.enrich.format <- format_enrichment_table(hcc78.criz.enrich, "hcc78.criz", p_value = 0.01)
+all_results <- full_join(all_results, hcc78.criz.enrich.format, by = "Cluster")
+
+h2228.criz.enrich.format <- format_enrichment_table(h2228.criz.enrich, "h2228.criz", p_value = 0.01)
+all_results <- full_join(all_results, h2228.criz.enrich.format, by = "Cluster")
+
+ste1.criz.enrich.format <- format_enrichment_table(ste1.criz.enrich, "ste1.criz", p_value = 0.01)
+all_results <- full_join(all_results, ste1.criz.enrich.format, by = "Cluster")
+
+pc9.erl.enrich.format <- format_enrichment_table(pc9.erl.enrich, "pc9.erl", p_value = 0.01)
+all_results <- full_join(all_results, pc9.erl.enrich.format, by = "Cluster")
+
+hcc4006.erl.enrich.format <- format_enrichment_table(hcc4006.erl.enrich, "hcc4006.erl", p_value = 0.01)
+all_results <- full_join(all_results, hcc4006.erl.enrich.format, by = "Cluster")
+
+hcc827.erl.enrich.format <- format_enrichment_table(hcc827.erl.enrich, "hcc827.erl", p_value = 0.01)
+all_results <- full_join(all_results, hcc827.erl.enrich.format, by = "Cluster")
+
+h3122.pr.enrich.format <- format_enrichment_table(h3122.pr.enrich, "h3122.pr", p_value = 0.01)
+all_results <- full_join(all_results, h3122.pr.enrich.format, by = "Cluster")
+
+pc9.pr.enrich.format <- format_enrichment_table(pc9.pr.enrich, "pc9.pr", p_value = 0.01)
+all_results <- full_join(all_results, pc9.pr.enrich.format, by = "Cluster")
+
+h1781.afat.enrich.format <- format_enrichment_table(h1781.afat.enrich, "h1781.afat", p_value = 0.01)
+all_results <- full_join(all_results, h1781.afat.enrich.format, by = "Cluster")
+
+h2286.dasat.enrich.format <- format_enrichment_table(h2286.dasat.enrich, "h2286.dasat", p_value = 0.01)
+all_results <- full_join(all_results, h2286.dasat.enrich.format, by = "Cluster")
+
+h366.dasat.enrich.format <- format_enrichment_table(h366.dasat.enrich, "h366.dasat", p_value = 0.01)
+all_results <- full_join(all_results, h366.dasat.enrich.format, by = "Cluster")
+
+#Add column to results table giving number of drug/cell-line combos where that cluster had a significant p-value
+all_results$num_exp <- rowSums(!is.na(all_results[2:13]))
+
+write.table(all_results, file = paste(results_table_file_path, "enrichment_results_01_new-v2.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Make a table that only includes cell-line drug combos that have replicates
+all_results_reps <- all_results
+cols_w_reps = c("Cluster", "h3122.criz",	"hcc78.criz", "pc9.erl")
+all_results_reps <- all_results_reps[cols_w_reps]
+all_results_reps$num_exp <- rowSums(!is.na(all_results_reps[2:4]))
+all_results_reps <- all_results_reps[ which(!(all_results_reps$num_exp == 0)),]
+
+write.table(all_results_reps, file = paste(results_table_file_path, "enrichment_results_reps_01.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+```
+
+
+## Make Cytoscape edge and node files for plotting CFN (only) for interesting clusters
+
+```{r Plot Cluster CFN}
+
+#Make Cytoscape files for interesting clusters
+
+#Cluster 10.53.10: enriched in all criz cell lines, h3122.pr, h1781.afat; top most-enriched cluster for h3122.criz
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "10.53.10"),]
+make.cfn.cytoscape.files(cluster_sites$Site, edge_filename = paste(cytoscape_file_path, "10.53.10.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "10.53.10.cfn.nodes.txt", sep=""))
+
+
+#Cluster 130.141.111: enriched in most experiments overall (10/12); top enriched cluster for hcc78.criz, ste1.criz, pc9.erl, h1781.afat, h366.dasat
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "130.141.111"),]
+make.cfn.cytoscape.files(cluster_sites$Site, edge_filename = paste(cytoscape_file_path, "130.141.111.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "130.141.111.cfn.nodes.txt", sep=""))
+```
+
+##Make Heatmaps of Clusters
+Here, make heatmaps showing the abundances for sites in a cluster of interest for all replicates of one or more drug/cell-line combos of interest.
+```{r Make Cluster Heatmaps}
+
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#Make a list where each element is the names of the replicates of a particular drug/cell-line combo and the
+#name of the element is the name of the drug/cell-line combo in the all_results table. This will make it easier to 
+#select data for the heatmaps.
+
+experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("TC.H2228.Criz.1"), c("TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("TC.HCC4006.Erl.1"), c("TC.HCC827.Erl.1"), c("SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3"), c("SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3"), c("TC.H1781.Afat.1"), c("TC.H2286.Dasat.1"), c("TC.H366.Dasat.1"))
+
+names(experiments) <- colnames(all_results)[2:13]
+
+
+#Heatmapsfor cluster 130.141.111. This is the most enriched cluster for hcc78.criz, ste1.criz, pc9.erl, h1781.afat, h366.dasat and also the cluster enriched in the most experiments (10/12). 
+
+#Make heatmap showing means of replicates for all experiments where the cluster is enriched.
+all.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="multiple.130.141.111.means.heatmap.jpeg", image_width = 7, image_height = 15, aggregate_reps = "mean")
+write.table(all.130.141.111, file = paste(heatmap_path, "130.141.111.sites.means.txt", sep=""), sep = "\t", quote = FALSE, col.names=NA)
+
+#Make heatmap showing values of individual replicates for all experiments where the cluster is enriched.
+all.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="multiple.130.141.111.all.reps.heatmap.jpeg", image_width = 9, image_height = 15, aggregate_reps = "none")
+write.table(all.130.141.111, file = paste(heatmap_path, "130.141.111.sites.all.reps.txt", sep=""), sep = "\t", quote = FALSE, col.names=NA)
+
+#Make heatmap for just the experiments with replicates showing the median values of the replicates
+reps.only.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl",	"h3122.pr", "pc9.pr"), rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="reps.only.130.141.111.medians.heatmap.jpeg", image_width = 9, image_height = 20, aggregate_reps = "median")
+
+#Make heatmap showing means of replicates for all experiments where the cluster is enriched and the site is a 
+#known substrate of SRC family kinases.
+
+src_substrates <- c("ARHGAP35 p Y1105","CDK5 Y15", "CTNND1 p Y228", "PRKCD p Y334", "PTK2 p Y576", "PTPN6 p Y536", "PTPRA p Y798", "PTTG1IP p Y174", "PXN p Y88", "STAT3 p Y705")
+
+src.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = src_substrates, filepath = heatmap_path, filename ="130.141.111.means.src.substrates.heatmap.jpeg", image_width = 7, image_height = 6, mean_values = TRUE)
+
+
+#Heatmaps for cluster 10.53.10. This is the most enriched cluster for h3122.criz. It is also enriched in all criz experiments, h3122.pr, and h1871.afat. Make separate heatmaps for the criz, pr171, and afat experiments. Include ste1.criz in the h1871.afat heatmap because its profile looks quite similar to h1871.afat
+
+make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz","h2228.criz",	"ste1.criz"), rep_list = experiments, cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="criz.10.53.10.heatmap.jpeg", image_width = 6, image_height = 15)
+
+make.top.cluster.heatmap(exp = "h3122.pr", rep_list = experiments, cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="pr171.10.53.10.heatmap.jpeg", image_width = 4, image_height = 15)
+
+make.top.cluster.heatmap(exp = c("h1781.afat", "ste1.criz"), rep_list = experiments, cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h1781.afat.ste1.criz10.53.10.heatmap.jpeg", image_width = 4, image_height = 15)
+
+```
+
+```{r Make Sig Site Heatmaps}
+
+sig.sites.list <- list(h3122.criz.sig.sites,	hcc78.criz.sig.sites,	h2228.criz.sig.sites,	ste1.criz.sig.sites,	pc9.erl.sig.sites,	hcc4006.erl.sig.sites,	hcc827.erl.sig.sites,	h3122.pr.sig.sites,	pc9.pr.sig.sites,	h1781.afat.sig.sites,	h2286.dasat.sig.sites,	h366.dasat.sig.sites)
+
+names(sig.sites.list) <- c("h3122.criz",	"hcc78.criz",	"h2228.criz",	"ste1.criz",	"pc9.erl",	"hcc4006.erl",	"hcc827.erl",	"h3122.pr",	"pc9.pr",	"h1781.afat",	"h2286.dasat",	"h366.dasat")
+
+make.sig.site.heatmap.full("10.53.10", all_results, sig.sites.list, CCCN_sites, heatmap_path, "10.53.10.sig.sites.heatmap.jpeg", image_width=6, image_height=15)
+
+make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, heatmap_path, "130.141.111.sig.sites.heatmap.jpeg", image_width=6, image_height=15)
+
+#Make sig site heatmap only for the experiments that have reps
+make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, filepath = heatmap_path, filename = "130.141.111.sig.sites.heatmap.reps.only.jpeg", image_width=6, image_height=20)
+
+#Make a heatmap showing the significance of the sites in 130.141.111 that are phosphorylated by SRC family kinases
+src_substrates <- c("ARHGAP35 p Y1105","CDK5 Y15", "CTNND1 p Y228", "PRKCD p Y334", "PTK2 p Y576", "PTPN6 p Y536", "PTPRA p Y798", "PTTG1IP p Y174", "PXN p Y88", "STAT3 p Y705")
+
+src.sig <- make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = src_substrates, heatmap_path, "130.141.111.sig.src.substrates.heatmap.jpeg", image_width=7, image_height=6)
+
+```
+
+```{r Make Sub Cluster Heatmaps}
+
+#Make a heatmap showing the significance of the sites in 130.141.111 that are phosphorylated by SRC family kinases
+src_substrates <- c("ARHGAP35 p Y1105","CDK5 Y15", "CTNND1 p Y228", "PRKCD p Y334", "PTK2 p Y576", "PTPN6 p Y536", "PTPRA p Y798", "PTTG1IP p Y174", "PXN p Y88", "STAT3 p Y705")
+
+src.sig <- make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = src_substrates, heatmap_path, "130.141.111.sig.src.substrates.heatmap.jpeg", image_width=7, image_height=6)
+
+#Make heatmap showing means of replicates for all experiments where the cluster is enriched and the site is a 
+#known substrate of SRC family kinases. Make the rows (sites) in the same order as they were in the sig site heatmap.
+
+src.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = src_substrates, filepath = heatmap_path, filename ="130.141.111.means.src.substrates.heatmap.jpeg", image_width = 7, image_height = 6, mean_values = TRUE, custom_order = TRUE, custom_order_vector = rownames(src.sig))
+
+#############
+#Negative regulation of growth factor signaling (cluster 130.141.111)
+neg_reg <- c("PTPN6 p Y564", "PTPRA p Y798", "ERRFI1 p Y394", "EGFR p Y1197", "EPS8 p Y525", "TNK2 p Y859")
+
+neg.reg.sig <- make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = neg_reg, heatmap_path, "130.141.111.sig.neg.reg.heatmap.jpeg", image_width=7, image_height=6)
+
+neg.reg.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = neg_reg, filepath = heatmap_path, filename ="130.141.111.means.neg.reg.heatmap.jpeg", image_width = 7, image_height = 6, mean_values = TRUE, custom_order = TRUE, custom_order_vector = rownames(neg.reg.sig))
+
+##############
+#Substrates of ABL-family kinases
+abl_substrates = c("ARHGAP35 p Y1105", "CDK5 p Y15", "EGFR p Y1197", "PTPN11 p Y584", "PTPN6 p Y536", "PXN p Y118", "WASL p Y256")
+
+abl.sig <- make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = abl_substrates, heatmap_path, "130.141.111.sig.abl.substrates.heatmap.jpeg", image_width=7, image_height=6)
+
+abl.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = abl_substrates, filepath = heatmap_path, filename ="130.141.111.means.abl.substrates.heatmap.jpeg", image_width = 7, image_height = 6, mean_values = TRUE, custom_order = TRUE, custom_order_vector = rownames(abl.sig))
+
+##############
+#Substrates of EGFR
+
+egfr_substrates <- c("CTNND1 p Y228", "EGFR p Y1197", "GPRC5A p Y350", "PRKCD p Y334")
+
+egfr.sig <- make.sig.site.heatmap.full("130.141.111", all_results, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = egfr_substrates, heatmap_path, "130.141.111.sig.egfr.substrates.heatmap.jpeg", image_width=7, image_height=4)
+
+egfr.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "h2228.criz", "ste1.criz", "pc9.erl", "hcc827.erl",	"pc9.pr", "h1781.afat", "h2286.dasat", "h366.dasat"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = egfr_substrates, filepath = heatmap_path, filename ="130.141.111.means.egfr.substrates.heatmap.jpeg", image_width = 7, image_height = 4, mean_values = TRUE, custom_order = TRUE, custom_order_vector = rownames(egfr.sig))
+
+```
+
+```{r Get stats on distributions of values}
+
+#When working on the heatmaps, noticed that HCC827.erl seems to have an excess of sig up sites, and h2228.crizseems to have an excess of sig down sites, at least for the clusters I have looked at. Want to check whether this is true for the dataset as a whole. For each cell-line/drug combo calculate mean of replicates. Then calculate mean, median, 25th and 75th percentiles for all observed sites in gz.cf.
+
+#selected_experiments is a list with experiment (e.g., h3122.criz) as name and character vector of names of replicates as value for each element in the list, calculate the rowMean of the columns from node_data_ptm_cluster whose names correspond to the names of the replicates for that experiment
+
+#Start with gz.cf.good.col.names (same as gz.cf but uses standardized names for the replicates as found in the list called experiments). Change the 0's to NA's so they won't get counted in the means
+gz.cf.good.col.names.na <- gz.cf.good.col.names
+gz.cf.good.col.names.na[gz.cf.good.col.names.na == 0] <- NA
+
+#Keep only the rows for site--these have NodeID = peptide
+gz.cf.good.col.names.na <- gz.cf.good.col.names.na[ which(gz.cf.good.col.names.na$Node.ID == "peptide"),]
+
+#Calculate the mean of replicates for each cell-line/drug combo
+exp_means <- sapply(1:length(experiments),function(x){rowMeans(gz.cf.good.col.names.na[experiments[[x]]], na.rm = TRUE)})
+exp_means <- as.data.frame(exp_means)
+rownames(exp_means) <- gz.cf.good.col.names.na$id
+colnames(exp_means) <- names(experiments)
+
+#Calculate mean over all sites for each cell-line/drug combo
+all_sites_mean <- colMeans(exp_means, na.rm = TRUE)
+
+#Calculate median over all sites for each cell-line/drug combo
+all_sites_median <- apply(exp_means, 2, function(x){median(x, na.rm = TRUE)})
+
+#Calculate 25th and 75th percentiles for each cell-line/drug combo
+all_sites_25 <- apply(exp_means, 2, function(x){quantile(x, probs= c(0.25), na.rm = TRUE)})
+all_sites_75 <- apply(exp_means, 2, function(x){quantile(x, probs= c(0.75), na.rm = TRUE)})
+
+#Find the min and max
+all_sites_min <- apply(exp_means, 2, function(x){min(x, na.rm = TRUE)})
+all_sites_max <- apply(exp_means, 2, function(x){max(x, na.rm = TRUE)})
+
+#Put all stats in a single table and write to a file
+all_sites_stats <- cbind(all_sites_min, all_sites_25, all_sites_median, all_sites_75, all_sites_max, all_sites_mean)
+colnames(all_sites_stats) <- c("min", "percentile25", "median", "percentile75", "max", "mean")
+write.table(all_sites_stats, file = paste(heatmap_path, "all_sites_stats.txt", sep=""), sep = "\t", quote = FALSE, row.names=TRUE, col.names = NA)
+```
+
+#Cluster Enrichment Analysis with Normalized Site Values
+Analysis of the distributions of site values in the different experiments indicates that there aren't really any outliers. However, the range for each of the stats is quite large and the experiments are pretty evenly distributed within the range. For example, the median ranges from -1.710729129 for h2228.criz to 0.153998799 for hcc78.criz.
+
+Currently, I am selecting sites that are up or down by 2.25-fold. Converted to log2 that is less -1.17 or than greater than 1.17. That means that for h2228.criz and h1781.afat, half the sites are low enough to be considered sig down. This is biologically highly implausible.
+
+Notably, the experiments with at least three replicates: h3122.criz, h3122.pr, pc9.erl, pc9.pr have the least extreme means. They are right in the middle of the distribution when the means are ranked in numerical order. The mean of means for these 4 experiments (-0.590128859) is almost equal to the mean of means for all 12 experiments (-0.593760376). 
+
+(The only other experiment with more than one rep--hcc78.criz, which has two reps--is a little more extreme. It's mean is ranked third highest and its median is the highest. If you include hcc78.criz along with the 4 exps with at least 3 reps, the mean of means is -0.477292143.)
+
+This suggests that a major reason for the wide variability in distribution of values across experiments may be due lack of replicates. 
+
+In order to draw any meaningful conclusions from looking at values of sites in individual clusters, the experiments will have to be normalized in some way.
+
+What is the best way to normalize? Don't want to z-score--changing the width of the distributions might obscure sites that really are significantly changed. Could set the mean of each experiment to 0 (non-log transformed ratio = 1); however, this could obscure the fact that drug treatment tends to cause more down-reg than up-reg of sites. Plan: adjust the values so the mean for each exp is equal to the mean of means for all exps (-0.593760376).
+
+Repeat the cluster enrichment analysis using new method to select sig sites:
+1. Calculate means of replicates
+2. Calculate mean of all sites in each experiment (note: need to remove gene rows from gz.df)
+3. Calculate mean of means over all experiments
+4. Normalize each exp so the mean value is equal to the mean of means over all experiments. To do this, first subtract the individual experiment mean (sets mean to 0), then add the mean of means to each value.
+5. Select sites with values > log2(2.25) or < log2(-2.25)
+6. Proceed with the enrichment analysis as before.
+
+
+```{r normalize site values}
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#Make a list where each element is the names of the replicates of a particular drug/cell-line combo and the
+#name of the element is the name of the drug/cell-line combo in the all_results table. This will make it easier to 
+#select data for the heatmaps.
+
+experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("TC.H2228.Criz.1"), c("TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("TC.HCC4006.Erl.1"), c("TC.HCC827.Erl.1"), c("SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3"), c("SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3"), c("TC.H1781.Afat.1"), c("TC.H2286.Dasat.1"), c("TC.H366.Dasat.1"))
+
+names(experiments) <- colnames(all_results)[2:13]
+
+#Change the 0's to NA's so they won't get counted in the means
+gz.cf.good.col.names.na <- gz.cf.good.col.names
+gz.cf.good.col.names.na[gz.cf.good.col.names.na == 0] <- NA
+
+#Keep only the rows for sites--these have NodeID = peptide
+gz.cf.good.col.names.na <- gz.cf.good.col.names.na[ which(gz.cf.good.col.names.na$Node.ID == "peptide"),]
+
+#Calculate the mean of replicates for each cell-line/drug combo
+exp_means <- sapply(1:length(experiments),function(x){rowMeans(gz.cf.good.col.names.na[experiments[[x]]], na.rm = TRUE)})
+exp_means <- as.data.frame(exp_means)
+rownames(exp_means) <- gz.cf.good.col.names.na$id
+colnames(exp_means) <- names(experiments)
+
+#Calculate mean over all sites for each cell-line/drug combo
+all_sites_mean <- colMeans(exp_means, na.rm = TRUE)
+
+#Calculate mean of means for all experiments
+mean_of_means <- mean(all_sites_mean)
+
+#Subtract the column mean from each value in a column (sets mean to 0), then add the mean of means (sets mean to be equal to the mean of means). Use the scale function
+
+#Note: scale _subtracts_ the value of center from each value. Since we want to subtract the column mean but add the mean_of_means, we need to pass the positive of the column means and the negative of the mean_of_means
+adj_value <- all_sites_mean - mean_of_means
+exp_means_norm_m <- scale(exp_means, center = adj_value, scale = FALSE)
+exp_means_norm <- as.data.frame(exp_means_norm_m)
+
+
+```
+
+```{r get sig changed normalized sites}
+h3122.pr.columns <- c("id", "Gene.Name", "H3122SEPTM.PR1.ratio", "H3122SEPTM.PR2.ratio", "H3122SEPTM.PR3.ratio")
+h3122.pr.sig.sites <- get.sig.sites(columns = h3122.pr.columns)
+nrow(h3122.pr.sig.sites)
+write.table(h3122.pr.sig.sites, file = paste(sig_site_file_path, "H3122-PR-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
+h3122.pr.enrich <- cluster_enrichment(CCCN_sites, h3122.pr.sig.sites, all_tally)
+
+
+get.norm.sig.sites <- function(site.df = exp_means_norm, column, threshold = 2.25, filepath = norm.sig.site.filepath) {
+  #Select the desired experiment from the sites table
+  site.df.exp <- site.df[column]
+  #Select sites that meet the threshold (up or down) for the desired experiment
+  site.df.exp$count_up <- rowSums(site.df.exp[1] > log2(threshold))
+  site.df.exp$count_down <- rowSums(site.df.exp[1] < -log2(threshold))
+  site.df.sig <- site.df.exp[which((site.df.exp$count_down == 1) | (site.df.exp$count_up == 1)),]
+  print(paste(column, ": ", nrow(site.df.sig), sep = ""))
+  out.file <- paste(filepath, column, ".norm.sig.sites.txt", sep = "")
+  write.table(site.df.sig, file = out.file, sep = "\t", quote = FALSE, col.names=NA)
+  return(site.df.sig)
+}
+
+norm.sig.site.filepath = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised/NormSigSites/"
+test <- lapply(names(experiments), function(x) {get.norm.sig.sites(column = x)})
+test2 <- lapply(names(experiments), function(x) {get.norm.sig.sites(site.df = exp_means, column = x)})
+
+
+lapply(1:length(sig.sites.list), function(x) {get.directions(sig.sites.list[[x]])})
+
+h3122.criz.norm.sig.sites <- get.norm.sig.sites(column = "h3122.criz")
+
+h3122.pr.norm.sig.sites <- get.norm.sig.sites(column = "h3122.pr")
+
+h2228.criz.norm.sig.sites <- get.norm.sig.sites(column = "h2228.criz")
+
+```
+
+```{r make heatmaps of experiments with replicates only}
+
+##############
+#All of cluster 130.141.111
+
+#Make sig site heatmap only for the experiments that have reps
+sig.130.141.111 <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, filepath = heatmap_path_reps, filename = "reps.only.130.141.111.sig.sites.heatmap.jpeg", image_width=6, image_height=20)
+
+#Make heatmap showing median values for sites in cluster for the experiments with replicates where the cluster was enriched
+reps.only.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"), rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.medians.heatmap.jpeg", image_width = 6, image_height = 20, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111))
+
+#Make heatmap showing mean values for sites in cluster for the experiments with replicates where the cluster was enriched
+reps.only.130.141.111.mean <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"), rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.means.heatmap.jpeg", image_width = 6, image_height = 20, aggregate_reps = "mean", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111))
+
+##############
+#Substrates of ABL-family kinases
+abl_substrates = c("ARHGAP35 p Y1105", "CDK5 p Y15", "EGFR p Y1197", "PTPN11 p Y584", "PTPN6 p Y536", "PXN p Y118", "WASL p Y256")
+
+abl.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = abl_substrates, heatmap_path_reps, "reps.only.130.141.111.sig.abl.substrates.heatmap.jpeg", image_width=7, image_height=6)
+
+abl.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl",	"pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = abl_substrates, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.abl.substrates.heatmap.jpeg", image_width = 7, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(abl.sig))
+
+##############
+#Substrates of EGFR
+
+egfr_substrates <- c("CTNND1 p Y228", "EGFR p Y1197", "GPRC5A p Y350", "PRKCD p Y334")
+
+egfr.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = egfr_substrates, heatmap_path_reps, "reps.only.130.141.111.sig.egfr.substrates.heatmap.jpeg", image_width=7, image_height=4)
+
+egfr.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = egfr_substrates, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.egfr.substrates.heatmap.jpeg", image_width = 7, image_height = 4, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(egfr.sig))
+
+#####################
+#SRC substrates in 130.141.111
+src_substrates <- c("ARHGAP35 p Y1105","CDK5 Y15", "CTNND1 p Y228", "PRKCD p Y334", "PTK2 p Y576", "PTPN6 p Y536", "PTPRA p Y798", "PTTG1IP p Y174", "PXN p Y88", "STAT3 p Y705")
+
+src.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = src_substrates, heatmap_path_reps, "reps.only.130.141.111.sig.src.substrates.heatmap.jpeg", image_width=7, image_height=6)
+
+#Make heatmap showing medians of replicates for all experiments where the cluster is enriched and the site is a 
+#known substrate of SRC family kinases. Make the rows (sites) in the same order as they were in the sig site heatmap.
+
+src.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = src_substrates, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.src.substrates.heatmap.jpeg", image_width = 7, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(src.sig))
+
+#############
+#Negative regulation of growth factor signaling (cluster 130.141.111)
+neg_reg <- c("PTPN6 p Y564", "PTPN6 p Y564", "PTPRA p Y798", "ERRFI1 p Y394", "EGFR p Y1197", "EPS8 p Y525", "TNK2 p Y859")
+
+neg.reg.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = neg_reg, heatmap_path_reps, "reps.only.130.141.111.sig.neg.reg.heatmap.jpeg", image_width=7, image_height=6)
+
+neg.reg.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = neg_reg, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.neg.reg.heatmap.jpeg", image_width = 7, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(neg.reg.sig))
+
+#############
+#Plot just sites that are sig in either h3122.criz or hcc78.criz
+  
+h3122.criz.sig <- get.directions(sig.sites.list[["h3122.criz"]])
+h3122.criz.sig.in.clust <- join.with.cluster(h3122.criz.sig, CCCN_sites, "130.141.111", col_name = "h3122.criz")
+h3122.criz.sig.in.clust <- h3122.criz.sig.in.clust[which(!is.na(h3122.criz.sig.in.clust$h3122.criz)),]
+
+hcc78.criz.sig <- get.directions(sig.sites.list[["hcc78.criz"]])
+hcc78.criz.sig.in.clust <- join.with.cluster(hcc78.criz.sig, CCCN_sites, "130.141.111", col_name = "hcc78.criz")
+hcc78.criz.sig.in.clust <- hcc78.criz.sig.in.clust[which(!is.na(hcc78.criz.sig.in.clust$hcc78.criz)),]
+
+#This is the list of sites that are sig in either h3122 or hcc78
+criz.sig.in.clust <- union(h3122.criz.sig.in.clust$id, hcc78.criz.sig.in.clust$id)
+
+criz.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = criz.sig.in.clust, heatmap_path_reps, "reps.only.130.141.111.sig.criz.heatmap.jpeg", image_width=7, image_height=12)
+
+criz.sig.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = criz.sig.in.clust, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.criz.heatmap.jpeg", image_width = 7, image_height = 12, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(criz.sig))
+
+#############
+#Plot just sites that are sig in pc9.erl
+pc9.erl.sig <- get.directions(sig.sites.list[["pc9.erl"]])
+pc9.erl.sig.in.clust <- join.with.cluster(pc9.erl.sig, CCCN_sites, "130.141.111", col_name = "pc9.erl")
+pc9.erl.sig.in.clust <- pc9.erl.sig.in.clust[which(!is.na(pc9.erl.sig.in.clust$pc9.erl)),]
+
+#This is the list of sites that are sig in either h3122 or hcc78
+erl.sig.in.clust <- pc9.erl.sig.in.clust$id
+
+erl.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = erl.sig.in.clust, heatmap_path_reps, "reps.only.130.141.111.sig.erl.heatmap.jpeg", image_width=7, image_height=12)
+
+erl.sig.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = erl.sig.in.clust, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.erl.heatmap.jpeg", image_width = 7, image_height = 12, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(erl.sig))
+
+#############
+#Plot just sites that are sig in pc9.pr
+pc9.pr.sig <- get.directions(sig.sites.list[["pc9.pr"]])
+pc9.pr.sig.in.clust <- join.with.cluster(pc9.pr.sig, CCCN_sites, "130.141.111", col_name = "pc9.pr")
+pc9.pr.sig.in.clust <- pc9.pr.sig.in.clust[which(!is.na(pc9.pr.sig.in.clust$pc9.pr)),]
+
+#This is the list of sites that are sig in either h3122 or hcc78
+pr.sig.in.clust <- pc9.pr.sig.in.clust$id
+
+pr.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = pr.sig.in.clust, heatmap_path_reps, "reps.only.130.141.111.sig.pr.heatmap.jpeg", image_width=7, image_height=8)
+
+pr.sig.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = pr.sig.in.clust, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.pr.heatmap.jpeg", image_width = 7, image_height = 8, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(pr.sig))
+
+#############
+#Plot sites that are sig in criz (either h3122 or hcc78), erl, and pr
+
+
+#This is the list of sites that are sig in either h3122 or hcc78
+all.sig.in.clust <- intersect(intersect(criz.sig.in.clust, erl.sig.in.clust), pr.sig.in.clust)
+
+all.sig <- make.sig.site.heatmap.full("130.141.111", all_results_reps, sig.sites.list, CCCN_sites, entire_cluster = FALSE, site_list = all.sig.in.clust, heatmap_path_reps, "reps.only.130.141.111.sig.all.heatmap.jpeg", image_width=7, image_height=6)
+
+all.sig.130.141.111 <- make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz", "pc9.erl", "pc9.pr"),rep_list = experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, entire_cluster = FALSE, site_list = all.sig.in.clust, filepath = heatmap_path_reps, filename ="reps.only.130.141.111.meds.all.heatmap.jpeg", image_width = 7, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(all.sig))
+
+#Calculate number of sites in cluster sig in at least one drug, two drugs, all three drugs
+#sig.130.141.111 has sites in 130.141.111 marked as 1 (sig), -1 (sig), or NA for h3122.criz, hcc78.criz, pc9.erl, pc9.pr). We want a column that will have NA only if both criz experiments are NA and will have a number otherwise. Taking the mean of the criz columns will accomplish this. Then drop the original criz columns. Then make a column with the count of columns (drugs) that are NA.
+
+sig.count <- sig.130.141.111
+sig.count$both.criz <- rowMeans(sig.count[c("h3122.criz", "hcc78.criz")], na.rm = TRUE)
+sig.count <- sig.count[3:4]
+sig.count$sum_na <- apply(sig.count, 1, function (x){sum(is.na(x))})
+
+#count sig in no drugs, at least one, and both
+no.drugs <- nrow(sig.count[which(sig.count$sum_na == 2),]) #35
+one.drug <- nrow(sig.count[which(sig.count$sum_na < 2),]) #57
+two.drugs <- nrow(sig.count[which(sig.count$sum_na < 1),]) #18
+```
+New, new plan:
+-Eric Haura suggested dropping PR171 from analysis--it was only used as a control to see if enriching for Ub PTMs was working
+-Also suggested comparing all drug treated together as one group against untreated; a variation on this is to keep the drugs separate but treat all cell lines for each drug as biological replicates.
+
+-Calculate medians for:
+h3122.criz
+hcc78.criz
+pc9.erl
+all criz (h3122.criz, ste1.criz, hcc78.criz, h2228.criz)
+all erl (pc9.erl, hcc4006.erl, hcc827.erl)
+all dasat (h2286.dasat, h366.dasat)
+all drug (h3122.criz, ste1.criz, hcc78.criz, h2228.criz, pc9.erl, hcc4006.erl, hcc827.erl, h2286.dasat, h366.dasat, h1781.afat)
+
+-Require that there be at least two reps when calculating the median
+
+-Select sites where the median is greater than 2.25-fold.
+
+Notes: Don't do afat alone because there is only one replicate; using medians is an extension of the previous plan where we selected sites that had at least two experiments that met the threshold. As long as there are more than two replicates, picking the median means that at least two met the threshold. The more replicates there are, the higher number that must meet the threshold. In cases where there are only two reps, the selection criteria are relaxed--a site can be selected if only one meets the threshold as long as the value is extreme enough to offset the other value that does note meet the threshold.
+
+
+```{r find enriched clusters}
+
+#Remove rows with gene name "NA" from gz.cf
+gz.cf.good.gene.names <- gz.cf[which(!(gz.cf$Gene.Name == "NA")),]
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf.good.gene.names
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#For the sets of samples of interest, make a list where each element is the names of the replicates for that set  and the name of the element is the name of the set.
+
+good_experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.H2228.Criz.1", "TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1"), c("TC.H2286.Dasat.1", "TC.H366.Dasat.1"), c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.H2228.Criz.1", "TC.STE.1.Criz.1", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1", "TC.H2286.Dasat.1", "TC.H366.Dasat.1", "TC.H1781.Afat.1"))
+
+names(good_experiments) <- c("h3122.criz", "hcc78.criz", "pc9.erl", "all.criz", "all.erl", "all.dasat", "all.drug")
+
+#Change the 0's to NA's so they won't get counted in the means
+gz.cf.good.col.names.na <- gz.cf.good.col.names
+gz.cf.good.col.names.na[gz.cf.good.col.names.na == 0] <- NA
+
+
+#Keep only the rows for sites--these have NodeID = peptide
+gz.cf.good.col.names.na <- gz.cf.good.col.names.na[ which(gz.cf.good.col.names.na$Node.ID == "peptide"),]
+
+#Calculate the median of replicates for each set; only calculate the median if there are at least two reps in the set; otherwise return NA
+set_meds <- sapply(1:length(good_experiments),function(x){rowMedians_w_reps_df(gz.cf.good.col.names.na[good_experiments[[x]]])})
+set_meds <- as.data.frame(set_meds)
+rownames(set_meds) <- gz.cf.good.col.names.na$id
+colnames(set_meds) <- names(good_experiments)
+
+
+sig.site.meds.filepath = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised2/SigSitesMeds/"
+sig.site.meds.list <- lapply(names(good_experiments), function(x) {get.sig.sites.meds(column = x)})
+names(sig.site.meds.list) <- names(good_experiments)
+#Count number of non-NA sites for each set
+num.sites <- apply(set_meds, 2, function(x) {sum(!is.na(x))})
+
+#Remove rows from CCCN_sites where gene name is NA. These rows have already been removed from gz.cf.good.col.names.na
+CCCN_sites <- CCCN_sites[CCCN_sites$Site %in% gz.cf.good.col.names.na$id,]
+#Do cluster enrichment with the selected sites
+enrich.list <- lapply(1:length(good_experiments),function(x){cluster_enrichment(CCCN_sites, sig.site.meds.list[[x]], all_tally)})
+
+enrich.list.formatted <- lapply(1:length(enrich.list),function(x){format_enrichment_table(enrich.list[[x]], names(good_experiments)[x], p_value = 0.05)})
+
+#Reduce is a magic function that sequentially performs the joining function on elements of the list so you end up with a single table 
+enrich.table <- Reduce(full_join, enrich.list.formatted)
+
+enrich.table$num_set <- rowSums(!is.na(enrich.table[2:8]))
+
+write.table(enrich.table, file = paste(results_table_file_path, "enrichment_results_meds_05.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+num_enriched <- apply(enrich.table[2:8], 2, function(x) {sum(!is.na(x))})
+mean_num_enriched <- mean(num_enriched)
+
+```
+
+```{r make heatmaps}
+#Make sig site heatmap for 130.141.111; show all sets of exps even though cluster is not enriched in a couple of cases
+sig.130.141.111 <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.heatmap.jpeg", image_width=6, image_height=20)
+
+meds.130.141.111 <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.medians.heatmap.jpeg", image_width = 6, image_height = 20, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111))
+
+
+#Negative regulation of growth factor signaling (cluster 130.141.111)
+neg_reg <- c("PTPN6 p Y536","PTPN6 p Y564","PTPRA p Y798", "ERRFI1 p Y394", "EPS8 p Y525", "TNK2 p Y859", "MAPK14 p Y182")
+
+sig.130.141.111.neg.reg <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.neg.reg.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = neg_reg)
+
+meds.130.141.111.neg.reg <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.neg.reg.heatmap.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.neg.reg), entire_cluster = FALSE, site_list = neg_reg)
+ 
+meds.130.141.111.neg.reg <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.neg.reg.heatmap.red.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.neg.reg), entire_cluster = FALSE, site_list = neg_reg, color = "red")
+
+#####################
+#SRC substrates in 130.141.111
+src_substrates <- c("ARHGAP35 p Y1105","CDK5 Y15", "CTNND1 p Y228", "PRKCD p Y334", "PTK2 p Y576", "PTPN6 p Y536", "PTPN6 p Y564", "PTPRA p Y798", "PTTG1IP p Y174", "PXN p Y88", "STAT3 p Y705")
+
+sig.130.141.111.src <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.src.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = src_substrates)
+
+meds.130.141.111.src <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.src.heatmap.yellow.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.src), entire_cluster = FALSE, site_list = src_substrates, color = "yellow")
+
+#############
+#Substrates of ABL-family kinases
+abl_substrates = c("ARHGAP35 p Y1105", "CDK5 p Y15", "EGFR p Y1197", "PTPN11 p Y584", "PTPN6 p Y536", "PTPN6 p Y564", "PXN p Y118", "WASL p Y256")
+
+sig.130.141.111.abl <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.abl.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = abl_substrates)
+
+meds.130.141.111.abl <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.abl.heatmap.yellow.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.abl), entire_cluster = FALSE, site_list = abl_substrates, color = "yellow")
+
+##############
+#Substrates of EGFR
+
+egfr_substrates <- c("CTNND1 p Y228", "EGFR p Y1197", "GPRC5A p Y350", "PRKCD p Y334")
+
+sig.130.141.111.egfr <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.egfr.heatmap.jpeg", image_width=6, image_height=4, entire_cluster = FALSE, site_list = egfr_substrates)
+
+meds.130.141.111.egfr <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.egfr.heatmap.yellow.jpeg", image_width = 6, image_height = 4, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.egfr), entire_cluster = FALSE, site_list = egfr_substrates, color = "yellow")
+
+#Count number of sites in cluster sig in at least one set
+sig.count <- sig.130.141.111
+sig.count$num_na <- apply(sig.count, 1, function (x){sum(is.na(x))})
+
+#Signaling downstream of EGFR and/or EGFR substrates
+downstream_egfr = c("ARHGAP35 p Y1105", "GAB1 p Y659", "GPRC5A p Y350", "PTPN11 p Y584", "STAT3 p Y705", "CTNND1 p Y228", "EGFR p Y1197", "PRKCD p Y334")
+
+
+sig.130.141.111.downstream.egfr <- make.sig.site.heatmap.full("130.141.111", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_meds, filename = "meds.130.141.111.sig.sites.downstream.egfr.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = downstream_egfr)
+
+meds.130.141.111.downstream.egfr <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_meds, filename ="meds.130.141.111.downstream.egfr.heatmap.yellow.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.130.141.111.downstream.egfr), entire_cluster = FALSE, site_list = downstream_egfr, color = "yellow")
+
+
+one.set <- sum(sig.count$num_na < 7) #49
+```
+#Analysis of Cluster 180.173.39
+Top cluster in pc9.erl and all.drug
+Also enriched in h3122.criz, all.criz, and all.erl
+
+```{r make heatmaps 180.173.39}
+
+heatmap_path_180.173.39 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised2/ClusterHeatmapsMeds_180.173.39/"
+
+#Make sig site heatmap for 180.173.39; do not show hcc78.criz or all.dasat because these sets have no values for any site in the cluster.
+sig.site.selected <- sig.site.meds.list[c("h3122.criz", "pc9.erl","all.criz", "all.erl", "all.drug")]
+sig.180.173.39 <- make.sig.site.heatmap.full("180.173.39", enrich.table, sig.site.selected, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_180.173.39, filename = "meds.180.173.39.sig.sites.heatmap.jpeg", image_width=6, image_height=10)
+
+meds.180.173.39 <- make.top.cluster.heatmap(exp = names(sig.site.selected), rep_list = good_experiments, cluster = "180.173.39", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_180.173.39, filename ="meds.180.173.39.medians.heatmap.jpeg", image_width = 6, image_height = 10, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.180.173.39))
+```
+
+From visual inspection of the 180.173.39 heatmaps, it looks like the only experiments with data for any sites in this cluster are the SEPTM experiments: H3122/criz and PC9/erl. Verify whether this is the case
+```{r check 180.173.39 experiments}
+
+sites_in_cluster <- CCCN_sites[which(CCCN_sites$Cluster == "180.173.39"), c("Site")]
+
+gz.cf.180.173.39 <- gz.cf.good.col.names[gz.cf.good.col.names$id %in% sites_in_cluster, c("id", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1")]
+
+#For the ambiguous sites, use only one site id per row to make the table easier to read
+gz.cf.180.173.39$id <- sub(";.*", "", gz.cf.180.173.39$id)
+
+gz.cf.180.173.39
+
+#Result: there is data for all SEPTM experiments except SEPTM.PC9.PR171.3 and there is no data for any TC experiment
+
+```
+
+#180.173.39 only has data for the SEPTM experiments (h3122.criz and pc9.erl). Moreover, although it is the most enriched cluster for all.drug, there is only one site in the cluster (NBEA ubK2353) that is sig down in both criz and erl. All of the other sites that are sig down in all.drug are sig down in criz or erl but not both. They are down so much in one or other drug that it drags the overall median for all.drug below the threshold. This is an interesting cluster for comparing the response to criz and erl, but isn't a very good example of universal "all drug" response. Therefore, just show h3122.criz and pc9.erl columns in the heatmaps.
+```{r make heatmaps 180.173.39 v2}
+
+heatmap_path_180.173.39 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised2/ClusterHeatmapsMeds_180.173.39/"
+
+#Make sig site heatmap for 180.173.39; do not show hcc78.criz or all.dasat because these sets have no values for any site in the cluster.
+sig.site.selected <- sig.site.meds.list[c("h3122.criz", "pc9.erl")]
+sig.180.173.39 <- make.sig.site.heatmap.full("180.173.39", enrich.table, sig.site.selected, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_180.173.39, filename = "meds.180.173.39.sig.sites.heatmap.small.jpeg", image_width=4, image_height=10)
+
+meds.180.173.39 <- make.top.cluster.heatmap(exp = names(sig.site.selected), rep_list = good_experiments, cluster = "180.173.39", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_180.173.39, filename ="meds.180.173.39.medians.heatmap.small.jpeg", image_width = 4, image_height = 10, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.180.173.39))
+```
+
+Want to find another cluster enriched for all.drug that has observations for most samples
+```{r check all.drug enriched clusters}
+
+check.cluster.sites <- function(cluster, cluster_list = CCCN_sites, all_sites = gz.cf.good.col.names) {
+  sites_in <- cluster_list[which(cluster_list$Cluster == cluster), c("Site")]
+  sites_subset <- all_sites[gz.cf.good.col.names$id %in% sites_in, c("id", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1")]
+  
+  #For the ambiguous sites, use only one site id per row to make the table easier to read
+  sites_subset$id <- sub(";.*", "", sites_subset$id)
+
+  return(sites_subset)
+}
+
+gz.cf.111.457.239 <- check.cluster.sites(cluster = "111.457.239")
+gz.cf.111.457.239 #Only 5 sites; no obs for TC experiments
+
+gz.cf.107.119.98 <- check.cluster.sites(cluster = "107.119.98")
+gz.cf.107.119.98 #No observations for TC experiments; many obs missing for SETPM experiments
+
+gz.cf.182.208.30 <- check.cluster.sites(cluster = "182.208.30")
+gz.cf.182.208.30 #data for 7/25 experiments; TC only
+
+gz.cf.65.35.34 <- check.cluster.sites(cluster = "65.35.34")
+gz.cf.65.35.34 #data for 9/25 experiments; SEPTM only
+
+gz.cf.166.204.74 <- check.cluster.sites(cluster = "166.204.74")
+gz.cf.166.204.74 #only 5 sites; data for 4/25 experiments; TC only
+
+gz.cf.57.41.40 <- check.cluster.sites(cluster = "57.41.40")
+gz.cf.57.41.40 #data for 9/25 experiments; TC only
+
+gz.cf.93.147.40 <- check.cluster.sites(cluster = "93.147.40") #only 5 sites; data for 4/25 exps; TC only
+gz.cf.37.173.39 <- check.cluster.sites(cluster = "37.173.39") #only 3 sites; data for 10/25 exps; SEPTM only
+gz.cf.34.173.39 <- check.cluster.sites(cluster = "34.173.39") #data for 11/25 exps; SEPTM only
+gz.cf.346.119.98 <- check.cluster.sites(cluster = "346.119.98") #only 3 sites; data for 9/25 exps; SEPTM only
+gz.cf.69.75.64 <- check.cluster.sites(cluster = "69.75.64") #data for 9/25 exps; TC only
+gz.cf.108.114.173 <- check.cluster.sites(cluster = "108.114.173") #data for 6/25 exps; SEPTM only
+gz.cf.272.114.173 <- check.cluster.sites(cluster = "272.114.173") #data for 6/25 exps; SEPTM only
+gz.cf.55.157.56 <- check.cluster.sites(cluster = "55.157.56") #data for 12/25 exps; SEPTM only
+gz.cf.92.91.86 <- check.cluster.sites(cluster = "92.91.86") #data for 6/25 exps; SEPTM only
+gz.cf.175.10.10 <- check.cluster.sites(cluster = "175.10.10") #data for 16/25 exps; TC and SEPTM only criz and erl
+gz.cf.38.41.40 <- check.cluster.sites(cluster = "38.41.40") #data for 11/25 exps; TC only; 45 sites
+gz.cf.128.139.65 <- check.cluster.sites(cluster = "128.139.65") #only 6 sites; data for 11/25 exps; TC only
+
+```
+What cluster is best for looking at sites affected by all drugs? Unfortunately, most of the clusters enriched in all.drug only have data for a few of the experiments. Many are like 180.173.39 and only have data for SEPTM experiments. This means "all.drug" is reduced to just h3122.criz and pc9.erl. 
+
+The best option looks like 38.41.40, which is enriched (barely; p=0.04) in all.drug; also in enriched in all.criz, all.erl, and all.dasat. It has no data for SEPTM, but it does have data for most of the TC experiments including all drugs and several cell lines. It has 45 sites
+```{r make heatmaps 38.41.40}
+
+heatmap_path_38.41.40 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-revised2/ClusterHeatmapsMeds_38.41.40/"
+
+#Make sig site heatmap for 38.41.40
+sig.site.selected <- sig.site.meds.list[c("h3122.criz", "hcc78.criz", "pc9.erl", "all.criz", "all.erl", "all.dasat", "all.drug")]
+sig.38.41.40 <- make.sig.site.heatmap.full("38.41.40", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_38.41.40, filename = "meds.38.41.40.sig.sites.heatmap.jpeg", image_width=6, image_height=16)
+
+meds.38.41.40 <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "38.41.40", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_38.41.40, filename ="meds.38.41.40.medians.heatmap.jpeg", image_width = 6, image_height = 16, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.38.41.40))
+
+####################
+#Actin-related genes in 38.41.40 with sig PTMs in all.drug
+actin_related <- c("ARAP2 p Y77", "ABLIM1 p Y357", "CTTN p S405", "CTNNAL1 p Y536", "EMD p Y94", "RALGPS2 p Y420", "SPRED1 p Y292")
+
+sig.38.41.40.actin <- make.sig.site.heatmap.full("38.41.40", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_38.41.40, filename = "meds.38.41.40.sig.sites.actin.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = actin_related)
+
+meds.38.41.40.actin <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "38.41.40", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_38.41.40, filename ="meds.38.41.40.actin.heatmap.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.38.41.40.actin), entire_cluster = FALSE, site_list = actin_related)
+
+###############
+#PTMs in 38.41.40 that are sig up in all.erl and have known interactions with the EGFR pathway
+egfr_related <- c("ORAI1 p Y300", "PIK3R2 p Y460", "REPS1 p Y126", "SLC9A1 p Y683", "PTPRK p S856", "SNAP23 p Y139", "EPHB2 p Y577", "ZDHHC5 p Y630")
+
+sig.38.41.40.egfr <- make.sig.site.heatmap.full("38.41.40", enrich.table, sig.site.meds.list, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_38.41.40, filename = "meds.38.41.40.sig.sites.egfr.heatmap.jpeg", image_width=6, image_height=6, entire_cluster = FALSE, site_list = egfr_related)
+
+meds.38.41.40.egfr <- make.top.cluster.heatmap(exp = names(good_experiments), rep_list = good_experiments, cluster = "38.41.40", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_38.41.40, filename ="meds.38.41.40.egfr.heatmap.jpeg", image_width = 6, image_height = 6, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.38.41.40.egfr), entire_cluster = FALSE, site_list = egfr_related)
+```
+
+It appears that most of the clusters that are enriched in all.drug have a lot of experiments with 0 observations for all sites in the cluster. Is this generally true for all clusters, or is it something we select for when doing the enrichment with the all.drug data? It is possible that sites that are truly affected by all TKIs are rare, so we only see enrichment for all.drug when a cluster only has data for a subset of the drugs.
+```{r analyze experiments in clusters}
+
+#Make a dataframe with clusters listed in one column and columns of 0's that will be filled in later in the analysis
+cluster.list <- CCCN_sites$Cluster[!duplicated(CCCN_sites$Cluster)]
+num_SEPTM <- rep(0, length(cluster.list))
+num_TC <- rep(0, length(cluster.list))
+cluster.stats <- as.data.frame(cbind(cluster.list, num_SEPTM, num_TC))
+colnames(cluster.stats) <- c("Cluster", "num_SEPTM", "num_TC")
+
+#For each cluster, we are interested in knowing the number of experiments where at least one site has data for the SEPTM set, the TC set, and then for the set of experiments for each drug (criz, erl, dasat, afat)
+SEPTM.exps <- c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3")
+
+TC.exps <- c("TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1")
+
+criz.exps <- c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H2228.Criz.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.STE.1.Criz.1")
+
+erl.exps <- c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2")
+
+dasat.exps <- c("TC.H2286.Dasat.1", "TC.H366.Dasat.1")
+
+afat.exps <- c("TC.H1781.Afat.1")
+
+tally.cluster.exps2 <- function(cluster, exps, cluster_list = CCCN_sites, all_sites = gz.cf.good.col.names) {
+  
+  #For the given cluster, get the rows of gz.cf.good.col.names corresponding to sites in that cluster and the colums for the subset of experiments of interest
+  sites_in <- cluster_list[which(cluster_list$Cluster == cluster), c("Site")]
+  sites_subset <- all_sites[all_sites$id %in% sites_in, exps, drop = FALSE]
+  
+  #Convert all of the non-zero values in each column to 1 and sum them. If the sum for a column is non-zero, that indicates that at least one site in the cluster had data for that experiment. Set the non-zero values to 1. Now, an experiment that had at least one site with data will have a value of 1 and an experiment where no sites were observed will have a value of 0. Sum these values. This yields the total number of experiments in the set that had at least one site observed.
+  sites_subset[sites_subset!= 0] <- 1
+  sums_exps <- colSums(sites_subset)
+  sums_exps[sums_exps > 0] <- 1
+  sum_cat <- sum(sums_exps)
+
+  return(sum_cat)
+}
+
+
+#Calculate for all clusters the number of experiments with at least one site observed for these subsets of experiments: SEPTM, TC, criz, erl, dasat, and afat.
+tally_SEPTM <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = SEPTM.exps)})
+tally_TC <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = TC.exps)})
+tally_criz <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = criz.exps)})
+tally_erl <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = erl.exps)})
+tally_dasat <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = dasat.exps)})
+tally_afat <- sapply(cluster.stats$Cluster, function(x) {tally.cluster.exps2(cluster = x, exps = afat.exps)})
+
+#Add the results of the calculations to the cluster.stats dataframe
+cluster.stats$num_SEPTM <- tally_SEPTM
+cluster.stats$num_TC <- tally_TC
+cluster.stats$num_criz <- tally_criz
+cluster.stats$num_erl <- tally_erl
+cluster.stats$num_dasat <- tally_dasat
+cluster.stats$num_afat <- tally_afat
+cluster.stats$all_drug <- as.numeric((cluster.stats$num_criz != 0) & (cluster.stats$num_erl != 0) & (cluster.stats$num_dasat != 0) & (cluster.stats$num_afat != 0))
+cluster.stats$total_exps <- cluster.stats$num_SEPTM + cluster.stats$num_TC
+
+#Calculate some overall stats for all clusters
+num_SEPTM_only <- sum((cluster.stats$num_TC == 0) & (cluster.stats$num_SEPTM != 0)) #127
+num_TC_only <- sum((cluster.stats$num_SEPTM == 0) & (cluster.stats$num_TC != 0)) #526
+num_both <- sum((cluster.stats$num_SEPTM != 0) & (cluster.stats$num_TC != 0)) #114
+num_no_obs <- sum((cluster.stats$num_SEPTM == 0) & (cluster.stats$num_TC == 0)) #51
+num_all_drug <- sum(cluster.stats$all_drug) #147
+num_SEPTM_TC_all_drug <- sum((cluster.stats$num_SEPTM != 0) & (cluster.stats$num_TC != 0) & (cluster.stats$all_drug != 0)) #58
+
+num_total <- nrow(cluster.stats) #818
+mean_exps <- mean(cluster.stats$total_exps) #4.9
+
+#Now looking only at clusters that are enriched in all.drug
+all.drug.enriched <- c("180.173.39", "111.457.239", "107.119.98", "182.208.30", "65.35.34", "90.28.82", "166.204.74", "57.41.40", "93.147.40", "37.173.39", "34.173.39", "346.119.98", "69.75.64", "108.114.173", "272.114.173", "55.157.56", "92.91.86", "175.10.10", "38.41.40", "128.139.65")
+
+cluster.stats.all.drug.enriched <- cluster.stats[which(cluster.stats$Cluster %in% all.drug.enriched),]
+
+num_SEPTM_only_enriched <- sum((cluster.stats.all.drug.enriched$num_TC == 0) & (cluster.stats.all.drug.enriched$num_SEPTM != 0)) #11
+num_TC_only_enriched <- sum((cluster.stats.all.drug.enriched$num_SEPTM == 0) & (cluster.stats.all.drug.enriched$num_TC != 0)) #7
+num_both_enriched <- sum((cluster.stats.all.drug.enriched$num_SEPTM != 0) & (cluster.stats.all.drug.enriched$num_TC != 0)) #2
+num_no_obs_enriched <- sum((cluster.stats.all.drug.enriched$num_SEPTM == 0) & (cluster.stats.all.drug.enriched$num_TC == 0)) #0
+num_all_drug_enriched <- sum(cluster.stats.all.drug.enriched$all_drug) #2
+num_SEPTM_TC_all_drug_enriched <- sum((cluster.stats.all.drug.enriched$num_SEPTM != 0) & (cluster.stats.all.drug.enriched$num_TC != 0) & (cluster.stats.all.drug.enriched$all_drug != 0)) #0
+num_total_enriched <- nrow(cluster.stats.all.drug.enriched) #20
+mean_exps_enriched <- mean(cluster.stats.all.drug.enriched$total_exps) #6.4
+
+```
+
+Conclusions: Out of 818 total clusters, 114 (14%) had data for both SEPTM and TC experiments and 147 (18%) had data for all four drugs. For just the all.drug enriched clusters, 2/20 (10%) had data for SETPM and TC and 2/20 (10%) had data for all four drugs. The numbers for the all.drug enriched clusters are lower, but not that much lower. That indicates that the all.drug enrichment wasn't selecting for clusters with especially high levels of missing data. The problem is likely to be just an overall high level of missing data, and shouldn't be interpreted to mean that sites affected by all TKIs are rare. Interestingly, the all.drug enriched clusters had data for 6.4 experiments on average, which was higher than the average for all clusters (4.9). The low average for all clusters is influenced by the fact that there are 51 clusters that have no data for any experiments!
