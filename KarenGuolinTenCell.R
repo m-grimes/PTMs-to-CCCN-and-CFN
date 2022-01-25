@@ -875,6 +875,7 @@ gzalltgenecccn.edges $interaction[gzalltgenecccn.edges$Weight>=0.5] <- "positive
 # dim 60282     4
 # in above: save(gzalltgenecccn.edges, gzallt.gene.cccn.g, gzallt.gene.cccn, gzallt.cccn.g, gzallt.cccn, )
 #######################################################################
+# >->-
 # Make CFN with PPI edges
 # Test whether combined.all.ppi from KGFunDataObjects.RData covers the genes
 gzallt.genes.1 <- unique(c(gzalltgenecccn.edges$Gene.1, gzalltgenecccn.edges$Gene.2))

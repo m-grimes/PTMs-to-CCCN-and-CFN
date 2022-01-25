@@ -1,0 +1,311 @@
+---
+title: "CFN and CCCN network construction"
+author: "Mark Grimes"
+date: "1/24/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Purpose
+
+Picking up from Data_Import_and_Clustering, the next tasks are to create a co-cluster correlation network (CCCN); add negative correlation edges proteins modified by different PTMs negatively correlate with each other; generate a cluster-filtered network (CFN) from the CCCN, and compile network attributes and other node properties for graphing networks in Cytoscape.   Functions are in separate documents: 
+
+```{r generate CCCN from PTM clusters}
+# Check that the correct pruned cluster list is bening employed
+length(eu.sp.sed.gzallt)
+ # 838
+length(essgzallt)
+# Pruned length: 818
+# This list was prepared with all data including ratios
+# Adjacency matrix:
+require(plyr)
+gzallt.adj <- rbind.fill.matrix(llply(essgzallt, make.adj.mat))
+rownames(gzallt.adj) <- colnames(gzallt.adj)
+# dim 7398 7398
+gzallt.adj.o <- gzallt.adj[order(rownames(gzallt.adj)), order(colnames(gzallt.adj))]
+gzallt.cccn.1 <- gzallt.cor[rownames(gzallt.cor) %in% rownames(gzallt.adj.o), colnames(gzallt.cor) %in% colnames(gzallt.adj.o)]
+# Check:
+setdiff(rownames(gzallt.adj), rownames(gzallt.cccn.1)) # 0
+length(intersect(rownames(gzallt.adj), rownames(gzallt.cor)))  # 7398 all good
+# Add in correlation as edge values in adjacency matrix:
+gzallt.cccn <- gzallt.cor[intersect(rownames(gzallt.adj.o), rownames(gzallt.cor)), intersect(colnames(gzallt.adj.o), colnames(gzallt.cor))]
+identical(rownames(gzallt.cccn), colnames(gzallt.cccn))
+# [1] TRUE
+dim(gzallt.cccn)
+# 7398 7398
+gzallt.NA <- which(is.na(gzallt.adj.o), arr.ind = TRUE)
+gzallt.cccn <- replace (gzallt.cccn, gzallt.NA, NA)
+# remove self loops
+if(any(!is.na(diag(gzallt.cccn)))) {diag(gzallt.cccn) <- NA}
+## ****
+# Option: Limit to a particlar correlation value like this.
+# gzallt.cccn.halflim <- replace (gzallt.cccn, abs(gzallt.cccn)<0.5, NA)
+#
+# Make igraph object, which cannot have NA values, so replace NA with 0
+gzallt.cccn0 <- gzallt.cccn
+  gzallt.cccn0[is.na(gzallt.cccn0)] <- 0
+gzallt.cccn.g <- graph.adjacency(as.matrix(gzallt.cccn0), mode="lower", diag=FALSE, weighted="Weight")
+#  
+```
+
+## Construct Gene CCCN and CFN
+
+
+```{r construct CCCN and CFN}
+# Construct CCCN for proteins (genes) based on correlations of mod sites: 
+#	Check for unique row and column names
+any(duplicated(rownames(gzallt.cccn)))		#  FALSE
+any(duplicated(colnames(gzallt.cccn)))		#  FALSE
+# Make Gene CCCN
+# Note: Did this on server for large data set, much faster at ddply step
+gzallt.gene.cccn <- data.frame(gzallt.cccn, row.names = rownames(gzallt.cccn), check.rows=TRUE, check.names=FALSE, fix.empty.names = FALSE)
+identical(rownames(gzallt.gene.cccn), colnames(gzallt.gene.cccn)) # TRUE 
+# Extract the gene names from the PTM names
+gzallt.gene.cccn$Gene.Name <- sapply(rownames(gzallt.gene.cccn), function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1])
+length(unique(gzallt.gene.cccn$Gene.Name))   # 2913 
+any(is.na(gzallt.gene.cccn$Gene.Name)) # F
+# gzallt.gene.cccn$Gene.Name[grep("NA", gzallt.gene.cccn$Gene.Name, fixed=TRUE)]
+# All genes with NA in the name, e.g. "CTNNA1"
+# Use only upper triangle so correlations are not duplicated during the next step
+gzallt.gene.cccn[lower.tri(gzallt.gene.cccn)] <- NA	
+# ________________________________
+# Sum correlations in one dimension, then the other dimension
+gzallt.gene.cccn2 <- ddply(gzallt.gene.cccn, .(Gene.Name), numcolwise(function(x) sum(x, na.rm=T)), .progress = "tk")
+dim(gzallt.gene.cccn2)	#	2913 7399
+any(is.na(gzallt.gene.cccn2$Gene.Name)) # F
+# make row names the Gene.Name
+rownames(gzallt.gene.cccn2) <- gzallt.gene.cccn2$Gene.Name
+# remove Gene.Name column
+gzallt.gene.cccn2 <- gzallt.gene.cccn2[, 2:ncol(gzallt.gene.cccn2)]
+# Now transform to sum in the other dimention
+gzallt.gene.cccn2 <- data.frame(t(gzallt.gene.cccn2))
+gzallt.gene.cccn2$Gene <- sapply(rownames(gzallt.gene.cccn2), function (x) unlist(strsplit(x, " ",  fixed=TRUE))[1])
+any(is.na(gzallt.gene.cccn2$Gene)) # F
+# Sum other dimension
+gzallt.gene.cccn3 <- ddply(gzallt.gene.cccn2, .(Gene), numcolwise(function(x) sum(x, na.rm=T)), .progress = "tk")
+dim(gzallt.gene.cccn3)  #  2913 2914
+any(is.na(gzallt.gene.cccn3$Gene)) # F
+# Check row and column names alignment 
+print(gzallt.gene.cccn3[1:20, 1:8])
+tail(data.frame(gzallt.gene.cccn3$Gene, names(gzallt.gene.cccn3[2:ncol(gzallt.gene.cccn3)])))
+# R likes to put dots in column names, which is a problem for ambiguous gene names and gene names with hyphens 
+# E.g., Note punctuation missing for "HLA"  "NKX2" "NME1 in column names
+gzallt.gene.cccn3$Gene[grep("HLA", gzallt.gene.cccn3$Gene)]
+names(gzallt.gene.cccn3)[grep("HLA", names(gzallt.gene.cccn3))]
+# 
+# Work around this problem (once satisfied that the gene names actually match). 
+names(gzallt.gene.cccn3)[2:ncol(gzallt.gene.cccn3)] <- gzallt.gene.cccn3$Gene
+rownames(gzallt.gene.cccn3) <- gzallt.gene.cccn3$Gene
+identical (rownames(gzallt.gene.cccn3), names(gzallt.gene.cccn3[,2:ncol(gzallt.gene.cccn3)])) # TRUE
+# ________________________________
+# Make a adjacency matrix with NAs to index edges only for genes that co-cluster
+gzallt.gene.cccn0 <- gzallt.gene.cccn3[,2:ncol(gzallt.gene.cccn3)]
+# Replace 0 with NA
+gzallt.gene.cccn.na <- zero.to.NA(gzallt.gene.cccn0)
+# Check
+gzallt.gene.cccn.na[1:20, 1:8]
+hist(unlist(gzallt.gene.cccn.na), breaks=1000, col="red", echo=FALSE)
+hist(unlist(gzallt.gene.cccn0), breaks=1000, col="blue", ylim=c(0, 1200), echo=FALSE)
+# Make igraph object
+gzallt.gene.cccn.g <- graph.adjacency(as.matrix(gzallt.gene.cccn0), mode="lower", diag=FALSE, weighted="Weight")
+#  Check for identical edge attributes
+hist(edge_attr(gzallt.gene.cccn.g)[[1]], breaks=1000, col="deepskyblue", ylim=c(0,1200), echo=FALSE)
+# to get the adjacency matrix back, but NOTE, edges are 0 or 1.
+# gzallt.gene.cccn.mat <- as_adjacency_matrix(gzallt.gene.cccn.g, type="both")
+# ________________________________
+# Here is how to make an edge list file
+gzalltgenecccn.edges <- data.frame(as_edgelist(gzallt.gene.cccn.g))
+names(gzalltgenecccn.edges) <- c("Gene.1", "Gene.2")
+gzalltgenecccn.edges$Weight <- edge_attr(gzallt.gene.cccn.g)[[1]]
+gzalltgenecccn.edges$interaction <- "correlation" 
+gzalltgenecccn.edges $interaction[gzalltgenecccn.edges$Weight<=-0.5] <- "negative correlation"
+gzalltgenecccn.edges $interaction[gzalltgenecccn.edges$Weight>=0.5] <- "positive correlation"
+# dim 60282     4
+# 
+#######################################################################```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#  
+```
+
+## Get PPI edges and filter them for CFN
+
+```{r construct CCCN and CFN}
+# Obtain all PPIs for genes in data from several sources
+# To compare the original lung cancer data set to this data set, combine all the gene names
+ldgenes <- get.gene.names.from.peps(rownames(ld.ratio.lim.log2))
+# 4221 genes
+gzgenes <- get.gene.names.from.peps(rownames(kglog2data))
+# 1471 genes
+# Note: Now include genes that were only detected in one experiment
+gzallgenes <- unique(get.gene.names.from.peps(rownames(gzdata.all)))
+# 4054 genes
+length(intersect(ldgenes, gzgenes))  # 1003
+length(intersect(ldgenes, gzallgenes)) # 2138
+combinedgenes <- unique (c(ldgenes, gzallgenes))  # 6137
+#________________________________________
+library(STRINGdb)
+# 		Designate local directory in advance of the following
+# 
+string_db <- STRINGdb$new( version="10", species=9606, score_threshold=0, input_directory="" )	
+string_proteins <- string_db$get_proteins()
+# dim 20457     4
+# Do the whole thing
+#
+combined.str.ids <- string_db$mp(combinedgenes)
+combined.str.net <- string_db$get_interactions(combined.str.ids)
+# dim  541585     16; all: 807803     16
+#	convert to HUGO gene name format 
+# 	duplicates require match function 
+combined.str.net$Gene.1 <- sapply(combined.str.net$from, function(x) string_proteins[match(x, string_proteins$protein_external_id), "preferred_name"])
+combined.str.net$Gene.2 <- sapply(combined.str.net$to, function(x) string_proteins[match(x, string_proteins$protein_external_id), "preferred_name"])
+# combined_score ranges from 150 to 1000
+# experiments is from BIND, DIP, GRID, HPRD, IntAct, MINT, and PID.
+# 	database is from Biocarta, BioCyc, GO, KEGG, and Reactome.
+#	transferred means extrapolated from other species
+#    note: some of these duplcate Pathway Commons sources
+dim(combined.str.net[combined.str.net$experiments>0,])
+# [1] 49327    18; [2] 63871    18
+dim(combined.str.net[combined.str.net$experiments_transferred>0,])
+# [1] 195352    18; [2] 298450     18
+str.e <- combined.str.net[combined.str.net$experiments>0,]
+str.et <- combined.str.net[combined.str.net$experiments_transferred>0,]
+str.d <- combined.str.net[combined.str.net$database>0,]
+str.dt <- combined.str.net[combined.str.net$database_transferred>0,]
+combined.str <- unique(rbind (str.e, str.et, str.d, str.dt))  # 251613 edges; 374352 v2
+combined.str$edgeType <- "STRINGdb"
+combined.str[combined.str$database>0, "edgeType"] <- "database"
+combined.str[combined.str$database_transferred>0, "edgeType"] <- "database"
+combined.str[combined.str$experiments>0, "edgeType"] <- "experiments"
+combined.str[combined.str$experiments_transferred>0, "edgeType"] <- "experiments"
+combined.str$Weight <- rowSums(combined.str[, c("experiments", "experiments_transferred", "database", "database_transferred")])
+range(combined.str$Weight)  # 43 to 2859
+range(log(combined.str$Weight))  #  3.761200 7.958227
+combined.str.edges <- combined.str[,c("Gene.1", "Gene.2", "Weight", "edgeType")]
+# To make them on the same scale as other dbs:
+combined.str.edges$Weight <- combined.str.edges$Weight/1000	
+# ****  edges range(combined.str.edges$Weight) 0.043 2.859
+save(ldgenes, gzallgenes, combinedgenes, combined.str, combined.str.edges, combined.str.ids, combined.str.net,  file=paste(pcpath, "GZ_PPI_Networks2.RData", sep=""))
+#-------------------------	
+#  GeneMANIA Cytoscape app has the ability to export network as text in the Results panel. Manually duplcate the file and delete all but the PPIs for
+gmfilename <- "Combined_GeneMANIA_PPIs2.txt"
+#cat(combinedgenes)
+# 
+combined.GM.net <- read.table(paste(pcpath, gmfilename, sep=""), header=TRUE, sep = "\t", comment.char = "#", na.strings='', quote = "", stringsAsFactors=FALSE, fill=TRUE)
+# dim 567994  6; [2] 1009527      5
+# combined.GM.net <- combined.GM.net[, 1:5]
+# combined.GM.edges <- get.GM.edgefile(paste(pcpath, gmfilename, sep=""), combinedgenes)
+# dim  550380      4; [2] 686055      4
+#  	 The following GM names do not match  
+# CCNA2 CCNB1 CDK4 CKS2 ILK RPA3 RPL32 SRPK1 TUBG1 UPF2 VCAM1 CUL4A ETF1 NHP2 PJA2 POLR2E rcl SNRPD2 SUZ12 UBC RNF2
+# range(combined.GM.net$Weight)
+# [1] 7.509860e-08 6.920997e-01
+# last edge ZRANB2  TRA2B
+# Note: in Cytoscape only the following edges should be included; otherwise edit manually or here.
+unique(combined.GM.net$Type)
+#  "Genetic Interactions"  "Pathway" "Physical Interactions" "Predicted"   
+# Note also that Genetic Interactions may be indirect, and may be excluded for some purposes.
+combined.GM.edges <- combined.GM.net
+names(combined.GM.edges)[4] <- "edgeType"
+# *****
+#------------------------------------------
+# Update Pathway Commons database
+# Pathway commons retrieved from http://www.pathwaycommons.org/archives/PC2/v9/
+# pcname <- "PathwayCommons9.All.hgnc.txt"
+# New version 11 https://www.pathwaycommons.org/archives/PC2/v11/
+pcname <- "PathwayCommons11.All.hgnc.txt"
+pcpath <- "/Volumes/Terra_Byte/R_Archive_2/PC_BioPlex/"
+pcpath <- "/Users/mark_grimes/Software\ Images/" # Laptop
+# load v9 version
+# load(file=paste(pcpath,"pcommons_2018.RData", sep=""))
+load(file=paste(pcpath,"pcommons_2019.RData", sep=""))
+pcfile <- paste(pcpath, pcname, sep="")
+pcommons <- read.table(pcfile, header=TRUE, sep = "\t", comment.char = "#", na.strings='', stringsAsFactors=FALSE, fill=TRUE)
+# Dim  1014008       7
+unique(pcommons$INTERACTION_DATA_SOURCE[grep("PhosphoSite", pcommons$INTERACTION_DATA_SOURCE)])
+# Note: Now Contains PSP info
+unique(pcommons$INTERACTION_DATA_SOURCE[grep("lex", pcommons$INTERACTION_DATA_SOURCE)])
+# But does not contain BioPlex info.
+# Now contains interactions with DNA, RNA, and transcription complexes
+names(pcommons)
+unique(pcommons$INTERACTION_TYPE)
+head(pcommons[grep("DnaReference", pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("RnaReference", pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("ProteinReference", pcommons$INTERACTION_TYPE),1:6])
+# Note the format is different 
+head(pcommons[grep(";", pcommons$PARTICIPANT_B),1:6])
+# But the DNA and RNA interactions can be excluded using 
+head(pcommons[-grep(";", pcommons$PARTICIPANT_B),1:6])
+# There are also metabolites and chemical compounds
+head(pcommons[grep("reacts-with" , pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("used-to-produce" , pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("consumption-controlled-by" , pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("chemical-affects" , pcommons$INTERACTION_TYPE),1:6])
+head(pcommons[grep("controls-production-of", pcommons$INTERACTION_TYPE),1:6])
+# These have names in the format CHEBI:NNNN for compounds.
+# There is no longer "neighbor-of"
+head(pcommons[grep("neighbor" , pcommons$INTERACTION_TYPE),1:6])
+# Convert to Formatting of PPI edge files used in my functions is
+# "Gene.1"   "Gene.2"   "Weight"   "edgeType"
+# But note that Cytoscape now likes the edge names to be
+# "source"     "target"  "Weight"  "interaction"
+# So this will have to be converted for graphing in Cytoscape
+pcnet <- pcommons[-grep("CHEBI:", pcommons$PARTICIPANT_A),1:4]
+pcnet <- pcnet[-grep("CHEBI:", pcnet$PARTICIPANT_B),]
+# Add an arbitrary Weight and rearrange to be consistent with other PPI networks
+pcnet$Weight <- 0.2
+pcnet <- pcnet[, c(1,3,5,2,4)]
+names(pcnet) <- c("Gene.1", "Gene.2", "Weight", "edgeType", "Source")
+# now dim 633126      5 (v9);  594752      5 (v11) 
+# NOTE: still includes gene and mRNA interactions, which may be useful later
+# save(pcnet, file=paste(comp_path,"Dropbox/_Work/R_/pcnet.RData", sep=""))
+# ________________________________#________			
+#  New Network
+#  		BioPlex: Huttlin et al., 2015, Cell 162, 425–440
+#		parameters: incorrect ID (p(Wrong)=pW), background (p(NoInt)=pNI), or a true interactor (p(Int)=pInt) 
+
+bpfilename <- "/Volumes/Terra_Byte/R_Archive_2/PC_BioPlex/BioPlex_interactionList_v4.tsv"
+bioplex <- read.table(bpfilename, header=TRUE, sep = "\t", comment.char = "", na.strings='', stringsAsFactors=FALSE, fill=TRUE)
+# 56553 edges; pInt values range from 0.75 to 1.00
+bioplex <- bioplex[,c("SymbolA", "SymbolB", "pInt")]
+names(bioplex) <- c("Gene.1", "Gene.2", "Weight")
+bioplex$edgeType <- "BioPlex"
+save(pcommons, bioplex, pcnet, enzsub, file=paste(pcpath,"pcommons_2019.RData", sep=""))
+#_______________________________________________________________
+# Karen's enzyme substrate data
+enzsubname <- "iptmnet4.1_enzyme_substrate_relations_scored_simpler.txt"
+enzsubfile <- paste("_LINCS/_KarenGuolin/", enzsubname, sep="")
+enzsub <- read.table(enzsubfile, header=TRUE, sep = "\t", comment.char = "#", na.strings='', stringsAsFactors=FALSE, fill=TRUE)
+# Rearrange and rename to conform to standard format
+enzsub <- enzsub[,c(3,2,4,1)]
+enzsub$Source <- "IP"
+names(enzsub) <- c("Gene.1", "Gene.2", "Weight", "edgeType", "Source")
+#_______________________________________________________________
+# Note also include kinase substrate dataset from PhosphoSite
+head(kinsub)
+#________			
+# Now do Pathway Commons and Bioplex	
+combined.pc.edges <- filter.edges.0(combinedgenes, pcnet)  # 119255 edges	
+combined.bp.edges <- filter.edges.0(combinedgenes, bioplex)  # 6328 edges
+# combined.bp.edges <- combined.bp.edges[,c(1,2,4,3)]
+combined.enzsub.edges <- filter.edges.0(combinedgenes, enzsub)  # 4210 edges	
+# 
+combined.kinsub.edges <- filter.edges.0(combinedgenes, kinsub) # 4086 edges; 4428 with 2019 kinsub
+# Make and "all ppi edge" file for comparisone
+combined.all.ppi <- rbind(combined.enzsub.edges[,1:4], combined.pc.edges[,1:4], combined.bp.edges, combined.GM.edges[,1:4], combined.str.edges, combined.kinsub.edges)
+# 1572925 edges!  1577353 with new kinsub
+combined.all.ppi.g <- graph_from_data_frame(combined.all.ppi)
+#   927576 edges; 1009527 with kinsub
+
+# Make CFN with PPI edges
+# Test whether combined.all.ppi from KGFunDataObjects.RData covers the genes
+gzallt.genes.1 <- unique(c(gzalltgenecccn.edges$Gene.1, gzalltgenecccn.edges$Gene.2))
+combined.ppi.genes <- unique(c(combined.all.ppi$Gene.1, combined.all.ppi$Gene.2))
+leftover <- setdiff(gzallt.genes.1, combined.ppi.genes)  
+
+
+```
