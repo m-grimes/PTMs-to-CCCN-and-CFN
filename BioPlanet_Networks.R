@@ -1228,6 +1228,16 @@ summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoCel))
 plot(tpn.GO$Weight.bp ~ tpn.GO$GoMol, pch=19, col=alpha("magenta", 0.25))
 summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoMol))
 # R-squared:  0.1057 
+# Contrast GO relationships
+plot(tpn.GO$GoCel ~ tpn.GO$GoMol, pch=19, col=alpha("magenta2", 0.25))
+summary(lm(tpn.GO$GoCel ~ tpn.GO$GoMol))
+# R-squared:0.4674
+plot(tpn.GO$GoCel ~ tpn.GO$GoBiol, pch=19, col=alpha("orange3", 0.25))
+summary(lm(tpn.GO$GoCel ~ tpn.GO$GoBio))
+# R-squared:0.4384 
+plot(tpn.GO$GoMol ~ tpn.GO$GoBio, pch=19, col=alpha("green3", 0.25))
+summary(lm(tpn.GO$GoMol ~ tpn.GO$GoBio))
+# R-squared: 0.6049 
 # What pathways are related by GO terms AND clustering? 
 test.bio <- tpn.GO[which(tpn.GO$GoBio>0.5 & tpn.GO$Weight.clust>0.5),]
 test.cel <- tpn.GO[which(tpn.GO$GoCel>0.5 & tpn.GO$Weight.clust>0.5),]

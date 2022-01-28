@@ -96,7 +96,7 @@ tail(data.frame(gzallt.gene.cccn3$Gene, names(gzallt.gene.cccn3[2:ncol(gzallt.ge
 gzallt.gene.cccn3$Gene[grep("HLA", gzallt.gene.cccn3$Gene)]
 names(gzallt.gene.cccn3)[grep("HLA", names(gzallt.gene.cccn3))]
 # 
-# Work around this problem (once satisfied that the gene names actually match). 
+# Work around this problem (once satisfied that the gene names match). 
 names(gzallt.gene.cccn3)[2:ncol(gzallt.gene.cccn3)] <- gzallt.gene.cccn3$Gene
 rownames(gzallt.gene.cccn3) <- gzallt.gene.cccn3$Gene
 identical (rownames(gzallt.gene.cccn3), names(gzallt.gene.cccn3[,2:ncol(gzallt.gene.cccn3)])) # TRUE
