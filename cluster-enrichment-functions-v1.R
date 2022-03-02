@@ -90,7 +90,7 @@ cluster_enrichment <- function(clusters, sig_sites, all_sites_tally) {
 ######################
 #The format_enrichment_table function takes the dataframe output by the cluster_enrichment function and returns
 #a two-column dataframe with the cluster number in the first column and the corrected p-values in the second column.
-#Only rows (cluster) that meet the desired corrected p-value threshold are retained.
+#Only rows (clusters) that meet the desired corrected p-value threshold are retained.
 
 format_enrichment_table <- function(enrich_table, col_name, p_value) {
   #Cluster names are currently the row names. Make the cluster names the first column and deletes the row names.
@@ -443,7 +443,7 @@ rowMedians_w_reps_df <- function(df) {
 }
 
 ##################
-get.sig.sites.meds <- function(site.df = set_meds, column, threshold = 2.25, filepath = sig.site.meds.filepath) {
+get.sig.sites.meds <- function(site.df = group_meds, column, threshold = 2.25, filepath = sig.site.meds.filepath) {
   #Select the desired experiment from the sites table
   site.df.exp <- site.df[column]
   #Select sites that meet the threshold (up or down) for the desired experiment

@@ -24,8 +24,8 @@ options(stringsAsFactors=FALSE)
 # ------------------------------------------------------------------------
 cytoscapePing ()
 cytoscapeVersionInfo ()
-if (!cytoscapePing()=="You are connected to Cytoscape!") {
-     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
+#if (!cytoscapePing()=="You are connected to Cytoscape!") {
+#     print("Turn on Cytoscape to load New_RCy3_Functions.R")}
 ```
 
 ```{r load data objects and functions}
@@ -39,7 +39,7 @@ load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
 load(file=paste(data_path,"drug_effects.RData", sep=""))
 load(file=paste(data_path,"BioPlanetNetworks.RData", sep=""))
 	source(paste(code_path, "Data_Input_Formatting.R", sep=""))
-	source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+	#source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
 	source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
   source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
 
@@ -75,7 +75,6 @@ H2286_Dasatinib: 1 experiment
 H366_Dasatinib: 1 experiment
 
 For each experiment (drug/cell-line combo):
-
 1. Get the list of significantly changed sites
 
 2. Map the sites to clusters
@@ -99,7 +98,7 @@ colnames(all_tally)[2] <- "AllNumInCluster"
 
 
 #Now calculate the number of unique sites that are not in each family. First find the total number of sites. Then
-#substract the number in each cluster from the total to find the number not in each cluster
+#subtract the number in each cluster from the total to find the number not in each cluster
 num_sites <- nrow(CCCN_sites)
 all_tally$AllNumOutCluster <- num_sites - all_tally$AllNumInCluster
 
@@ -155,21 +154,28 @@ cluster_enrichment <- function(clusters, sig_sites, all_sites_tally) {
     num_selected_sites <- nrow(mapped_sites)
     selected_tally$SelectedNumOutCluster <- num_selected_sites - selected_tally$SelectedNumInCluster
 
-    #Merge the data for all clusters and the data for the selected clusters to make a table with all data needed for the
-    #Fisher test. Set the row names to be the cluster ID's. Remove rows where the number of selected sites in a cluster
+    #Merge the data for all clusters and the data for the selected clusters. Calculate the other two values needed for
+    #the 2x2 contingency table: the non-significant sites that are in the cluster (NotSelectedNumInCluster) and
+    #the non-significant sites that are not in the cluster (NotSelectedNumOutCluster). Remove the two all cluster
+    #columns (AllNumInCluster and  AllNumOutCluster) so only the 4 columns needed for the contingency table remain.
+    #Set the row names to be the cluster ID's. Remove rows where the number of selected sites in a cluster
     #is less than 3 because this is unlikely to give a significant result and will just drive up the number of tests
-    fisher_table <- merge(selected_tally, all_tally, by = "Cluster")
+    fisher_table <- merge(selected_tally, all_sites_tally, by = "Cluster")
+    fisher_table$NotSelectedNumInCluster <- fisher_table$AllNumInCluster - fisher_table$SelectedNumInCluster
+    fisher_table$NotSelectedNumOutCluster <- fisher_table$AllNumOutCluster - fisher_table$SelectedNumOutCluster
+    fisher_table$AllNumInCluster <- NULL
+    fisher_table$AllNumOutCluster <- NULL
     rownames(fisher_table) <- fisher_table$Cluster
     fisher_table$Cluster <- NULL
     fisher_table <- fisher_table[ which(fisher_table$SelectedNumInCluster >= 3),]
-
+    
+    
     #Perform the Fisher Test and the Benjamini-Hochberg multiple testing correction
     fisher_table$p_value <- apply(fisher_table,1, function(x) fisher.test(matrix(x,nr=2), alternative = "greater")$p.value)
     fisher_table$corr_p_value <- p.adjust(fisher_table$p_value, method = "BH")
 
     #Add a column with the ratio of selected sites to the ratio of total sites for each cluster
-    fisher_table$SelectedToAllRatio <- fisher_table$SelectedNumInCluster/fisher_table$AllNumInCluster
-
+    fisher_table$SelectedToAllRatio <- fisher_table$SelectedNumInCluster/(fisher_table$SelectedNumInCluster + fisher_table$NotSelectedNumInCluster)
     #Sort by corrected p-value
     fisher_table <- fisher_table[order(fisher_table$corr_p_value),]
   
@@ -183,76 +189,91 @@ cluster_enrichment <- function(clusters, sig_sites, all_sites_tally) {
 ## Perform the Enrichment Analysis on Each Drug/Cell Line Combo
 ```{r process_sig_site_data}
 
+#For each experiment, identify the significant sites, write list of sig sites to a file, and perform the enrichment
+sig_site_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/SigSites/"
+
 #H3122/Crizotinib
 h3122.criz.columns <- c("id", "Gene.Name", "H3122SEPTM.C1.ratio", "H3122SEPTM.C2.ratio", "H3122SEPTM.C3.ratio", "H3122_Crizotinib.1Ratio", "H3122CrizotinibRatio")
 h3122.criz.sig.sites <- get.sig.sites(columns = h3122.criz.columns)
 nrow(h3122.criz.sig.sites)
+write.table(h3122.criz.sig.sites, file = paste(sig_site_file_path, "H3122-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h3122.criz.enrich <- cluster_enrichment(CCCN_sites, h3122.criz.sig.sites, all_tally)
 
 #HCC78/Crizotinib
 hcc78.criz.columns <- c("id", "Gene.Name", "HCC78_Crizotinib.1Ratio", "HCC78_CrizotinibRatio")
 hcc78.criz.sig.sites <- get.sig.sites(columns = hcc78.criz.columns)
 nrow(hcc78.criz.sig.sites)
+write.table(hcc78.criz.sig.sites, file = paste(sig_site_file_path, "HCC78-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 hcc78.criz.enrich <- cluster_enrichment(CCCN_sites, hcc78.criz.sig.sites, all_tally)
 
 #H2228/Crizotinib
 h2228.criz.columns <- c("id", "Gene.Name", "H2228CrizotinibRatio")
 h2228.criz.sig.sites <- get.sig.sites(columns = h2228.criz.columns)
 nrow(h2228.criz.sig.sites)
+write.table(h2228.criz.sig.sites, file = paste(sig_site_file_path, "H2228-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h2228.criz.enrich <- cluster_enrichment(CCCN_sites, h2228.criz.sig.sites, all_tally)
 
 #STE1/Crizotinib
 ste1.criz.columns <- c("id", "Gene.Name", "STE.1_CrizotinibRatio")
 ste1.criz.sig.sites <- get.sig.sites(columns = ste1.criz.columns)
 nrow(ste1.criz.sig.sites)
+write.table(ste1.criz.sig.sites, file = paste(sig_site_file_path, "STE1-Crizotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 ste1.criz.enrich <- cluster_enrichment(CCCN_sites, ste1.criz.sig.sites, all_tally)
 
 #PC9/Erlotinib
 pc9.erl.columns <- c("id", "Gene.Name", "PC9SEPTM.E1.ratio", "PC9SEPTM.E2.ratio", "PC9SEPTM.E3.ratio", "PC9_Erlotinib.1Ratio", "PC9_ErlotinibRatio")
 pc9.erl.sig.sites <- get.sig.sites(columns = pc9.erl.columns)
 nrow(pc9.erl.sig.sites)
+write.table(pc9.erl.sig.sites, file = paste(sig_site_file_path, "PC9-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 pc9.erl.enrich <- cluster_enrichment(CCCN_sites, pc9.erl.sig.sites, all_tally)
 
 #HCC4006/Erlotinib
 hcc4006.erl.columns <- c("id", "Gene.Name", "HCC4006_ErlotinibRatio")
 hcc4006.erl.sig.sites <- get.sig.sites(columns = hcc4006.erl.columns)
 nrow(hcc4006.erl.sig.sites)
+write.table(hcc4006.erl.sig.sites, file = paste(sig_site_file_path, "HCC4006-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 hcc4006.erl.enrich <- cluster_enrichment(CCCN_sites, hcc4006.erl.sig.sites, all_tally)
 
 #HCC827/Erlotinib
 hcc827.erl.columns <- c("id", "Gene.Name", "HCC827_ErlotinibRatio")
 hcc827.erl.sig.sites <- get.sig.sites(columns = hcc827.erl.columns)
 nrow(hcc827.erl.sig.sites)
+write.table(hcc827.erl.sig.sites, file = paste(sig_site_file_path, "HCC827-Erlotinib-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 hcc827.erl.enrich <- cluster_enrichment(CCCN_sites, hcc827.erl.sig.sites, all_tally)
 
 #H3122/PR
 h3122.pr.columns <- c("id", "Gene.Name", "H3122SEPTM.PR1.ratio", "H3122SEPTM.PR2.ratio", "H3122SEPTM.PR3.ratio")
 h3122.pr.sig.sites <- get.sig.sites(columns = h3122.pr.columns)
 nrow(h3122.pr.sig.sites)
+write.table(h3122.pr.sig.sites, file = paste(sig_site_file_path, "H3122-PR-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h3122.pr.enrich <- cluster_enrichment(CCCN_sites, h3122.pr.sig.sites, all_tally)
 
 #PC9/PR
 pc9.pr.columns <- c("id", "Gene.Name", "PC9SEPTM.PR1.ratio", "PC9SEPTM.PR2.ratio", "PC9SEPTM.PR3.ratio")
 pc9.pr.sig.sites <- get.sig.sites(columns = pc9.pr.columns)
 nrow(pc9.pr.sig.sites)
+write.table(pc9.pr.sig.sites, file = paste(sig_site_file_path, "PC9-PR-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 pc9.pr.enrich <- cluster_enrichment(CCCN_sites, pc9.pr.sig.sites, all_tally)
 
 #H1781/Afatinib
 h1781.afat.columns <- c("id", "Gene.Name", "H1781_AfatinibRatio")
 h1781.afat.sig.sites <- get.sig.sites(columns = h1781.afat.columns)
 nrow(h1781.afat.sig.sites)
+write.table(h1781.afat.sig.sites, file = paste(sig_site_file_path, "H1781-afat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h1781.afat.enrich <- cluster_enrichment(CCCN_sites, h1781.afat.sig.sites, all_tally)
 
 #H2286/Dasatinib
 h2286.dasat.columns <- c("id", "Gene.Name", "H2286_DasatinibRatio")
 h2286.dasat.sig.sites <- get.sig.sites(columns = h2286.dasat.columns)
 nrow(h2286.dasat.sig.sites)
+write.table(h2286.dasat.sig.sites, file = paste(sig_site_file_path, "H2286-dasat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h2286.dasat.enrich <- cluster_enrichment(CCCN_sites, h2286.dasat.sig.sites, all_tally)
 
 #H366/Dasatinib
 h366.dasat.columns <- c("id", "Gene.Name", "H366_DasatinibRatio")
 h366.dasat.sig.sites <- get.sig.sites(columns = h366.dasat.columns)
 nrow(h366.dasat.sig.sites)
+write.table(h366.dasat.sig.sites, file = paste(sig_site_file_path, "H366-dasat-sig-sites.txt", sep=""), sep = "\t", quote = FALSE, row.names=FALSE)
 h366.dasat.enrich <- cluster_enrichment(CCCN_sites, h366.dasat.sig.sites, all_tally)
 ```
 
@@ -316,5 +337,287 @@ all_results <- full_join(all_results, h366.dasat.enrich.format, by = "Cluster")
 #Add column to results table giving number of drug/cell-line combos where that cluster had a significant p-value
 all_results$num_exp <- rowSums(!is.na(all_results[2:13]))
 
-write.table(all_results, file = "enrichment_results_01.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(all_results, file = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/enrichment_results_01_new.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+## Make Cytoscape edge and node files for interesting clusters
+```{r Plot Clusters}
+
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Make Cytoscape files for interesting clusters
+cytoscape_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/"
+
+#Drug specific clusters
+#Cluster 187.216.82: enriched in both cell lines treated with pr and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "187.216.82"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "187.216.82.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "187.216.82.nodes.txt", sep=""))
+
+#Cluster 254.105.7: enriched in 2 criz cell lines only
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "254.105.7"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "254.105.7.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "254.105.7.nodes.txt", sep=""))
+
+#Cluster 7.7.7: enriched in 2 criz cell lines only
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "7.7.7"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "7.7.7.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "7.7.7.nodes.txt", sep=""))
+
+#Cluster 10.53.10: enriched in all criz cell lines, also enriched in h3122.pr
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "10.53.10"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "10.53.10.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "10.53.10.nodes.txt", sep=""))
+
+#Cell-line specific clusters
+#Cluster 108.114.173: enriched in h3122 treated with criz or pr and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "108.114.173"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "108.114.173.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "108.114.173.nodes.txt", sep=""))
+
+#Cluster 339.115.27: enriched in pc9 treated with criz or pr and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "339.115.27"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "339.115.27.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "339.115.27.nodes.txt", sep=""))
+
+#Cluster 111.457.239: enriched in pc9 treated with criz or pr and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "111.457.239"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "111.457.239.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "111.457.239.nodes.txt", sep=""))
+
+#Enriched in almost all experiments ("perturbation-specific")
+#Cluster 130.141.111: enriched in almost all drug/cell line combos
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "130.141.111"),]
+make.cluster.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "130.141.111.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "130.141.111.nodes.txt", sep=""))
+
+#Make list of unique genes in each cluster and write to a file
+genes_file_path <-"/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/GenesInClusters/"
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "187.216.82"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_187.216.82.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "254.105.7"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_254.105.7.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "7.7.7"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_7.7.7.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "10.53.10"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_10.53.10.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "108.114.173"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_108.114.173.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "339.115.27"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_339.115.27.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "111.457.239"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_111.457.239.txt", sep=""))
+
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "130.141.111"),]
+cluster.cf <- gz.cf[which(gz.cf$id %in% cluster_sites$Site),]
+cluster_genes <- unique(cluster.cf$Gene.Name)
+write(cluster_genes, file = paste(genes_file_path, "genes_130.141.111.txt", sep=""))
+  
+```
+
+## Make Cytoscape edge and node files for plotting CFN (only) for interesting clusters
+Here we will focus on the clusters that are Crizotinib-specific (enriched in at least 2 crizotinib experiments and no
+others) and clusters that are responding to both crizotinib and PR171 (enriched in H3122/PR171 and at least one 
+crizotinib experiment and no others). The latter clusters are to investigate the cross-talk between criz and PR171
+as these are being considered for combination therapy (PMID: 25175099)
+```{r Plot Cluster CFN}
+
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Make Cytoscape files for interesting clusters
+cytoscape_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterEnrichmentCytoscapeFiles/CFNCytoscapeFiles/"
+
+#Clusters responding to criz only
+#Cluster 7.7.7: enriched in 2 criz cell lines and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "7.7.7"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "7.7.7.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "7.7.7.cfn.nodes.txt", sep=""))
+
+#Cluster 254.105.7: enriched in 2 criz cell lines and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "254.105.7"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "254.105.7.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "254.105.7.cfn.nodes.txt", sep=""))
+
+#Clusters responding to crizotinib and PR171
+#Cluster 10.53.10: enriched in all criz cell lines, also enriched in h3122.pr and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "10.53.10"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "10.53.10.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "10.53.10.cfn.nodes.txt", sep=""))
+
+#Cluster 28.53.10: enriched in 3/4 criz cell lines, also enriched in h3122.pr, and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "28.53.10"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "28.53.10.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "28.53.10.cfn.nodes.txt", sep=""))
+
+#Cluster 108.114.173: enriched in H3122.criz and  H3122.pr, and no others
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "108.114.173"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "108.114.173.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "108.114.173.cfn.nodes.txt", sep=""))
+
+#Cluster 130.141.111: top enriched cluster for hcc78.criz, ste1.criz, pc9.erl, h1781.afat, h366.dasat
+cluster_sites <- CCCN_sites[ which(CCCN_sites$Cluster == "130.141.111"),]
+make.cfn.cytoscape.files(cluster_sites$Site, gzallt.network.all, edge_filename = paste(cytoscape_file_path, "130.141.111.cfn.edges.txt", sep=""), node_filename = paste(cytoscape_file_path, "130.141.111.cfn.nodes.txt", sep=""))
+
+
+```
+
+##Make Heatmaps of Clusters
+For clusters of interest, get abundance ratios for all sites for all replicates for all drug/cell-line combos that had a significant corrected p-value for enrichment.
+```{r Make Cluster Heatmaps}
+
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf
+colnames(gz.cf.good.col.names)
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#Make a list where each element is the names of the replicates of a particular drug/cell-line combo and the
+#name of the element is the name of the drug/cell-line combo in the all_results table. This will make it easier to 
+#select data for the heatmaps.
+
+experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("TC.H2228.Criz.1"), c("TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("TC.HCC4006.Erl.1"), c("TC.HCC827.Erl.1"), c("SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3"), c("SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3"), c("TC.H1781.Afat.1"), c("TC.H2286.Dasat.1"), c("TC.H366.Dasat.1"))
+
+names(experiments) <- colnames(all_results)[2:13]
+
+heatmap_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterHeatmaps/"
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Clusters enriched in Criz only
+#Make heatmap input table for cluster "254.105.7"
+sig.exp.254.105.7 <- get_sig_experiments("254.105.7", all_results, experiments)
+heatmap.data.254.105.7 <- get_cluster_abundances("254.105.7", sig.exp.254.105.7, CCCN_sites, gz.cf.good.col.names)
+
+#Make heatmap for 254.105.7
+file.254.105.7 <- paste(heatmap_path, "heatmap.254.105.7.jpeg", sep = "")
+make.cluster.heatmap(heatmap.data.254.105.7, file.254.105.7, image_width = 6, image_height = 10, order_cols = TRUE)
+
+#Make heatmap input table for cluster "7.7.7"
+sig.exp.7.7.7 <- get_sig_experiments("7.7.7", all_results, experiments)
+heatmap.data.7.7.7 <- get_cluster_abundances("7.7.7", sig.exp.7.7.7, CCCN_sites, gz.cf.good.col.names)
+
+#Make heatmap for 7.7.7
+file.7.7.7 <- paste(heatmap_path, "heatmap.7.7.7.jpeg", sep = "")
+make.cluster.heatmap(heatmap.data.7.7.7, file.7.7.7, image_width = 6, image_height = 10, order_cols = TRUE)
+
+#Clusters enriched in Criz and PR171 experiments
+#Make heatmap input table for cluster "10.53.10"
+sig.exp.10.53.10 <- get_sig_experiments("10.53.10", all_results, experiments)
+heatmap.data.10.53.10 <- get_cluster_abundances("10.53.10", sig.exp.10.53.10, CCCN_sites, gz.cf.good.col.names)
+
+#Make heatmap for 10.53.10
+file.10.53.10 <- paste(heatmap_path, "heatmap.10.53.10.jpeg", sep = "")
+all.10.53.10 <- make.cluster.heatmap(heatmap.data.10.53.10, file.10.53.10, image_width = 6, image_height = 12, order_cols = TRUE)
+write.table(all.10.53.10, file = paste(heatmap_path, "10.53.10-sites.txt", sep=""), sep = "\t", quote = FALSE, col.names=NA)
+
+
+#Make heatmap input table for cluster "28.53.10"
+sig.exp.28.53.10 <- get_sig_experiments("28.53.10", all_results, experiments)
+heatmap.data.28.53.10 <- get_cluster_abundances("28.53.10", sig.exp.28.53.10, CCCN_sites, gz.cf.good.col.names)
+
+#Make heatmap for 28.53.10
+file.28.53.10 <- paste(heatmap_path, "heatmap.28.53.10.jpeg", sep = "")
+make.cluster.heatmap(heatmap.data.28.53.10, file.28.53.10, image_width = 6, image_height = 12, order_cols = TRUE)
+
+#Make heatmap input table for cluster 108.114.173
+sig.exp.108.114.173 <- get_sig_experiments("108.114.173", all_results, experiments)
+heatmap.data.108.114.173 <- get_cluster_abundances("108.114.173", sig.exp.108.114.173, CCCN_sites, gz.cf.good.col.names)
+
+#Make heatmap for 108.114.173
+file.108.114.173 <- paste(heatmap_path, "heatmap.108.114.173.jpeg", sep = "")
+make.cluster.heatmap(heatmap.data.108.114.173, file.108.114.173, image_width = 6, image_height = 12, order_cols = TRUE)
+```
+
+##Make Heatmaps of Clusters--Part 2
+Here, make heatmaps for the most enriched cluster for each drug/cell-line combo. Show all of the replicates for that drug cell-line combo.
+```{r Make Cluster Heatmaps2}
+
+source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf
+colnames(gz.cf.good.col.names)
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#Make a list where each element is the names of the replicates of a particular drug/cell-line combo and the
+#name of the element is the name of the drug/cell-line combo in the all_results table. This will make it easier to 
+#select data for the heatmaps.
+
+experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("TC.H2228.Criz.1"), c("TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("TC.HCC4006.Erl.1"), c("TC.HCC827.Erl.1"), c("SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3"), c("SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3"), c("TC.H1781.Afat.1"), c("TC.H2286.Dasat.1"), c("TC.H366.Dasat.1"))
+
+names(experiments) <- colnames(all_results)[2:13]
+
+heatmap_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment/ClusterHeatmaps/"
+
+#Load the file with the sites and clusters
+CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
+CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
+
+#Top cluster for hcc78.criz, ste1.criz, pc9.erl, h1781.afat, h366.dasat: 130.141.111
+all.130.141.111 <- make.top.cluster.heatmap(exp = c("ste1.criz","hcc78.criz", "pc9.erl", "h1781.afat", "h366.dasat"), cluster = "130.141.111", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="multiple.130.141.111.heatmap.jpeg", image_width = 7, image_height = 15)
+write.table(all.130.141.111, file = paste(heatmap_path, "130.141.111-sites.txt", sep=""), sep = "\t", quote = FALSE, col.names=NA)
+
+#Top cluster for h2228.criz and h2286.dasat: 7.29.7
+make.top.cluster.heatmap(exp = c("h2228.criz", "h2286.dasat"), cluster = "7.29.7", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="multiple.7.29.7.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for h3122.criz: 10.53.10
+make.top.cluster.heatmap(exp = "h3122.criz", cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h3122.criz.10.53.10.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for hcc4006.erl: 38.41.40
+make.top.cluster.heatmap(exp = "hcc4006.erl", cluster = "38.41.40", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="hcc4006.erl.38.41.40.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for hcc827.erl: 57.41.40
+make.top.cluster.heatmap(exp = "hcc827.erl", cluster = "57.41.40", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="hcc827.erl.57.41.40.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Three clusters tied for most enriched in h3122.pr
+#Top cluster for h3122.pr: 90.28.82
+make.top.cluster.heatmap(exp = "h3122.pr", cluster = "90.28.82", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h3122.pr.90.28.82.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for h3122.pr: 28.53.10
+make.top.cluster.heatmap(exp = "h3122.pr", cluster = "28.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h3122.pr.28.53.10.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for h3122.pr: 176.206.82
+make.top.cluster.heatmap(exp = "h3122.pr", cluster = "176.206.82", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h3122.pr.176.206.82.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#Top cluster for pc9.pr: 109.115.27
+make.top.cluster.heatmap(exp = "pc9.pr", cluster = "109.115.27", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="pc9.pr.109.115.27.heatmap.jpeg", image_width = 6, image_height = 15)
+
+#10.53.10 is enriched for both criz and PR171 experiments. Separate these into separate heatmaps
+make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz","h2228.criz",	"ste1.criz"), cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="criz.10.53.10.heatmap.jpeg", image_width = 6, image_height = 15)
+
+make.top.cluster.heatmap(exp = "h3122.pr", cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="pr171.10.53.10.heatmap.jpeg", image_width = 4, image_height = 15)
+
+make.top.cluster.heatmap(exp = "h1781.afat", cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h1781.afat.10.53.10.heatmap.jpeg", image_width = 4, image_height = 15)
+
+make.top.cluster.heatmap(exp = c("h1781.afat", "ste1.criz"), cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="h1781.afat.ste1.criz10.53.10.heatmap.jpeg", image_width = 4, image_height = 15)
+
+make.top.cluster.heatmap(exp = c("h3122.criz", "hcc78.criz","h2228.criz"), cluster = "10.53.10", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="criz.no.ste1.10.53.10.heatmap.jpeg", image_width = 6, image_height = 15)
+
+make.top.cluster.heatmap(exp = c("pc9.erl", "hcc827.erl"), cluster = "340.310.275", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path, filename ="erl.340.310.275.heatmap.jpeg", image_width = 6, image_height = 15)
+
+
 ```
