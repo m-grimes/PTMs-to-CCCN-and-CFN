@@ -19,6 +19,7 @@ load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Net
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 
+
 #_________________________________________
 #_________________________________________
 #
@@ -176,9 +177,11 @@ plot(bioplanetreledges$Weight~bioplanetjaccardedges$Weight, pch=19, col=alpha("f
 # Apply this approach to determine evidence for pathways based on the CCCN
 # Cluster Pathway Evidence = ∑( PTMs from gene(i) pathway in cluster /  total number of Pathways for gene(i)
 #
-# PTM cluster list is eu.sp.sed.gzallt; 
+# PTM cluster list is eu.sp.sed.gzallt; Revised renamed> essgzallt
+length(essgzallt.data) #818
+length(essgzallt) #818
 # Make a list of genes in clusters.
-pep.clist <- eu.sp.sed.gzallt
+pep.clist <- essgzallt.data
 # Two considerations:
 # 1. We want genes with different PTMs to count towards evidence.
 # 2. Do we want ambiguous PTMs (e.g. "TUBB p Y106; TUBB4B p Y106; TUBB3 p Y106; TUBB2A p Y106; TUBB2B p Y106") to count only proportionally to their ambigous representation? 
@@ -1183,8 +1186,64 @@ text(topallppi[, "allppibetween"], topallppi[, "ppibetween"], col="red", cex=0.8
 text(topesslhubs[, "allppibetween"], topesslhubs[, "ppibetween"], col="black", cex=0.8, labels=noquote(as.character(topesslhubs$Gene.Name)))  
 
 bioplanetjaccard.g <- bioplanet.g
-  
-save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.matrix.union, bioplanet.adj.matrix, bioplanet.jaccard.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetjaccard.g, bioplanetgenes, bioplanetjaccardedges, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, matrix.union, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, pathway.net.list2, density.list2, net.atts.df, filter.pathway.edges, pathway.net.list3, big.path.net, pathway.net.list4, thresh.vec, thresh.vec2, zymes.list, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
+
+# Normalize: put two weights on same scale to make Weight.clust from 0 to 1
+tpnn <- total.pathway.net[,c(1:4,6,5)]
+tpnn$Weight.clust <- tpnn$Weight.clust/max(tpnn$Weight.clust)
+tpnn$Weight.normalized <- tpnn$Weight.clust - tpnn$Weight.bp
+tpnn$Combined.Weight <- tpnn$Weight.clust + tpnn$Weight.bp
+tpnn.no.bp <- tpnn[which(tpnn$Weight.bp==0), c(1,2,5,6)]
+names(tpnn.no.bp)[3:4] <- c("Weight", "interaction")
+#
+# Do pathway.crosstalk.network
+pcnn <- pathway.crosstalk.network
+dim(pcnn[which(pcnn$interaction=="cluster evidence"),]) #645709 okay, same as total.pathway.net, tpnn
+pcnn.clust <- pcnn[which(pcnn$interaction=="cluster evidence"),]
+pcnn.clust$Weight <- pcnn.clust$Weight/max(pcnn.clust$Weight)
+pcnn.bp <- pcnn[which(pcnn$interaction=="pathway Jaccard similarity"),]
+pcnn <- rbind(pcnn.clust, pcnn.bp)
+# 
+####################################################################################################################
+# Question: what is the relationship between GO terms and clusters in bioplanet pathways?
+# Cuneyet's file
+bp.GO <- readRDS(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/P2PSim.rds", sep=""))
+names(bp.GO)[1:2] <- c("source", "target")
+tpn.GO <- merge(tpnn, bp.GO, by=c("source", "target"), all=TRUE)
+dev.new()
+plot(tpn.GO$Weight.clust ~ tpn.GO$GoBio, pch=19, col=alpha("blue", 0.25))
+summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoBio))
+# R-squared:  0.1336
+plot(tpn.GO$Weight.clust ~ tpn.GO$GoCel, pch=19, col=alpha("darkgreen", 0.25))
+summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoCel))
+# R-squared: 0.1145
+plot(tpn.GO$Weight.clust ~ tpn.GO$GoMol, pch=19, col=alpha("red", 0.25))
+summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoMol))
+# R-squared: 0.07949
+plot(tpn.GO$Weight.bp ~ tpn.GO$GoBio, pch=19, col=alpha("darkblue", 0.25))
+summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoBio))
+# R-squared:  0.2208 
+plot(tpn.GO$Weight.bp ~ tpn.GO$GoCel, pch=19, col=alpha("turquoise4", 0.25))
+summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoCel))
+# R-squared:  0.04385  
+plot(tpn.GO$Weight.bp ~ tpn.GO$GoMol, pch=19, col=alpha("magenta", 0.25))
+summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoMol))
+# R-squared:  0.1057 
+# Contrast GO relationships
+plot(tpn.GO$GoCel ~ tpn.GO$GoMol, pch=19, col=alpha("magenta2", 0.25))
+summary(lm(tpn.GO$GoCel ~ tpn.GO$GoMol))
+# R-squared:0.4674
+plot(tpn.GO$GoCel ~ tpn.GO$GoBiol, pch=19, col=alpha("orange3", 0.25))
+summary(lm(tpn.GO$GoCel ~ tpn.GO$GoBio))
+# R-squared:0.4384 
+plot(tpn.GO$GoMol ~ tpn.GO$GoBio, pch=19, col=alpha("green3", 0.25))
+summary(lm(tpn.GO$GoMol ~ tpn.GO$GoBio))
+# R-squared: 0.6049 
+# What pathways are related by GO terms AND clustering? 
+test.bio <- tpn.GO[which(tpn.GO$GoBio>0.5 & tpn.GO$Weight.clust>0.5),]
+test.cel <- tpn.GO[which(tpn.GO$GoCel>0.5 & tpn.GO$Weight.clust>0.5),]
+test.mol <- tpn.GO[which(tpn.GO$GoMol>0.5 & tpn.GO$Weight.clust>0.5),]
+
+save(bioplanet,  bioplanet.list.common, bioplanet.matrix.common, bioplanet.matrix.outersect, bioplanet.matrix.union, bioplanet.adj.matrix, bioplanet.jaccard.matrix, bioplanetgeneedges, bioplanetreledges, bioplanetjaccard.g, bioplanetgenes, bioplanetjaccardedges, get.all.gene.names.from.peps, ambig.gene.clist, ambigs.clist.bioplanet.common, count.ambiguous.gene.weights, count.ambiguous.genes, gene.clist.bioplanet.common.no.ambigs, gene.clist.no.ambigs, get.ambiguous.genes, matrix.common, matrix.union, weighted.matrix.common, matrix.outersect, gene.clist.bioplanet.weighted, gene.clist.weights, pep.clist, gene.clist, calculate.gene.weights.using.pathway, gene.clist.pathway.weights, gene.clist.bioplanet.pathway.weighted, gene.clist.bioplanet.pathway.clustsize.weighted, cluster.pathway.evidence, create.pathway.network, calc.net.density, pathway.net.list, density.list, pathway.net.list2, density.list2, net.atts.df, filter.pathway.edges, pathway.net.list3, big.path.net, pathway.net.list4, thresh.vec, thresh.vec2, zymes.list, tpnn, pcnn, tpn.GO, file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "BioPlanetNetworks.RData", sep=""))
 
 
 ##################################################################################################################
@@ -1333,3 +1392,6 @@ names(tsnedata.span2.df) <- "Gene.Name"
 tsnedata.span2.df$group <- tsnedata.disc2
 tsnedata.span2.list <- dlply(tsnedata.span2.df, .(group))  # GROUP LIST  !
 return(tsnedata.span2.list)	
+
+
+

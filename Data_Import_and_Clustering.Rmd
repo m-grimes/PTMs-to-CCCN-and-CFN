@@ -510,8 +510,8 @@ nmissing(gzdata.allz)/(dim(gzdata.allz)[1]*dim(gzdata.allz)[2])
 # Focus on PTMs that were detected in at least 2 experiments
 gztencelldata.trimmed <- cbind(log2(tencelltrimmed), tencellratios.lim.log2.trimmed)
 gzdata.all.trimmed <- merge(gzdata, gztencelldata.trimmed, by="row.names", all=TRUE)
-whichrowNA <- which(grepl("NA ", rownames(gzdata.allt))
-                    rownames(gzdata.allt)[whichrowNA]                    
+whichrowNA <- which(grepl("NA ", rownames(gzdata.allt)))
+rownames(gzdata.allt)[whichrowNA]                    
                     
 rownames(gzdata.all.trimmed) <- gzdata.all.trimmed$Row.names
 gzdata.allt <- gzdata.all.trimmed[,2:ncol(gzdata.all.trimmed)]
@@ -689,8 +689,8 @@ essgzallt.data <- lapply(essgzallt, clust.data.from.vec, tbl= gzdata.allt)
 
 ```{r evaluate clusters}
 # To evaluate clusters, use lincsclust.eval; clusterlist=essgzallt.data; tbl.sc=gzdata.allt
-# Employ with trimmed data above
-gzclust.eval.df <- lincsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
+# Employ ptmsclust.eval() with names changed to reflect PTMs
+gzclust.eval.df <- ptmsclust.eval(essgzallt.data, tbl.sc=gzdata.allt)
 # Save table for sharing
 write.table(gzclust.eval.df, file= "gzclust.eval.df.txt")
 # In about a third of the data from either treatment or control PTMs missing. Find clusters that have two or more ratio columns.
