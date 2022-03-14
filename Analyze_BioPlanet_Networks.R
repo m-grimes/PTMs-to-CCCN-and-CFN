@@ -889,8 +889,8 @@ gz.edges$Weight <- 0.2
 ld.edges$interaction <- "igraph"
 ld.edges$Weight <- 0.2
 
-gz.cf <- data.frame(id=names(V(gz.g)))
-ld.cf <- data.frame(id=names(V(ld.g)))
+gztest.cf <- data.frame(id=names(V(gz.g)))
+ldtest.cf <- data.frame(id=names(V(ld.g)))
 
 tryit.graph <- createNetworkFromDataFrames(gz.cf, gz.edges, "Test Cy from igraph")
 # LOOK PTMs for high core networks of high core nodes from ld and gz networks
@@ -905,6 +905,7 @@ corenodes <- c(
   "SUMO2",     "TUBA1A",    "TUBA1B",    "TUBB",      "TAGLN2",    "YWHAE",    
   "YWHAZ")
 
+# Plot the core networks with drug treatment attributes.
 core.cfn.gz <- filter.edges.0.RCy3(corenodes, gzalltgene.physical.cfn.merged)
 core.cfn.ld <- filter.edges.0.RCy3(corenodes, ldgene.physical.cfn.merged)
 # GZ data
