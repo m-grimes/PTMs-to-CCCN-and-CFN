@@ -41,6 +41,12 @@ library(plyr)
 library(dplyr)
 library(gplots)
 library(RColorBrewer)
+library(RCy3)
+library(igraph)
+
+#Start Cytoscape
+cytoscapePing ()
+cytoscapeVersionInfo ()
 
 ```
 
@@ -249,13 +255,29 @@ meds.38.41.40.egfr <- make.cluster.heatmap.full(exp = names(good_experiments), r
 gz.cf.good.col.names.all.na <- gz.cf.good.col.names
 gz.cf.good.col.names.all.na[gz.cf.good.col.names.all.na == 0] <- NA
 
-#Calculate the median of each site for the experiments in each group; only calculate the median if there are at least two reps in the set; otherwise return NA
+#Calculate the median of each site for the experiments in each group; only calculate the median if there are at least two reps in #the set; otherwise return NA; change the NA's to 0's for plotting node colors and sizes in Cytoscape;add the non-ratio columns #from gz.cf.good.col.names.all.na to the median table
 group_meds_all <- sapply(1:length(good_experiments),function(x){rowMedians(gz.cf.good.col.names.all.na[good_experiments[[x]]])})
 group_meds_all <- as.data.frame(group_meds_all)
 colnames(group_meds_all) <- names(good_experiments)
-group_meds_all$id <- gz.cf.good.col.names.all.na$id
-group_meds_all$Gene.Name <- gz.cf.good.col.names.all.na$Gene.Name
-group_meds_all$Node.ID <- gz.cf.good.col.names.all.na$Node.ID
+group_meds_all[is.na(group_meds_all)] <- 0
+group_meds_all <- cbind(gz.cf.good.col.names.all.na[1:16], gz.cf.good.col.names.all.na[42:46], group_meds_all)
+
+#Fix annotation of KAT7, so it is listed as an acetyltransferase
+group_meds_all[which(test$id == "KAT7"), "nodeType"] <- "acetyltransferase"
+
+plot_cluster_cfn(cluster = "38.41.40", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
+
+all.ratio.styles(ratiocols = names(good_experiments))
+
+plot_cluster_cfn(cluster = "180.173.39", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
+  
+all.ratio.styles(ratiocols = names(good_experiments))
+
+plot_cluster_cfn(cluster = "130.141.111", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
+  
+all.ratio.styles(ratiocols = names(good_experiments))
+
+source(paste(code_path, "cluster-enrichment-functions-v2.R", sep=""))
 
 
 ```

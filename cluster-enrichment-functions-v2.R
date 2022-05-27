@@ -413,3 +413,189 @@ make.cluster.heatmap <- function(heatmap.data, file, image_width, image_height, 
   dev.off()
   return(heatmap.data)
 }
+
+####################
+#The function plot_cluster_cfn plots the cfn connections of the parent genes for the sites in a cluster. Plotting is done 
+#in Cytoscape with node shapes and borders and edge colors according to network style in PMID: 29789295. Inputs: cluster = name of cluster, 
+#cluster_site_mapping = table mapping sites to clusters, ratio_table = table with metadata for each gene and site in the CCCN/CFN (like gz.cf or group_meds_all, which
+#is like gz.cf except it provides median drug vs. vector ratios for several drug/cell-line experiment groups) and cfn = edge file
+#of cfn interactions. 
+plot_cluster_cfn <- function(cluster, cluster_site_mapping_table, ratio_table, cfn) {
+  #select sites in cluster
+  sites <- cluster_site_mapping_table[which (cluster_site_mapping_table$Cluster == cluster), "Site"]
+  
+  #Get parent gene names for sites in cluster
+  genes <- ratio_table[which(ratio_table$id %in% sites), "Gene.Name"]
+  
+  #Get cfn edges for parent genes
+  cfn_edges <- filter.edges.0(genes, cfn)
+  
+  #Get rows of ratio_table for each of the parent genes
+  gene_info <- ratio_table[ratio_table$id %in% unique(c(cfn_edges$source, cfn_edges$target)),]
+  
+  #Plot the network in Cytoscape
+  gene.suid <- createNetworkFromDataFrames(gene_info, cfn_edges, title=paste("Cluster", cluster, sep=" "), collection = "Interactions")
+  setNodeMapping(gene_info)
+  edgeDprops.RCy32()
+  layoutNetwork("force-directed")  
+}
+
+########################
+# function to filter networks to include only selected nodes and those with edges to them
+
+filter.edges.0 <- function(nodenames, edge.file) {
+  nodenames <-as.character(nodenames)
+  a = as.character(edge.file[,1])
+  b = as.character(edge.file[,2])
+  edgefile.nodes <- unique(c(a,b))
+  # show pruned nodes (turned off)
+  # flub <- setdiff(edgefile.nodes, nodenames) 
+  # if (length(flub) >= 1) { 
+  # cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }	
+  sel.edges <- edge.file[edge.file[,1] %in% nodenames & edge.file[,2] %in% nodenames,]
+  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
+}
+
+###############################################
+#Sets node shapes and border style
+
+setNodeMapping <- function(cf) {
+  setBackgroundColorDefault(style.name = "default", new.color = "#949494") # grey 58
+  setNodeShapeDefault("ELLIPSE")
+  setNodeColorDefault("#F0FFFF") # azure1
+  setNodeSizeDefault(100) # for grey non-data nodes
+  setNodeFontSizeDefault( 22)
+  setNodeLabelColorDefault("#000000")  # black
+  setNodeBorderWidthDefault( 1.8)
+  setNodeBorderColorDefault("#888888")  # gray 
+  molclasses <- c("unknown", "receptor tyrosine kinase",  "SH2 protein", "SH2-SH3 protein", "SH3 protein", "tyrosine kinase",  "SRC-family kinase",   "kinase", "phosphatase", "transcription factor", "RNA binding protein")
+  nodeshapes <- c("ELLIPSE","ROUND_RECTANGLE", "VEE", "VEE", "TRIANGLE", "HEXAGON", "DIAMOND", "OCTAGON", "OCTAGON", "PARALLELOGRAM", "RECTANGLE")
+  setNodeSelectionColorDefault("#CC00FF") 
+  setNodeShapeMapping ("nodeType", molclasses, nodeshapes, default.shape="ELLIPSE")
+  setNodeBorderWidthMapping("nodeType", c("deacetylase","acetyltransferase","demethylase","methyltransferase","membrane protein", "receptor tyrosine kinase", "G protein-coupled receptor", "SRC-family kinase", "tyrosine kinase", "kinase", "phosphatase"), widths=c(4,12,4,12,8,16,16,12,12,12,14), 'd',default.width=4)
+  if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
+    setNodeShapeBypass(cf[grep("SH2", cf$Domains) %w/o% which(cf$nodeType %in% molclasses), 1], nodeshapes[3])} 
+  if (length(cf[grep("RNA", cf$nodeType), 1])>0) {
+    setNodeShapeBypass(cf[grep("RNA", cf$nodeType), 1], nodeshapes[11])}
+  if (length(cf[grep("transcription", cf$nodeType), 1])>0) {
+    setNodeShapeBypass(cf[grep("transcription", cf$nodeType), 1], nodeshapes[10])}
+  if (length(cf[grep("acetyl", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("acetyl", cf$nodeType), 1], "#FF8C00")} # darkorange
+  if (length(cf[grep("methyl", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("methyl", cf$nodeType), 1], "#005CE6")} # blue
+  if (length(cf[grep("membrane", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("membrane", cf$nodeType), 1], "#6600CC") # purple
+    setNodeShapeBypass(cf[grep("membrane", cf$nodeType), 1], nodeshapes[2])} 
+  if (length(cf[grep("kinase", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("kinase", cf$nodeType), 1], "#EE0000")} # red2
+  if (length(cf[grep("phosphatase", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("phosphatase", cf$nodeType), 1], "#FFEC8B")} # lightgoldenrod1
+  if (length(cf[grep("receptor", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("receptor", cf$nodeType), 1], "#BF3EFF") # darkorchid1
+    setNodeShapeBypass(cf[grep("receptor", cf$nodeType), 1], nodeshapes[2])} 
+  if (length(cf[grep("TM", cf$nodeType), 1])>0) {
+    setNodeBorderColorBypass(cf[grep("TM", cf$Domains), 1], "#6600CC") # purple
+    setNodeShapeBypass(cf[grep("TM", cf$Domains), 1], nodeshapes[2])} 
+}
+
+#########################################
+#Set edge colors and arrows
+
+edgeDprops.RCy32 <- function() {
+  setEdgeLineWidthDefault (3)
+  setEdgeColorDefault ( "#FFFFFF")  # white
+  setEdgeSelectionColorDefault (col2hex("chartreuse"))
+  edgecolors <- col2hex(c("red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "darkorange1"))
+  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2", "darkorange1"))
+  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
+  edgeTypes <- c("pp", "PHOSPHORYLATION", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "ACETYLATION")
+  # 22 edgeTypes            
+  myarrows <- c ('Arrow', 'Arrow', 'Arrow','Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', "Arrow")
+  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
+  matchArrowColorToEdge('TRUE')
+  setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")
+  # A grey background helps highlight some of the edges
+  setBackgroundColorDefault("#949494") # grey 58
+  edgevalues <- getTableColumns('edge')
+  if (length(edgevalues[grep("pp", edgevalues$interaction), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("pp", edgevalues$interaction), 1], col2hex("red"))}
+  if (length(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1], col2hex("red"))}
+  if (length(edgevalues[grep("phosphorylation", edgevalues$interaction), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("phosphorylation", edgevalues$interaction), 1], col2hex("red"))}
+  if (length(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1])>0) {
+    setEdgeColorBypass(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1], col2hex("darkorange1"))}
+  
+}
+
+############################
+#%w/o% operator: return elements of x not in y
+
+`%w/o%` <- function(x, y) {
+  # return elements of x not in y
+  x[ !(x %in% y) ]
+}
+
+################################
+#Sets node fill color according to ratio values
+all.ratio.styles <- function(ratiocols=NULL) {
+  nodevalues <- getTableColumns('node')
+  
+  if(length(ratiocols)==0) {
+    ratiocolnames <- names(nodevalues)[grep("atio", names(nodevalues))] %w/o% "No.Modifications"} else {ratiocolnames <- names(nodevalues[ratiocols])}
+
+  for (i in 1:length(ratiocolnames)){ 
+    plotcol <- ratiocolnames[i]
+    print(paste("Plotcol: ", plotcol, sep = ""))
+    style.name = paste(ratiocolnames[i], "Style")
+    print(style.name)
+    setVisualStyle("default")
+    setNodeColorToRatios2(plotcol)    
+    copyVisualStyle('default', style.name)
+    setVisualStyle(style.name)
+  }
+} 
+
+################################
+#Sets node size and color to match ratio data using columns from Cytoscape node table. Called by all.ratio.styles
+#Same as setNodeColorToRatios except size and color control points are appropriate for log2 ratios
+setNodeColorToRatios2 <- function(plotcol){
+  cf <- getTableColumns('node')
+ 
+  if(!(plotcol %in% getTableColumnNames('node'))){
+    
+    cat("\n","\n","\t", "Which attribute will set node size and color?")
+    plotcol <- as.character(readLines(con = stdin(), n = 1))
+  }
+  
+  node.sizes = c(135, 130, 108, 75, 35, 75, 108, 130, 135)
+  ratio.colors = c ('#0099FF', '#007FFF','#00BFFF', '#00CCFF', '#00FFFF', '#00EE00', '#FFFF7E', '#FFFF00', '#FFE600', '#FFD700', '#FFCC00')
+  #size control points for original ratios were: -100.0, -15.0, -5.0, 0.0, 5.0, 15.0, 100.0, but we are using log2 ratios
+  size.control.points = c(-log(100.0, 2), -log(15.0, 2), -log(5.0,2), 0.0, log(5.0, 2), log(15.0, 2), log(100.0, 2))
+  
+  #color control points for original ratios were: -100.0, -10.0, -5.0, -2.25, 0.0, 2.25, 5.0, 10.0, 100.0, but we are using log2 ratios
+  color.control.points = c(-log(100.0, 2), -log(10.0, 2), -log(5.0, 2), -log(2.25, 2), 0.0, log(2.25, 2), log(5.0, 2), log(10.0, 2), log(100.0, 2))
+  
+  limits <- range(cf[, plotcol], na.rm = TRUE)
+  if(limits[1] < min(size.control.points)) {
+    size.control.points[1] = limits[1] - 0.1
+  }
+  
+  if(limits[1] < min(color.control.points)) {
+    color.control.points[1] = limits[1] - 0.1
+  }
+  
+  if(limits[2] > max(size.control.points)) {
+    size.control.points[length(size.control.points)] = limits[2] + 0.1
+  }
+  
+  if(limits[2] > max(color.control.points)) {
+    color.control.points[length(color.control.points)] = limits[2] + 0.1
+  }
+
+  setNodeColorMapping(names(cf[plotcol]), color.control.points, ratio.colors, 'c')
+  lockNodeDimensions('TRUE')
+  setNodeSizeMapping (names(cf[plotcol]), size.control.points, node.sizes, 'c')
+  setNodeSelectionColorDefault ( "#CC00FF") 
+}
+
