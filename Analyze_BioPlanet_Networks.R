@@ -94,13 +94,15 @@ dev.new()
 plot(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust, ylab= "Bioplanet Jaccard similarity", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green4"), 0.25), cex=1.8)
 summary(lm(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust))
 # R-squared:  0.02037 
+summary(lm(tpnn$Weight.bp~tpnn$Weight.clust))
+# R-squared: 0.02037 check
 points(total.pathway.net[which(total.pathway.net$Weight.clust==0), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.clust==0), "Weight.clust"],  pch=20, col=alpha(col2hex("red"), 0.2), cex=1.8) 
 #none, duh
 points(total.pathway.net[which(total.pathway.net$Weight.bp<=max(total.pathway.net$Weight.bp)/10), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.bp<=max(total.pathway.net$Weight.bp)/10), "Weight.clust"],  pch=20, col=alpha(col2hex("red"), 0.25), cex=1.8)
 points(total.pathway.net[which(total.pathway.net$Weight.bp==0), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.bp==0), "Weight.clust"],  pch=20, col=alpha(col2hex("darkblue"), 0.2), cex=1.8)
 legend("topright", pt.cex=1.8, pch=20, col=c("green4", "red", "darkblue"), legend = c("Weights compared", "Weight bioplanet < 10%", "Weight bioplanet = 0"))
 # *** Weight.clust.vs.weight.bp.pdf/png
-# Normalizde version
+# Normalized version
 dev.new()
 plot(tpnn$Weight.bp~tpnn$Weight.clust, ylab= "Bioplanet Jaccard similarity", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green4"), 0.25), cex=1.8)
 summary(lm(tpnn$Weight.bp~tpnn$Weight.clust))
