@@ -1213,13 +1213,45 @@ dev.new()
 plot(tpn.GO$Weight.clust ~ tpn.GO$GoBio, pch=19, col=alpha("blue", 0.25))
 summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoBio))
 # R-squared:  0.1336
+# For figures
+plot(tpn.GO$Weight.clust ~ tpn.GO$GoBio, pch=19, col=alpha("blue", 0.15), xlab="GO biological process edge weight", ylab="PTM cluster weight", cex.lab=1.4, main="Bioplanet Pathway Similarity Included")
+tpn.GO.nobp <- tpn.GO[which(tpn.GO$Weight.bp==0),] 
+plot(tpn.GO.nobp$Weight.clust ~ tpn.GO.nobp$GoBio, pch=19, col=alpha("darkgreen", 0.20), xlab="GO biological process edge weight", ylab="PTM cluster weight", cex.lab=1.4, xlim=c(0,1), ylim=c(0,1),  main="Without Bioplanet Pathway Similarity")
+summary(lm(tpn.GO.nobp$Weight.clust ~ tpn.GO.nobp$GoBio))
+# Adjusted R-squared:  0.06078
+# What is the number of cluster weight edges with weight greater than GoBio edges?
+hist(tpn.GO$Weight.clust - tpn.GO$GoBio, breaks=100, col="yellow")
+tpnfilter1 <- tpn.GO[which(tpn.GO$Weight.clust > tpn.GO$GoBio),]
+tpnfilter2 <- tpn.GO[which(tpn.GO$Weight.clust < tpn.GO$GoBio),]
+hist(tpnfilter1$Weight.clust - tpnfilter1$GoBio, breaks=100, col="red")
+hist(tpn.GO$Weight.clust - tpn.GO$GoBio, breaks=1000, col="orange", xlim=c(-0.05, 0.05))
+fraction.greater <- dim(tpnfilter1)[1]/dim(tpn.GO)[1] # 13%
+fraction.less <- dim(tpnfilter2)[1]/dim(tpn.GO)[1] # 87%
+fraction.weight.greater <- sum(tpnfilter1$Weight.clust)/sum(tpn.GO$Weight.clust) # 0.34%
+fraction.weight.less <- sum(tpnfilter2$Weight.clust)/sum(tpn.GO$Weight.clust) # 96.63%
+fraction.zero <- dim(tpn.GO[which(tpn.GO$GoBio==0),])[1]/dim(tpn.GO)[1]  # 13%
+tpn.noZeroGoBio <- tpn.GO[which(tpn.GO$GoBio > 0),]
+plot(tpn.noZeroGoBio$Weight.clust ~ tpn.noZeroGoBio$GoBio, pch=19, col=alpha("blue", 0.15), xlab="GO biological process edge weight", ylab="PTM cluster weight", cex.lab=1.4, main="Bioplanet Pathway Similarity Included")
+summary(lm((tpn.noZeroGoBio$Weight.clust ~ tpn.noZeroGoBio$GoBio)))
+# R-squared:  0.1508
+tpnfilter3 <- tpn.noZeroGoBio[which(tpn.noZeroGoBio$Weight.clust > tpn.noZeroGoBio$GoBio),]
+# Only one edge Gene expression Interleukin-2 signaling pathway, very high GO scores
+fraction.greater.GoBiopositive <- dim(tpnfilter3)[1]/dim(tpn.GO)[1] # 13%
+hist(tpnfilter3$Weight.clust - tpnfilter3$GoBio, breaks=100, col="red")
+# Other relationships
+plot(tpn.GO$Weight.bp ~ tpn.GO$GoBio, pch=19, col=alpha("darkred", 0.20), xlab="GO biological process edge weight", ylab="bioplanet Jaccard similarity", cex.lab=1.4, xlim=c(0,1), ylim=c(0,1),  main="GO Biological Process vs. Bioplanet Pathway Similarity")
+plot(tpn.GO$Weight.clust ~ tpn.GO$Weight.bp, pch=19, col=alpha("purple", 0.20), xlab="bioplanet Jaccard similarity", ylab="PTM cluster weight", cex.lab=1.4, xlim=c(0,1), ylim=c(0,1),  main="PTM Cluster Weight vs. Bioplanet Pathway Similarity")
+
+
+
+
 plot(tpn.GO$Weight.clust ~ tpn.GO$GoCel, pch=19, col=alpha("darkgreen", 0.25))
 summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoCel))
 # R-squared: 0.1145
 plot(tpn.GO$Weight.clust ~ tpn.GO$GoMol, pch=19, col=alpha("red", 0.25))
 summary(lm(tpn.GO$Weight.clust ~ tpn.GO$GoMol))
 # R-squared: 0.07949
-plot(tpn.GO$Weight.bp ~ tpn.GO$GoBio, pch=19, col=alpha("darkblue", 0.25))
+plot(tpn.GO$Weight.bp ~ tpn.GO$GoBio, pch=19, col=alpha("darkred", 0.25))
 summary(lm(tpn.GO$Weight.bp ~ tpn.GO$GoBio))
 # R-squared:  0.2208 
 plot(tpn.GO$Weight.bp ~ tpn.GO$GoCel, pch=19, col=alpha("turquoise4", 0.25))

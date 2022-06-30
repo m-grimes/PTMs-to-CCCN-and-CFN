@@ -94,13 +94,15 @@ dev.new()
 plot(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust, ylab= "Bioplanet Jaccard similarity", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green4"), 0.25), cex=1.8)
 summary(lm(total.pathway.net$Weight.bp~total.pathway.net$Weight.clust))
 # R-squared:  0.02037 
+summary(lm(tpnn$Weight.bp~tpnn$Weight.clust))
+# R-squared: 0.02037 check
 points(total.pathway.net[which(total.pathway.net$Weight.clust==0), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.clust==0), "Weight.clust"],  pch=20, col=alpha(col2hex("red"), 0.2), cex=1.8) 
 #none, duh
 points(total.pathway.net[which(total.pathway.net$Weight.bp<=max(total.pathway.net$Weight.bp)/10), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.bp<=max(total.pathway.net$Weight.bp)/10), "Weight.clust"],  pch=20, col=alpha(col2hex("red"), 0.25), cex=1.8)
 points(total.pathway.net[which(total.pathway.net$Weight.bp==0), "Weight.bp"]~total.pathway.net.no.bp[which(total.pathway.net$Weight.bp==0), "Weight.clust"],  pch=20, col=alpha(col2hex("darkblue"), 0.2), cex=1.8)
 legend("topright", pt.cex=1.8, pch=20, col=c("green4", "red", "darkblue"), legend = c("Weights compared", "Weight bioplanet < 10%", "Weight bioplanet = 0"))
 # *** Weight.clust.vs.weight.bp.pdf/png
-# Normalizde version
+# Normalized version
 dev.new()
 plot(tpnn$Weight.bp~tpnn$Weight.clust, ylab= "Bioplanet Jaccard similarity", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green4"), 0.25), cex=1.8)
 summary(lm(tpnn$Weight.bp~tpnn$Weight.clust))
@@ -904,7 +906,6 @@ corenodes <- c(
   "PPIA",      "RPL4",      "RPL6",      "SET",       "SLC25A5",   "SRSF6",    
   "SUMO2",     "TUBA1A",    "TUBA1B",    "TUBB",      "TAGLN2",    "YWHAE",    
   "YWHAZ")
-
 # Plot the core networks with drug treatment attributes.
 core.cfn.gz <- filter.edges.0.RCy3(corenodes, gzalltgene.physical.cfn.merged)
 core.cfn.ld <- filter.edges.0.RCy3(corenodes, ldgene.physical.cfn.merged)
@@ -915,4 +916,20 @@ toggleGraphicsDetails()
 # Compare to CST data
 core.cccn.ld <- graph.cfn.cccn.medians.check (core.cfn.ld, ld=TRUE, gz=FALSE, only.cfn=FALSE)
 all.ratio.styles() # reverts to manual 
+# Classifications of core proteins
+core.cf <- gz.cf[gz.cf$Gene.Name %in% corenodes,]
+core.cf[grep("chaperone", core.cf$HPRD.Function),]
+chapers <- c("CCT4", "HSP90AA1", "HSP90AB1",  "HSPA8", "HSPD1", "NPM1")
+# graph the ribosomal proteins?
+ldhigestcore <- c("NOP58", "RPL18A", "RPL23A",  "RPL26",   "RPL3",  "RPL35",   "RPL5",  "RPS25",  "RPS28",   "RPS6",   "RPS9",   "SSR3")
+highestcore.cfn.ld <- filter.edges.0.RCy3(corenodes, ldgene.physical.cfn.merged)
+highestcore.cf <- ld.cf[ld.cf$Gene.Name %in% ldhigestcore,]
+highesttcore.cccn.ld <- graph.cfn.cccn.check (ldhigestcore, ld=TRUE, gz=FALSE, only.cfn=FALSE)
+selectNodes(ldhigestcore, by.col="id", preserve.current.selection = F)
+# For CCCN:
+selectNodes(ldhigestcore, by.col="Gene.Name", preserve.current.selection = F)
 # 
+#-----------------------------------------------------------------------------------------------------------------
+# Karen's tpnn normalization
+tpnn.norm.file <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/Karen_tpnn_files/tpnn.num.genes.rds", sep="")
+tpnn.norm <- 
