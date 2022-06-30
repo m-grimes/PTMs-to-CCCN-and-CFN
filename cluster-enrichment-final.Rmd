@@ -34,6 +34,28 @@ Groups:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+#Setup: Set local paths for input files and desired location of output files; start Cytoscape
+```{r set paths}
+
+#Filepaths
+#Input Data Files
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TKI-Data-Files-Final/"
+
+#Function Files
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+
+#Output Files
+sig.site.meds.filepath = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-final/SigSitesMeds/"
+
+results_table_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-final/"
+
+heatmap_path_130.141.111 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-final/heatmaps-130.141.111/"
+
+heatmap_path_180.173.39 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-final/heatmaps-180.173.39/"
+
+heatmap_path_38.41.40 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-final/heatmaps-38.41.40/"
+
+```
 
 ```{r load_packages}
 
@@ -51,20 +73,7 @@ cytoscapeVersionInfo ()
 ```
 
 
-```{r load file paths data objects and functions}
-
-#Filepaths
-data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
-
-sig.site.meds.filepath = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-v4/SigSitesMeds/"
-
-results_table_file_path = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-v4/"
-
-heatmap_path_130.141.111 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-v4/heatmaps-130.141.111/"
-
-heatmap_path_180.173.39 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-v4/heatmaps-180.173.39/"
-
-heatmap_path_38.41.40 <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ClusterEnrichment-v4/heatmaps-38.41.40/"
+```{r load data objects and functions}
 
 #Load data files
 load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701 and has gzalltgene.physical.cfn.merged
@@ -73,7 +82,8 @@ CCCN_sites_file <- paste(data_path,"sites_by_cluster.txt", sep="")
 CCCN_sites <- read.table(CCCN_sites_file, sep = "\t", stringsAsFactors = F, header=T)
 
 #Load functions
-source(paste(code_path, "cluster-enrichment-functions-v2.R", sep=""))
+source(paste(code_path, "tki-functions-final.R", sep=""))
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
 
 
 ```
@@ -94,7 +104,7 @@ good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPR
 
 colnames(gz.cf.good.col.names) <- good.col.names
 
-#For the experiment groups of interest, make a list where each element is the names of the experiments for that group  and the name of the element is the name of the set.
+#For the experiment groups of interest, make a list where each element is the names of the experiments for that group and the name of the element is the name of the set.
 
 good_experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("TC.HCC78.Criz.1", "TC.HCC78.Criz.2"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.H2228.Criz.1", "TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1"), c("TC.H2286.Dasat.1", "TC.H366.Dasat.1"), c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.H2228.Criz.1", "TC.STE.1.Criz.1", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1", "TC.H2286.Dasat.1", "TC.H366.Dasat.1", "TC.H1781.Afat.1"))
 
@@ -140,7 +150,7 @@ enrich.table <- Reduce(full_join, enrich.list.formatted)
 
 enrich.table$num_set <- rowSums(!is.na(enrich.table[2:8]))
 
-write.table(enrich.table, file = paste(results_table_file_path, "enrichment_results_meds_05_v2.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(enrich.table, file = paste(results_table_file_path, "enrichment_results_meds_05_final.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
 
 #Calculate number of enriched clusters for each group and the mean number of enriched clusters
 num_enriched <- apply(enrich.table[2:8], 2, function(x) {sum(!is.na(x))})
@@ -213,7 +223,7 @@ sig.site.selected <- sig.site.meds.list[c("h3122.criz", "pc9.erl")]
 sig.180.173.39 <- make.sig.site.heatmap.full("180.173.39", enrich.table, sig.site.selected, CCCN_sites, all_exps = TRUE, filepath = heatmap_path_180.173.39, filename = "medians.180.173.39.sig.sites.heatmap.jpeg", image_width=4, image_height=10)
 
 #Make medians heatmap
-meds.180.173.39 <- make.top.cluster.heatmap(exp = names(sig.site.selected), rep_list = good_experiments, cluster = "180.173.39", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_180.173.39, filename ="medians.180.173.39.heatmap.jpeg", image_width = 4, image_height = 10, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.180.173.39))
+meds.180.173.39 <- make.cluster.heatmap.full(exp = names(sig.site.selected), rep_list = good_experiments, cluster = "180.173.39", CCCN_sites, gz.cf.good.col.names, filepath = heatmap_path_180.173.39, filename ="medians.180.173.39.heatmap.jpeg", image_width = 4, image_height = 10, aggregate_reps = "median", custom_order = TRUE, custom_order_vector = rownames(sig.180.173.39))
 ```
 
 #Cluster 38.41.40
@@ -267,11 +277,11 @@ group_meds_all[which(group_meds_all$id == "KAT7"), "nodeType"] <- "acetyltransfe
 
 plot_cluster_cfn(cluster = "38.41.40", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
 
-all.ratio.styles(ratiocols = names(good_experiments))
+all.ratio.styles2(ratiocols = names(good_experiments))
 
 plot_cluster_cfn(cluster = "180.173.39", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
   
-all.ratio.styles(ratiocols = names(good_experiments))
+all.ratio.styles2(ratiocols = names(good_experiments))
 
 plot_cluster_cfn(cluster = "130.141.111", cluster_site_mapping_table = CCCN_sites, ratio_table = group_meds_all, cfn = gzalltgene.physical.cfn.merged)
   

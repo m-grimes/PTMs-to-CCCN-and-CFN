@@ -1,0 +1,214 @@
+---
+title: "CFN Shortest Paths Analysis"
+Author: "Karen Ross
+        Georgetown University"
+Output: html_document
+
+---
+# March 14, 2022
+
+## Shortest Paths Analysis
+The goal is to construct networks that are subsets of the CFN in which proteins whose PTMs were significantly affected by drug are connected by all shortest paths to the driver kinase of the cell line. Un all case, the driver kinase is also the drug target. This will tell us about the intermediate signaling proteins that play a role in drug response and could also be playing a role in drug resistance.
+
+This is a list of the cell-line/drug combos tested in our experiments. The driver kinase for each cell line and the number of replicates for the combo is also listed.
+H3122/Crizotinib: driver kinase = ALK; 5 experiments
+H2228/Crizotinib: driver kinase = ALK; 1 experiment
+STE1/Crizotinib: driver kinase = ALK; 1 experiment
+HCC78/Crizotinib: driver kinase = ROS; 2 experiments
+
+PC9/Erlotinib: driver kinase = EGFR; 5 experiments
+HCC4006/Erlotinib:driver kinase = EGFR; 1 experiment
+HCC827/Erlotinib: driver kinase = EGFR; 1 experiment
+
+H1781/Afatinib: driver kinase = ERBB2; 1 experiment
+
+H2286/Dasatinib: driver kinase = DDR2; 1 experiment
+H366/Dasatinib: driver kinase = DDR2; 1 experiment
+
+There are some restrictions in this analysis. ROS and DDR2 do not appear in the CFN, so we cannot compute shortest paths to these driver kinases. Similar to the cluster enrichment analysis, a drug affected site is defined as a site where the median ratio (drug-treated vs. untreated) of all experiments in the group is at least 2.25-fold changed. Sites must be observed for at least two experiments in the group to be included. This eliminates, for example, the ERBB2/afatinib analysis because there is only one sample with this combination. Thus, these are the sample groupings we will use:
+
+1. h3122.criz: H3122/Crizotinib x5 samples
+2. all.alk.criz: H3122/Crizotinib x5 samples, H2228/Crizotinib x1 sample, STE1/Crizotinib x1 sample
+3. pc9.erl: PC9/Erlotinib x5 samples
+4. all.egfr.erl: PC9/Erlotinib x5 samples, HCC4006/Erlotinib x1 sample, HCC827/Erlotinib x1 sample
+
+Note that h3122.criz and pc9.erl are the same as h3122.criz and pc9.erl in the cluster enrichment analysis. all.egfr.erl is the same as all.erl in the cluster enrichment analysis (because all erl treated cell lines have EGFR as the driver kinase). all.alk.criz is not the same as any group in cluster enrichment analysis. It differs from all.criz because it leaves out the hcc78 samples, which have ROS as the driver kinase.
+
+#Setup: Set local paths for input files and desired location of output files; start Cytoscape
+```{r set paths}
+
+#Input File Path
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TKI-Data-Files-Final/"
+
+#Function Files
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+
+#Output Files
+sp.filepath = "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/ShortestPathsAnalysis-Final/"
+```
+
+```{r load_packages}
+
+library(plyr)
+library(dplyr)
+library(gplots)
+library(RColorBrewer)
+library(RCy3)
+library(igraph)
+
+#Start Cytoscape
+cytoscapePing ()
+cytoscapeVersionInfo ()
+
+```
+
+```{r load data objects and functions}
+
+#Load data files
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701 and has gzalltgene.physical.cfn.merged
+
+#files used: bioplanet
+load(file=paste(data_path,"BioPlanetNetworks.RData", sep=""))
+
+#File with cleaned up node names for plotting networks
+group_meds_all_formatted_no_dups <- readRDS(paste(data_path, "group_meds_all_formatted_no_dups.rds", sep=""))
+
+#Load functions
+source(paste(code_path, "tki-functions-final.R", sep=""))
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+```
+#This chunk selects drug affected sites for the four sample groups for which we want to constuct shortest paths networks. We will calculate the median value (ratio of drug treated to untreated) for each site in a group that has at least two observations; then we will select the sites where the median is at least 2.25-fold up or down.
+```{r select drug affected sites}
+#Load data files
+#gz.cf is the table of all nodes (genes and PTMs) in the CFN/CCCN; remove rows with gene name "NA" from gz.cf
+gz.cf.good.gene.names <- gz.cf[which(!(gz.cf$Gene.Name == "NA")),]
+
+
+#Standardize the experiment names in the column headings of gz.cf so the labels on the plots will look better
+gz.cf.good.col.names <- gz.cf.good.gene.names
+
+good.col.names <- c("id", "Gene.Name", "Approved.Name", "Hugo.Gene.Family", "HPRD.Function", "nodeType", "Domains", "Compartment", "Compartment.Overview", "Total", "Median", "Max", "No.Samples", "No.Modifications", "ppidegree", "ppibetween", "SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "SEPTM.H3122.PR171.1", "SEPTM.H3122.PR171.2", "SEPTM.H3122.PR171.3", "SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "SEPTM.PC9.PR171.1", "SEPTM.PC9.PR171.2", "SEPTM.PC9.PR171.3", "TC.H1781.Afat.1", "TC.H2228.Criz.1", "TC.H2286.Dasat.1", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H366.Dasat.1", "TC.HCC4006.Erl.1", "TC.HCC78.Criz.1", "TC.HCC78.Criz.2", "TC.HCC827.Erl.1", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.STE.1.Criz.1", "parent", "Node.ID", "norm.ppibetween", "pepdegree", "pepbetween")  
+
+colnames(gz.cf.good.col.names) <- good.col.names
+
+#For the experiment groups of interest, make a list where each element is the names of the experiments for that group  and the name of the element is the name of the set.
+
+shortest_paths_experiments <- list(c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2"), c("SEPTM.H3122.Criz.1", "SEPTM.H3122.Criz.2", "SEPTM.H3122.Criz.3", "TC.H3122.Criz.1", "TC.H3122.Criz.2", "TC.H2228.Criz.1", "TC.STE.1.Criz.1"), c("SEPTM.PC9.Erl.1", "SEPTM.PC9.Erl.2", "SEPTM.PC9.Erl.3", "TC.PC9.Erl.1", "TC.PC9.Erl.2", "TC.HCC4006.Erl.1", "TC.HCC827.Erl.1"))
+
+names(shortest_paths_experiments) <- c("h3122.criz", "pc9.erl", "all.alk.criz", "all.egfr.erl")
+
+#Change the 0's to NA's so they won't get counted when calculating medians
+gz.cf.good.col.names.na <- gz.cf.good.col.names
+gz.cf.good.col.names.na[gz.cf.good.col.names.na == 0] <- NA
+
+#Keep only the rows for sites--these have NodeID = peptide
+gz.cf.good.col.names.na <- gz.cf.good.col.names.na[ which(gz.cf.good.col.names.na$Node.ID == "peptide"),]
+
+#Calculate the median of each site for the experiments in each group; only calculate the median if there are at least two reps in the set; otherwise return NA
+sp_group_meds <- sapply(1:length(shortest_paths_experiments),function(x){rowMedians_w_reps_df(gz.cf.good.col.names.na[shortest_paths_experiments[[x]]])})
+sp_group_meds <- as.data.frame(sp_group_meds)
+rownames(sp_group_meds) <- gz.cf.good.col.names.na$id
+colnames(sp_group_meds) <- names(shortest_paths_experiments)
+
+#Select the significantly drug-affected sites for each experiment group. These are sites where the median is at least 2.25-fold
+sp.sig.sites.list <- lapply(names(shortest_paths_experiments), function(x) {get.sig.sites(site.df = sp_group_meds, column = x, threshold = 2.25, filepath = sp.filepath)})
+names(sp.sig.sites.list) <- names(shortest_paths_experiments)
+
+```
+## Plot Shortest Paths Networks
+1. Calculate medians for the shortest paths experiments groups for all rows of gz.cf.good.col.names. (Note: gz.cf.good.col.names has the genes with NA as name removed and has the ratio column names standardized.) This data will be used for coloring the nodes in the Cytoscape networks. We can't just use sp_group_meds for this because we need the ratios for the gene nodes as well as for the site nodes. gz.cf.good.col.names has both the gene and the peptide (site) ratios. We will need both the gene and site ratios for coloring the nodes in the Cytoscape networks. Also, when calculating the medians, we won't require that there be at least two observations (use rowMedians instead of rowMedians_w_reps_df). After calculating the medians, we will add all of the metadata columns from gz.cf.good.col.names to the medians table.
+
+2. Extract the unique gene names for the drug-affected sites. Compute the composite shortest paths. Get the node metadata from gz.cf.good.col.names.na for all nodes in the shortest paths network. Plot the network and apply the styles. It will be cleaner to have each of the four shortest paths files in a separate Cytoscape session, so do these steps separately for each network (i.e., don't use a loop).  
+
+
+```{r plot shortest paths networks}
+
+#Change the 0's to NA's so they won't get counted when calculating medians
+gz.cf.good.col.names.all.na <- gz.cf.good.col.names
+gz.cf.good.col.names.all.na[gz.cf.good.col.names.all.na == 0] <- NA
+
+#Calculate the median of each site for the experiments in each group; calculate the median even if there there is only one rep in the set; otherwise return NA; change the NA's to 0's for plotting node colors and sizes in Cytoscape; add the non-ratio columns #from gz.cf.good.col.names.all.na to the median table
+group_meds_all_sp <- sapply(1:length(shortest_paths_experiments),function(x){rowMedians(gz.cf.good.col.names.all.na[shortest_paths_experiments[[x]]])})
+group_meds_all_sp <- as.data.frame(group_meds_all_sp)
+colnames(group_meds_all_sp) <- names(shortest_paths_experiments)
+group_meds_all_sp[is.na(group_meds_all_sp)] <- 0
+group_meds_all_sp <- cbind(gz.cf.good.col.names.all.na[1:16], gz.cf.good.col.names.all.na[42:46], group_meds_all_sp)
+
+#Fix annotation of KAT7, so it is listed as an acetyltransferase
+group_meds_all_sp[which(group_meds_all_sp$id == "KAT7"), "nodeType"] <- "acetyltransferase"
+
+#Plot shortest paths network for h3122.criz; target is ALK
+plot_shortest_paths_cfn(drug_affected_sites = sp.sig.sites.list[["h3122.criz"]], target = "ALK", ratio_table = group_meds_all_sp, cfn = gzalltgene.physical.cfn.merged, title = "h3122.criz")
+all.ratio.styles2(ratiocols = names(shortest_paths_experiments))
+
+#Start new Cytoscape session
+#Plot shortest paths network for pc9.erl; target is EGFR
+plot_shortest_paths_cfn(drug_affected_sites = sp.sig.sites.list[["pc9.erl"]], target = "EGFR", ratio_table = group_meds_all_sp, cfn = gzalltgene.physical.cfn.merged, title = "pc9.erl")
+all.ratio.styles2(ratiocols = names(shortest_paths_experiments))
+
+#Start new Cytoscape session
+#Plot shortest paths network for all.alk.criz; target is ALK
+plot_shortest_paths_cfn(drug_affected_sites = sp.sig.sites.list[["all.alk.criz"]], target = "ALK", ratio_table = group_meds_all_sp, cfn = gzalltgene.physical.cfn.merged, title = "all.alk.criz")
+all.ratio.styles2(ratiocols = names(shortest_paths_experiments))
+
+#Start new Cytoscape session
+#Plot shortest paths network for all.egfr.erl; target is EGFR
+plot_shortest_paths_cfn(drug_affected_sites = sp.sig.sites.list[["all.egfr.erl"]], target = "EGFR", ratio_table = group_meds_all_sp, cfn = gzalltgene.physical.cfn.merged, title = "all.egfr.erl")
+all.ratio.styles2(ratiocols = names(shortest_paths_experiments))
+
+dup_rows <- exp_counts_filtered[which(exp_counts_filtered$GeneID %in% dup_genes),]
+dup_rows$sumCounts <- rowSums(dup_rows[2:16])
+
+```
+
+##Analyze transporters and glycolysis enzymes in the h3122.criz shortest paths network
+By eye, there are a number of small molecule transporters and glycolysis enzymes with PTM that are significantly affected by crizotinib. Identify the proteins with sig sites in h3122.criz that belong to the Bioplanet pathways Transmembrane transport of small molecules and Glycolysis and gluconeogenesis. Plot the shortest paths network connecting just these proteins to ALK. Plot both CFN and CCCN.
+
+```{r zoom in on h3122 criz sp network}
+#Get unique gene names for h3122.criz sig sites
+h3122.criz.genes <- unique(group_meds_all_sp[which(group_meds_all_sp$id %in% sp.sig.sites.list[["h3122.criz"]]$id), "Gene.Name"])
+
+#Get genes with h3122.criz sig sites that are in the Bioplanet Glycolysis and gluconeogenesis pathway
+h3122.criz.gg <- h3122.criz.genes[h3122.criz.genes %in% bioplanet[["Glycolysis and gluconeogenesis"]]]
+
+#Get shortest paths to ALK and plot network (can plot in same session as full h3122.criz sp network = shortest.paths.h3122.criz.cys)
+shortest_path_edges_gg <- composite.shortest.paths(h3122.criz.gg, "ALK", network = gzalltgene.physical.cfn.merged)
+shortest_paths_gg_graph <- graph.cfn.cccn2(shortest_path_edges_gg, nodefile = group_meds_all_formatted_no_dups)
+
+#Make another version that excludes MYH9, which has a huge number of interactions
+shortest_path_edges_gg_no_myh9 <- composite.shortest.paths(h3122.criz.gg, "ALK", network = gzalltgene.physical.cfn.merged, exclude = "MYH9")
+shortest_paths_gg_graph_no_myh9 <- graph.cfn.cccn2(shortest_path_edges_gg_no_myh9, nodefile = group_meds_all_formatted_no_dups)
+
+all.ratio.styles2(ratiocols = names(shortest_paths_experiments))
+
+#Get genes with h3122.criz sig sites that are in the Bioplanet Transmembrane transport of small molecules
+h3122.criz.tm <- h3122.criz.genes[h3122.criz.genes %in% bioplanet[["Transmembrane transport of small molecules"]]]
+
+#Find shortest paths from the proteins in the TM transport pathway to ALK; exclude MYH9, which has a huge number of interactions
+shortest_path_edges_tm_no_myh9 <- composite.shortest.paths(h3122.criz.tm, "ALK", network = gzalltgene.physical.cfn.merged, exclude = "MYH9")
+shortest_paths_tm_graph_no_myh9 <- graph.cfn.cccn2(shortest_path_edges_tm_no_myh9, nodefile = group_meds_all_formatted_no_dups)
+
+#New simpler version that doesn't include GNAS. GNAS is a member of the pathway, but isn't a transporter and isn't directly connected to any transporters
+h3122.criz.tm.no.gnas <- h3122.criz.tm[!h3122.criz.tm %in% "GNAS"]
+
+shortest_path_edges_tm_no_myh9_no_gnas <- composite.shortest.paths(h3122.criz.tm.no.gnas, "ALK", network = gzalltgene.physical.cfn.merged, exclude = "MYH9")
+
+shortest_paths_tm_graph_no_myh9_no_gnas <- graph.cfn.cccn2(shortest_path_edges_tm_no_myh9_no_gnas, nodefile = group_meds_all_formatted_no_dups)
+
+
+
+
+
+plot_shortest_paths_cfn(drug_affected_sites = sp.sig.sites.list[["h3122.criz"]], target = "ALK", ratio_table = group_meds_all_sp, cfn = gzalltgene.physical.cfn.merged, title = "h3122.criz")
+
+all.ratio.styles(ratiocols = names(shortest_paths_experiments))
+
+
+
+
+```
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+

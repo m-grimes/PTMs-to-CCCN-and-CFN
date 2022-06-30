@@ -42,7 +42,7 @@ rowMedians_w_reps_df <- function(df) {
 get.sig.sites <- function(site.df, column, threshold = 2.25, filepath) {
   #Select the desired experiment from the sites table
   site.df.exp <- site.df[column]
-  #Select sites that meet the threshold (up or down) for the desired experiment
+  #Select sites that meet the threshold (up or down) for the desired experiment; rowSums is used to turn the logical into a numerical value
   site.df.exp$count_up <- rowSums(site.df.exp[1] > log2(threshold))
   site.df.exp$count_down <- rowSums(site.df.exp[1] < -log2(threshold))
   site.df.sig <- site.df.exp[which((site.df.exp$count_down == 1) | (site.df.exp$count_up == 1)),]
@@ -435,7 +435,85 @@ plot_cluster_cfn <- function(cluster, cluster_site_mapping_table, ratio_table, c
   
   #Plot the network in Cytoscape
   gene.suid <- createNetworkFromDataFrames(gene_info, cfn_edges, title=paste("Cluster", cluster, sep=" "), collection = "Interactions")
-  setNodeMapping(gene_info)
+  setNodeMapping2(gene_info)
+  edgeDprops.RCy32()
+  layoutNetwork("force-directed")  
+}
+
+####################
+#The function graph.cfn.ccn2 is like graph.cfn.cccn except it takes a file of node properties as input instead of always using
+#gz.cf or ld.cf. Also simplifies id's with multiple genes to just show one gene
+
+graph.cfn.cccn2 <- function(edgefile, nodefile = gz.cf.pruned, ld=FALSE, gz=TRUE, only.cfn=FALSE) {
+  genenames <- extract.gene.names(edgefile)
+  if (gz==TRUE) {
+    cccn <- gzallt.cccnplus
+    cccn$source <- sub(";.*", "", cccn$source)
+    cccn$target <- sub(";.*", "", cccn$target)
+    cccn.cf <- nodefile[nodefile$Gene.Name %in% genenames,]
+  }
+  if (ld==TRUE) {
+    cccn <- ld.cccnplus
+    cccn$source <- sub(";.*", "", cccn$source)
+    cccn$target <- sub(";.*", "", cccn$target)
+    nodefile <- nodefile[ld.cf$Gene.Name %in% genenames,]
+  }
+  if (only.cfn==TRUE) {
+    cfn.cf <- cccn.cf[which(cccn.cf$Node.ID=="gene"),]
+    gene.suid <- createNetworkFromDataFrames(cfn.cf, edgefile, title=paste("CFN", (getNetworkCount()+1)), collection = "Interactions")
+    setNodeMapping(cfn.cf)
+    setCorrEdgeAppearance(edgefile)     
+  }
+  if (only.cfn==FALSE) {
+    netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
+    print(netpeps)
+    # make gene-ptm edges
+    net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
+    print(net.gpe)
+    # remove gene-gene interactions (these aren't really autophosphorylations, just entries for the genes in gz.cf)
+    net.gpe <- remove.autophos.RCy3(net.gpe)
+    #make ptm-ptm edges
+    ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn)
+    print(ptn.cccn)
+    cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
+    print(cfn.cccn.edges)
+    if (gz==TRUE) {all.cf <- nodefile[nodefile$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+    if (ld==TRUE) {all.cf <- ld.cf[ld.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}
+    print("nodes")
+    print(all.cf$id)
+    cfn.cccn.suid <- createNetworkFromDataFrames(all.cf, cfn.cccn.edges, title=paste("CFN plus CCCN", (getNetworkCount()+1)), collection = "Interactions") 
+    print("start setNodeMapping2")
+    setNodeMapping2(cccn.cf)
+    print("start CorrEdgeAppearance")
+    setCorrEdgeAppearance(cfn.cccn.edges) 
+  }
+  layoutNetwork("force-directed") 
+  if (only.cfn==FALSE) return(cfn.cccn.edges)
+}
+
+
+####################
+#The function plot_shortest_paths_cfn plots the shortest paths in the cfn between the parent genes of a set of sites and a 
+#target gene. The function extracts the parent genes for the set of sites, calculates the shortest paths, extracts the
+#metadata and ratio data for all genes in the shortest paths network and plots the network in Cytoscape. The node shape and border
+#and edge styles are applied. (Coloring nodes according to ratio values happens separately.) The inputs are: drug_affected_sites =
+#a dataframe with a column called "id" that lists the sites whose parent genes should be used for the shortest paths calculation;
+#target = target gene(s) for the shortest path calculation; ratio_table = table with metadata for each gene and site in the CCCN/CFN (like gz.cf or group_meds_all, which
+#is like gz.cf except it provides median drug vs. vector ratios for several drug/cell-line experiment groups), cfn = edge file
+#of cfn interactions and title = string indicating the title for the network in Cytoscape. 
+plot_shortest_paths_cfn <- function(drug_affected_sites, target, ratio_table, cfn, title) {
+  #Get unique gene names for sig sites
+  genes <- unique(ratio_table[which(ratio_table$id %in% drug_affected_sites$id), "Gene.Name"])
+  
+  #get shortest path edges
+  shortest_path_edges <- composite.shortest.paths(genes, target, network = cfn)
+  
+  #Get rows of ratio_table for each of the parent genes
+  gene_info <- ratio_table[ratio_table$id %in% unique(c(shortest_path_edges$source, shortest_path_edges$target)),]
+  
+  #Plot network; set style
+  gene.suid <- createNetworkFromDataFrames(gene_info, shortest_path_edges, title=title, collection = "Shortest Paths")
+  setNodeMapping2(gene_info)
   edgeDprops.RCy32()
   layoutNetwork("force-directed")  
 }
@@ -456,44 +534,76 @@ filter.edges.0 <- function(nodenames, edge.file) {
   if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
 }
 
+filter.edges.between <- function(nodes1, nodes2, edge.file, convert=TRUE) {
+  edge.file <- interaction.to.edgeType(edge.file)
+  sel.edges1 <- edge.file[edge.file$Gene.1 %in% nodes1 & edge.file$Gene.2%in% nodes2,]
+  sel.edges2 <- edge.file[edge.file$Gene.1 %in% nodes2 & edge.file$Gene.2%in% nodes1,]
+  sel.edges <- rbind(sel.edges1, sel.edges2)		
+  if (convert==TRUE) {sel.edges <- edgeType.to.interaction(sel.edges)}
+  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
+}
+
+
 ###############################################
 #Sets node shapes and border style
 
-setNodeMapping <- function(cf) {
+setNodeMapping2 <- function(cf) {
+  print("start setBackgroundColorDefault")
   setBackgroundColorDefault(style.name = "default", new.color = "#949494") # grey 58
+  print("start setNodeShapeDefault")
   setNodeShapeDefault("ELLIPSE")
+  print("start setNodeColorDefault")
   setNodeColorDefault("#F0FFFF") # azure1
+  print("start setNodeSizeDefault")
   setNodeSizeDefault(100) # for grey non-data nodes
+  print("start setNodeFontSizeDefault")
   setNodeFontSizeDefault( 22)
+  print("start setNodeLabelColorDefault")
   setNodeLabelColorDefault("#000000")  # black
+  print("start setNodeBorderWidthDefault")
   setNodeBorderWidthDefault( 1.8)
+  print("start setNodeBorderColorDefault")
   setNodeBorderColorDefault("#888888")  # gray 
   molclasses <- c("unknown", "receptor tyrosine kinase",  "SH2 protein", "SH2-SH3 protein", "SH3 protein", "tyrosine kinase",  "SRC-family kinase",   "kinase", "phosphatase", "transcription factor", "RNA binding protein")
   nodeshapes <- c("ELLIPSE","ROUND_RECTANGLE", "VEE", "VEE", "TRIANGLE", "HEXAGON", "DIAMOND", "OCTAGON", "OCTAGON", "PARALLELOGRAM", "RECTANGLE")
+  print("start setNodeSelectionColorDefault")
   setNodeSelectionColorDefault("#CC00FF") 
+  print("start setNodeShapeMapping")
   setNodeShapeMapping ("nodeType", molclasses, nodeshapes, default.shape="ELLIPSE")
+  print("start setNodeBorderWidthMapping")
   setNodeBorderWidthMapping("nodeType", c("deacetylase","acetyltransferase","demethylase","methyltransferase","membrane protein", "receptor tyrosine kinase", "G protein-coupled receptor", "SRC-family kinase", "tyrosine kinase", "kinase", "phosphatase"), widths=c(4,12,4,12,8,16,16,12,12,12,14), 'd',default.width=4)
   if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
+    print("start setNodeShapeBypass SH2")
     setNodeShapeBypass(cf[grep("SH2", cf$Domains) %w/o% which(cf$nodeType %in% molclasses), 1], nodeshapes[3])} 
   if (length(cf[grep("RNA", cf$nodeType), 1])>0) {
+    print("start setNodeShapeBypass RNA")
     setNodeShapeBypass(cf[grep("RNA", cf$nodeType), 1], nodeshapes[11])}
   if (length(cf[grep("transcription", cf$nodeType), 1])>0) {
+    print("start setNodeShapeBypass transcription")
     setNodeShapeBypass(cf[grep("transcription", cf$nodeType), 1], nodeshapes[10])}
   if (length(cf[grep("acetyl", cf$nodeType), 1])>0) {
+    print("start setNodeBorderColorBypass acetyl")
     setNodeBorderColorBypass(cf[grep("acetyl", cf$nodeType), 1], "#FF8C00")} # darkorange
   if (length(cf[grep("methyl", cf$nodeType), 1])>0) {
+    print("start setNodeBorderColorBypass methyl")
     setNodeBorderColorBypass(cf[grep("methyl", cf$nodeType), 1], "#005CE6")} # blue
   if (length(cf[grep("membrane", cf$nodeType), 1])>0) {
+    print("start set bypass membrane")
+    print(cf[grep("membrane", cf$nodeType), 1])
     setNodeBorderColorBypass(cf[grep("membrane", cf$nodeType), 1], "#6600CC") # purple
     setNodeShapeBypass(cf[grep("membrane", cf$nodeType), 1], nodeshapes[2])} 
   if (length(cf[grep("kinase", cf$nodeType), 1])>0) {
+    print("start setNodeBorderColorBypass kinase")
     setNodeBorderColorBypass(cf[grep("kinase", cf$nodeType), 1], "#EE0000")} # red2
   if (length(cf[grep("phosphatase", cf$nodeType), 1])>0) {
+    print("start setNodeBorderColorBypass phosphatase")
     setNodeBorderColorBypass(cf[grep("phosphatase", cf$nodeType), 1], "#FFEC8B")} # lightgoldenrod1
   if (length(cf[grep("receptor", cf$nodeType), 1])>0) {
+    print("start set bypass receptor")
     setNodeBorderColorBypass(cf[grep("receptor", cf$nodeType), 1], "#BF3EFF") # darkorchid1
     setNodeShapeBypass(cf[grep("receptor", cf$nodeType), 1], nodeshapes[2])} 
   if (length(cf[grep("TM", cf$nodeType), 1])>0) {
+    print("start set bypass TM")
     setNodeBorderColorBypass(cf[grep("TM", cf$Domains), 1], "#6600CC") # purple
     setNodeShapeBypass(cf[grep("TM", cf$Domains), 1], nodeshapes[2])} 
 }
@@ -537,8 +647,9 @@ edgeDprops.RCy32 <- function() {
 }
 
 ################################
-#Sets node fill color according to ratio values
-all.ratio.styles <- function(ratiocols=NULL) {
+#Sets node fill color according to ratio values. Same as all.ratio.styles, but calls setNodeColorToRatios2
+#which has appropriate size and color control points for log2 ratios
+all.ratio.styles2 <- function(ratiocols=NULL) {
   nodevalues <- getTableColumns('node')
   
   if(length(ratiocols)==0) {
@@ -599,3 +710,57 @@ setNodeColorToRatios2 <- function(plotcol){
   setNodeSelectionColorDefault ( "#CC00FF") 
 }
 
+####################################
+#Function to examine all shortest paths between two sets of genes; now robust to gene names that are not in network.
+composite.shortest.paths <- function(genes1, genes2, network, exclude=NULL) {
+  if(grepl("Gene", names(network)[1])) {
+    network <- edgeType.to.interaction(network)
+  }
+  composit <- list()
+  int <- list()
+  ig.graph <- graph.data.frame(network, directed=FALSE)
+  netnodes <- vertex_attr(ig.graph)$name
+  # loop
+  for (i in 1:length(genes1)) {
+    if (!(genes1[i] %in% netnodes)) next
+    if(genes1[i] %in% exclude) next
+    for (j in 1:length(genes2)){
+      if(genes2[j] %in% exclude) next
+      if (!(genes2[j] %in% netnodes)) next
+      if (identical(genes1[i], genes2[j])) next
+      int[[j]] <- connectNodes.all.RCy3.exclude(c(genes1[i], genes2[j]), edgefile=network, ig.graph= ig.graph,  exclude=exclude)
+    }
+    composit[[i]] <- ldply(int)
+  }
+  result <- unique(ldply(composit))
+  return(result)
+}
+
+#####################
+connectNodes.all.RCy3.exclude <- function(nodepair, ig.graph=NULL, edgefile, newgraph=FALSE, exclude=NULL)	{
+  if (newgraph==TRUE) {
+    ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
+  if(length(exclude) > 0) {
+    for(i in 1:length(exclude)) {
+      if(exclude[i] %in% edgefile$source) {
+        edgefile <- edgefile[-which(edgefile$source==exclude[i]),]}
+      if(exclude[i] %in% edgefile$target) {
+        edgefile <- edgefile[-which(edgefile$target==exclude[i]),] }
+    }
+    ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
+  sp <- all_shortest_paths(graph=ig.graph, from=nodepair[1], to=nodepair[2], mode="all")
+  path.nodeslist <-  unique(lapply(sp[[1]], names))
+  edges.list <- lapply(path.nodeslist, filter.edges.0, edge.file=edgefile)
+  path.edges <- unique(remove.autophos(ldply(edges.list)))
+  return(path.edges)
+}
+
+
+################
+# Remove auto-phosphorylation loops
+remove.autophos <- function(edgefile)	{
+  auto <- which (as.character(edgefile $Gene.1) == as.character(edgefile $Gene.2))
+  if (length(auto) > 0) {
+    newedgefile <- edgefile[-auto,] } else newedgefile <- edgefile
+    return (newedgefile)	
+}
