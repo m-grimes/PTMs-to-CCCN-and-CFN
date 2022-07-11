@@ -28,11 +28,11 @@ load(file=paste(comp_path,"/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "LD_NewCFNCC
 # What is the size of the network without any threshold?
 #  dim (total.pathway.net) 645709      4
 # What does the entire pathway crostalk network graph look like? 
-no.nodes.total.pathway.net <- length(unique(c(total.pathway.net$source, total.pathway.net$target))) # 1488
+no.nodes.total.pathway.net <- length(unique(c(tpnn$source, tpnn$target))) # 1488
 # no. possible edges = 0.5*no.nodes*(no.nodes-1)
 no.poss.total.edges <- 0.5*(no.nodes.total.pathway.net*(no.nodes.total.pathway.net-1))
 # 1106328
-total.pathway.net.density <- dim (total.pathway.net)[1]/no.poss.total.edges
+total.pathway.net.density <- dim (tpnn)[1]/no.poss.total.edges
 # density is now 0.5836506
 #-------------------------------------------------------------------------------
 # Normalize: put two weights on same scale to make Weight.clust from 0 to 1
