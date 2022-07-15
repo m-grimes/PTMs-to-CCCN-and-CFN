@@ -12,7 +12,8 @@
 localpath = getwd()	
 comp_path <- unlist(strsplit(localpath, "Dropbox"))[[1]]
 if(length(grep("Dropbox", comp_path))==0) { 
-  comp_path <- unlist(strsplit(localpath, "Documents"))[[1]]}
+  comp_path <- unlist(strsplit(localpath, "Documents"))[[1]]
+  }
 source(paste(comp_path, "/Dropbox/_Work/R_/MG_packages.R", sep=""))
 # load work
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))

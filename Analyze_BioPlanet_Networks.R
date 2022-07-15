@@ -306,6 +306,37 @@ toggleGraphicsDetails()
 #___________________________________________________________________________
 # What are the CFN/CCCN links between pathways linked by cluster evidence alone?
 # gzallt.physical.network =	edge file of the physical interaction network: CCCN, CFN, plus negative corr edges
+# TKI efflux
+bioplanet[grep("ABCC4", bioplanet)]
+bioplanet[grep("ABCC6", bioplanet)]
+# `ABC transporters` and `Transmembrane transport of small molecules`
+bioplanet[grep("ABCB1", bioplanet)]
+bioplanet[grep("ABCG2", bioplanet)]
+abcc4.net <- filter.edges.1("ABCC4", gzalltgene.physical.cfn.merged)
+abcc6.net <- filter.edges.1("ABCC4", gzalltgene.physical.cfn.merged)
+# NADA
+abcb1.net <- filter.edges.1("ABCB1", gzalltgene.physical.cfn.merged)
+abcg2.net <- filter.edges.1("ABCG2", gzalltgene.physical.cfn.merged)
+# NADA
+# GENERAL
+abc1 <- gzalltgene.physical.cfn.merged[grep("ABC", gzalltgene.physical.cfn.merged$source),] # 32
+abc2 <- gzalltgene.physical.cfn.merged[grep("ABC", gzalltgene.physical.cfn.merged$target),] # 0
+abc.cfn.nodes <- unique (abc1$source)
+abc.cfn.net <- filter.edges.1(abc.cfn.nodes, gzalltgene.physical.cfn.merged) # ==abc1
+# ABCC1 in TKI efflux https://www.sciencedirect.com/science/article/pii/B9780128164341000024
+# ABCC2 brain expressed low amounts
+# ABCC3 upregulated in some cancers including NSCNC https://www.sciencedirect.com/topics/agricultural-and-biological-sciences/abcc3
+# ABCC5 https://www.sciencedirect.com/search?qs=ABCC5
+# ABCD3 peroxizome carboxylate
+# ABCE1 ribosomal recycling
+# Look in CFN composite shortest paths
+selectNodes(abc.cfn.nodes, preserve=FALSE, by="id") 
+# interesting network from first neighbors: EPHB2, FYN, LYN, LCK and GSK3A
+selectNodes(extract.gene.names.RCy3(abc.cfn.net), by="id", preserve=F)
+# Network from selected ABC transproted implicated in TKI eflux plus RTKs
+selectNodes(c("ABCC1", "ABCC2", "ABCC3", "ABCC5"), by="id", preserve=F )
+selectFirstNeighbors()
+selectNodes(c("EGFR", "MET", "ALK"), by="id", preserve=T)
 #_________________________________________
 # Interactions with EGF/EGFR signaling pathway
 # Choose Transmembrane transport of small molecules (druggable?)
