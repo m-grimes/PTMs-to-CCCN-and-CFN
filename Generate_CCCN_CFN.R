@@ -1,23 +1,3 @@
-library(devtools)
-library(RCy3)
-library(plyr)
-library(dplyr)
-library(RColorBrewer)
-library(gplots)
-library(igraph)
-library(knitr)
-library("BiocStyle")
-options(stringsAsFactors=FALSE)
-#
-# There are several resources available:
-browseVignettes('RCy3')
-# https://github.com/cytoscape/RCy3/wiki/Upgrading-Existing-Scripts
-# 
-
-# Note: Start Cytoscape
-# ------------------------------------------------------------------------
-cytoscapePing ()
-cytoscapeVersionInfo ()
 
 # Functions for creating and manipulating networks using igraph and RCy3
 # Note: For createNetworkFromDataFrames {RCy3}, in the node file, the first column must be named "id". 
@@ -424,28 +404,41 @@ collapse.CCCN.nodes <- function(nodenames=NULL) {
 
 # Alex Pico writes: Try to avoid using Bypasses whenever possible. They are slow; they are not saved with a style; they stick to a particular network view. I only recommend them for a handful of things that you really must override. But you can almost always simply create a new column and make a mapping instead. 
 setNodeMapping <- function(cf) {
+  print("start setBackgroundColorDefault")
   setBackgroundColorDefault(style.name = "default", new.color = "#949494") # grey 58
+  print("start setNodeShapeDefault")
   setNodeShapeDefault("ELLIPSE")
+  print("start setNodeColorDefault")
   setNodeColorDefault("#F0FFFF") # azure1
+  print("start setNodesizeDefault")
   setNodeSizeDefault(100) # for grey non-data nodes
+  print("start setNodeFontSizeDefault")
   setNodeFontSizeDefault( 22)
+  print("start setNodeLabelColorDefault")
   setNodeLabelColorDefault("#000000")  # black
+  print("start setNodeBorderWidthDefault")
   setNodeBorderWidthDefault( 1.8)
+  print("start setNodeBorderColorDefault")
   setNodeBorderColorDefault("#888888")  # gray 
   molclasses <- c("unknown", "receptor tyrosine kinase",  "SH2 protein", "SH2-SH3 protein", "SH3 protein", "tyrosine kinase",  "SRC-family kinase",   "kinase", "phosphatase", "transcription factor", "RNA binding protein")
   #  NOTE getNodeShapes(cy) returns node shapes in random order!  Define manually 
   #	*12 for RCy2; 9 for RCy3
   # there are now 24 nodeType classes
   nodeshapes <- c("ELLIPSE","ROUND_RECTANGLE", "VEE", "VEE", "TRIANGLE", "HEXAGON", "DIAMOND", "OCTAGON", "OCTAGON", "PARALLELOGRAM", "RECTANGLE")
+  print("start setNodeSelectionColorDefault")
   setNodeSelectionColorDefault(  "#CC00FF") 
+  print("start setNodeShapeMapping")
   setNodeShapeMapping ("nodeType", molclasses, nodeshapes, default.shape="ELLIPSE")
+  print("start setNodeBorderWidthMapping")
   setNodeBorderWidthMapping("nodeType", c("deacetylase","acetyltransferase","demethylase","methyltransferase","membrane protein", "receptor tyrosine kinase", "G protein-coupled receptor", "SRC-family kinase", "tyrosine kinase", "kinase", "phosphatase"), widths=c(4,12,4,12,8,16,16,12,12,12,14), 'd',default.width=4)
-  if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
+  print("start setNodeShapeBypass")
+   if (length(cf[grep("SH2", cf$Domains), 1])>0 & !all(grep("SH2", cf$Domains) %in% which(cf$nodeType %in% molclasses))) {
     setNodeShapeBypass(cf[grep("SH2", cf$Domains) %w/o% which(cf$nodeType %in% molclasses), 1], nodeshapes[3])} 
   if (length(cf[grep("RNA", cf$nodeType), 1])>0) {
     setNodeShapeBypass(cf[grep("RNA", cf$nodeType), 1], nodeshapes[11])}
   if (length(cf[grep("transcription", cf$nodeType), 1])>0) {
     setNodeShapeBypass(cf[grep("transcription", cf$nodeType), 1], nodeshapes[10])}
+  print("start setNodeBorderColorBypass")
   if (length(cf[grep("acetyl", cf$nodeType), 1])>0) {
     setNodeBorderColorBypass(cf[grep("acetyl", cf$nodeType), 1], "#FF8C00")} # darkorange
   if (length(cf[grep("methyl", cf$nodeType), 1])>0) {
@@ -636,10 +629,11 @@ graph.cfn.cccn <- function(edgefile, ld=FALSE, gz=TRUE, only.cfn=FALSE, pruned=T
   }
   if (only.cfn==FALSE) {
     netpeps <- cccn.cf[which(cccn.cf$Node.ID=="peptide"), 'id']
-    # make gene-peptide edges
+    # make gene-ptm edges
     net.gpe <- data.frame(source=cccn.cf$Gene.Name, target=cccn.cf$id, Weight=0.25, interaction="peptide")
-    # remove gene-gene interactions
+    # remove gene-gene interactions (these aren't really autophosphorylations, just entries for the genes in gz.cf)
     net.gpe <- remove.autophos.RCy3(net.gpe)
+    #make ptm-ptm edges
     ptm.cccn <-	filter.edges.0.RCy3(netpeps, cccn) 
     cfn.cccn.edges <- rbind(net.gpe, ptm.cccn, edgefile)
     if (gz==TRUE) {all.cf <- gz.cf[gz.cf$id  %in% unique(c(cfn.cccn.edges$source, cfn.cccn.edges$target)),]}

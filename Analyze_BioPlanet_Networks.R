@@ -28,11 +28,11 @@ load(file=paste(comp_path,"/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "LD_NewCFNCC
 # What is the size of the network without any threshold?
 #  dim (total.pathway.net) 645709      4
 # What does the entire pathway crostalk network graph look like? 
-no.nodes.total.pathway.net <- length(unique(c(total.pathway.net$source, total.pathway.net$target))) # 1488
+no.nodes.total.pathway.net <- length(unique(c(tpnn$source, tpnn$target))) # 1488
 # no. possible edges = 0.5*no.nodes*(no.nodes-1)
 no.poss.total.edges <- 0.5*(no.nodes.total.pathway.net*(no.nodes.total.pathway.net-1))
 # 1106328
-total.pathway.net.density <- dim (total.pathway.net)[1]/no.poss.total.edges
+total.pathway.net.density <- dim (tpnn)[1]/no.poss.total.edges
 # density is now 0.5836506
 #-------------------------------------------------------------------------------
 # Normalize: put two weights on same scale to make Weight.clust from 0 to 1
@@ -325,6 +325,37 @@ toggleGraphicsDetails()
 #___________________________________________________________________________
 # What are the CFN/CCCN links between pathways linked by cluster evidence alone?
 # gzallt.physical.network =	edge file of the physical interaction network: CCCN, CFN, plus negative corr edges
+# TKI efflux
+bioplanet[grep("ABCC4", bioplanet)]
+bioplanet[grep("ABCC6", bioplanet)]
+# `ABC transporters` and `Transmembrane transport of small molecules`
+bioplanet[grep("ABCB1", bioplanet)]
+bioplanet[grep("ABCG2", bioplanet)]
+abcc4.net <- filter.edges.1("ABCC4", gzalltgene.physical.cfn.merged)
+abcc6.net <- filter.edges.1("ABCC4", gzalltgene.physical.cfn.merged)
+# NADA
+abcb1.net <- filter.edges.1("ABCB1", gzalltgene.physical.cfn.merged)
+abcg2.net <- filter.edges.1("ABCG2", gzalltgene.physical.cfn.merged)
+# NADA
+# GENERAL
+abc1 <- gzalltgene.physical.cfn.merged[grep("ABC", gzalltgene.physical.cfn.merged$source),] # 32
+abc2 <- gzalltgene.physical.cfn.merged[grep("ABC", gzalltgene.physical.cfn.merged$target),] # 0
+abc.cfn.nodes <- unique (abc1$source)
+abc.cfn.net <- filter.edges.1(abc.cfn.nodes, gzalltgene.physical.cfn.merged) # ==abc1
+# ABCC1 in TKI efflux https://www.sciencedirect.com/science/article/pii/B9780128164341000024
+# ABCC2 brain expressed low amounts
+# ABCC3 upregulated in some cancers including NSCNC https://www.sciencedirect.com/topics/agricultural-and-biological-sciences/abcc3
+# ABCC5 https://www.sciencedirect.com/search?qs=ABCC5
+# ABCD3 peroxizome carboxylate
+# ABCE1 ribosomal recycling
+# Look in CFN composite shortest paths
+selectNodes(abc.cfn.nodes, preserve=FALSE, by="id") 
+# interesting network from first neighbors: EPHB2, FYN, LYN, LCK and GSK3A
+selectNodes(extract.gene.names.RCy3(abc.cfn.net), by="id", preserve=F)
+# Network from selected ABC transproted implicated in TKI eflux plus RTKs
+selectNodes(c("ABCC1", "ABCC2", "ABCC3", "ABCC5"), by="id", preserve=F )
+selectFirstNeighbors()
+selectNodes(c("EGFR", "MET", "ALK"), by="id", preserve=T)
 #_________________________________________
 # Interactions with EGF/EGFR signaling pathway
 # Choose Transmembrane transport of small molecules (druggable?)

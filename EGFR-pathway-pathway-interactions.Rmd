@@ -1,0 +1,285 @@
+---
+title: "EGFR-pathway-pathway-interactions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load_packages}
+library(plyr)
+library(dplyr)
+library(gplots)
+library(RColorBrewer)
+library(RCy3)
+library(igraph)
+
+#Start Cytoscape
+cytoscapePing ()
+cytoscapeVersionInfo ()
+
+```
+
+```{r load data objects and functions}
+data_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/TenPTMAnalysis/TenCellLineNetwork-Rfiles2/Rfiles/"
+code_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PTMs-to-CCCN-and-CFN/"
+output_path <- "/Users/karenross/Documents/Bioinformatics/PIR/GrimesGroupCollab/PathwayCrosstalk/"
+
+#files used: bioplanet
+load(file=paste(data_path,"BioPlanetNetworks.RData", sep=""))
+
+#files used: gzalltgene.physical.cfn.merged
+load(file=paste(data_path, "GZ_PPI_Networks2.RData", sep="")) #has gz.cf w/12461 rows and gz.cf.pruned w/9701
+
+sig.site.meds.list <- readRDS(paste(data_path, "sig_site_meds_list.rds", sep=""))
+group_meds_all <- readRDS(paste(data_path, "group_meds_all.rds", sep=""))
+
+#functions used: filter.edges.between, interaction.to.edgeType,  extract.gene.names, remove.autophos.RCy3, setNodeMapping, setCorrEdgeAppearance
+source(paste(code_path, "Generate_CCCN_CFN.R", sep=""))
+
+#functions used: graph.cfn.cccn2, setNodeColorToRatios2, all.ratio.styles.2, 
+source(paste(code_path, "cluster-enrichment-functions-v2.R", sep=""))
+
+
+
+#load(file=paste(data_path, "KGFunDataObjects-3.RData", sep=""))
+#load(file=paste(data_path, "LC_TMT_Nets.RData", sep=""))
+#load(file=paste(data_path, "TenCell-TKI.RData", sep=""))
+#load(file=paste(data_path, "LD_NewCFNCCCN_Networks.RData", sep=""))
+#load(file=paste(data_path,"drug_effects.RData", sep=""))
+
+	#source(paste(code_path, "Data_Input_Formatting.R", sep=""))
+	#source(paste(code_path, "Dissimilarity_Calculations.R", sep=""))
+  #source(paste(code_path, "CFN_CCCN_Analysis.R", sep=""))
+
+```
+
+## Analysis of EGFR-containing pathways in the pathway-pathway network
+
+Erlotinib has a direct effect on EGFR and is therefore likely to down-regulate pathways that EGFR is a member of. However, inhibiting EGFR has indirect effects on other pathways that don't contain EGFR. This pathway crosstalk may be important for drug resistance. The pathway-pathway network gives us candidates for pathways that are likely to crosstalk (because their PTMs are correlated and cluster together in the CCCN). To understand the interaction in more detail, we want to find the pathways that interact with EGFR-containing pathways and then find the proteins in these pathways that interact. These interactions are potential mechanisms for the pathway crosstalk. These interactions are even more interesting if one or both of the proteins has a PTM site that is significantly affected by erlotinib.
+
+First, we will create a sub-network from the pathway-pathway network where the the interacting pathways that have strong cluster evidence and little overlap of genes. Then, we will find all pairs of pathways in that sub-network where at least one of the pathways contains EGFR. Next, we will find the CFN connections between the proteins in each pair of pathways. In other words, for interacting pathways A and B we will find all CFN connections involving a protein from A and a protein from B. Next, we will find all cases where one or both of the proteins has at least one significantly changed PTM in erlobtinib. A significantly changed PTM is one in which the absolute value of the median of the fold change in the erlotinib vs. DMSO treated samples is at least 2.25 (1.17 on the log2 scale). We will do this for the pc9.erl and the all.erl sample groups.
+
+tpnn is network of all pairs of pathways in Bioplanet that have cluster evidence for interaction (Weight.clust) > 0. It contains 645,709 pathway pairs. For each pair the cluster evidence for interaction normalized to a 0-1 scale  (Weight.clust) and the Jaccard similarity of the pathways based on their gene membership (Weight.bp) is given. We want to analzye a set of pathways that have high Weight.clust and low Weight.bp. By trying different values for these weights and looking at the resulting network size, we chose to select pathways with Weight.bp == 0 (no genes in common) and Weight.clust > 0.05. This sub-network has 997 pathway pairs.
+
+```{r EGFR pathway networks}
+
+#Select pathway pairs from tpnn with Weight.clust > 0.05 and Weight.bp == 0 
+selected.pathway.edges <- tpnn[tpnn$Weight.clust > 0.05 & tpnn$Weight.bp == 0,]
+nrow(selected.pathway.edges) #997
+length(bioplanet) #1657 pathways in bioplanet
+genes.bioplanet <- unique(unlist(bioplanet)) #9818 genes in bioplanet
+selected.pathway.names <- unique(c(selected.pathway.edges$source, selected.pathway.edges$target)) #316 selected pathways
+selected.genes <- unique(unlist(bioplanet[selected.pathway.names])) #9004 selected genes
+
+#Find names of all pathways in Bioplanet that contain EGFR. The data object 'bioplanet' is a list, where the name of the list element is the name of a Bioplanet pathway and each element is a character vector of the genes in that pathway
+egfr_pathways <- names(bioplanet)[sapply(bioplanet,function(x){"EGFR" %in% x})]
+length(egfr_pathways) #83
+
+#Now select the rows from the pathway interaction network where either of the two pathways contains EGFR
+selected.pathways.egfr <- selected.pathway.edges[which((selected.pathway.edges$source %in% egfr_pathways) | (selected.pathway.edges$target %in% egfr_pathways)),]
+nrow(selected.pathways.egfr) #213
+
+#Find the number of unique pathways included in those 213 pathway pairs
+unique.paths <- unique(c(selected.pathways.egfr$source, selected.pathways.egfr$target))
+length(unique.paths) #97
+
+#Find out how many of the 97 unique pathways contain EGFR
+unique.pathway.list <- bioplanet[unique.paths]
+unique.pathways.egfr <- sapply(unique.pathway.list, function(x) {"EGFR" %in% x})
+sum(unique.pathways.egfr) #41
+
+#Make list of the 41 EGFR containing pathways in the pathway crosstalk network
+unique.pathways.egfr.list <- unique.pathway.list[unique.pathways.egfr]
+
+#For each pair of pathways, find the edges from the cfn that connect a gene from pathway 1 with a gene from pathway 2. Use the filter.edges.between function and use mapply to apply this to all pathway pairs in selected.pathways.egfr. The output is a list of dataframes with each list element being the results of a pathway pair.
+
+pathway.crosstalk.egfr <- apply(selected.pathways.egfr, 1, function(x) {filter.edges.between(bioplanet[[x["source"]]], bioplanet[[x["target"]]], edge.file=gzalltgene.physical.cfn.merged)})
+
+#Change the names of the list elements to be Pathway A*Pathway B
+names(pathway.crosstalk.egfr) <- paste(selected.pathways.egfr$source, selected.pathways.egfr$target, sep = "*")
+
+#Next task...for each list of interactions, find those where one or both genes had a PTM with a significant change in erlotinib. We will use the same criteria for significantly changed PTMs that we used for the cluster enrichment analysis: a significantly changed PTM is one in which the absolute value of the median of the fold change in the erlotinib vs. DMSO treated samples is at least 2.25 (1.17 on the log2 scale); sites must be observed in at least two experiments. We will do this for the pc9.erl and the all.erl sample groups. Sample groups are defined in cluster-enrichment-v2.Rmd. Significantly changed sites for each sample group are listed in sig.site.meds.list.
+
+#Select rows from gz.cf which are significant sites in pc9.erl and all.erl sample groups
+gz.cf.pc9.erl <- gz.cf[which (gz.cf$id %in% sig.site.meds.list[["pc9.erl"]]$id), ] #581 rows
+gz.cf.all.erl <- gz.cf[which (gz.cf$id %in% sig.site.meds.list[["all.erl"]]$id), ] #884 rows
+
+#Now get the unique gene names associated with the significant sites
+gz.cf.pc9.erl.genes <- unique(gz.cf.pc9.erl$Gene.Name) #398 genes
+gz.cf.all.erl.genes <- unique(gz.cf.all.erl$Gene.Name) #613 genes
+
+#pc9.erl
+#For the 213 pathway pairs in pathway.crosstalk.egfr, select the rows from each set of cross-pathway interactions in pathway.crosstalk.egfr where at least one of the interacting partners has at least one significant PTM. 
+
+pathway.crosstalk.egfr.pc9.erl <- lapply(pathway.crosstalk.egfr,function(x) {x[ which((x$source %in% gz.cf.pc9.erl.genes) | (x$target %in% gz.cf.pc9.erl.genes)),]})
+
+#Name the sets of interactions using the pair of pathways they come from
+names(pathway.crosstalk.egfr.pc9.erl) <- names(pathway.crosstalk.egfr)
+
+#Remove pathway pairs that have 0 interactions where at least one gene meets the condition
+pathway.crosstalk.egfr.pc9.erl <- pathway.crosstalk.egfr.pc9.erl[sapply(pathway.crosstalk.egfr.pc9.erl, function(x) {nrow(x)!= 0})]
+
+#Number of interactions for each pathway pair where at least one gene meets the condition
+rows.crosstalk.pc9.erl <- sapply(pathway.crosstalk.egfr.pc9.erl,function(x) {nrow(x)})
+rows.crosstalk.pc9.erl.num <- unname(rows.crosstalk.pc9.erl)
+
+
+#For the 213 pathway pairs in pathway.crosstalk.egfr, select the cross pathway interactions where BOTH of the interacting genes have at least one significantly changed PTM
+pathway.crosstalk.egfr.pc9.erl.both <- lapply(pathway.crosstalk.egfr,function(x) {x[ which((x$source %in% gz.cf.pc9.erl.genes) & (x$target %in% gz.cf.pc9.erl.genes)),]})
+
+#Name the sets of interaction using the pair of pathways they come from
+names(pathway.crosstalk.egfr.pc9.erl.both) <- names(pathway.crosstalk.egfr)
+
+#Remove pathway pairs that have 0 interactions where both genes meet the condition
+pathway.crosstalk.egfr.pc9.erl.both <- pathway.crosstalk.egfr.pc9.erl.both[sapply(pathway.crosstalk.egfr.pc9.erl.both, function(x) {nrow(x)!= 0})]
+
+#Number of interactions for each pathway pair where both genes meet the condition
+rows.crosstalk.pc9.erl.both <- sapply(pathway.crosstalk.egfr.pc9.erl.both,function(x) {nrow(x)})
+rows.crosstalk.pc9.erl.both.num <- unname(rows.crosstalk.pc9.erl.both)
+
+#all.erl
+#For the 213 pathway pairs in pathway.crosstalk.egfr, select the rows from each set of cross-pathway interactions in pathway.crosstalk.egfr where at least one of the interacting partners has at least one significant PTM. 
+
+pathway.crosstalk.egfr.all.erl <- lapply(pathway.crosstalk.egfr,function(x) {x[ which((x$source %in% gz.cf.all.erl.genes) | (x$target %in% gz.cf.all.erl.genes)),]})
+
+#Name the sets of interactions using the pair of pathways they come from
+names(pathway.crosstalk.egfr.all.erl) <- names(pathway.crosstalk.egfr)
+
+#Remove pathway pairs that have 0 interactions where at least one gene meets the condition
+pathway.crosstalk.egfr.all.erl <- pathway.crosstalk.egfr.all.erl[sapply(pathway.crosstalk.egfr.all.erl, function(x) {nrow(x)!= 0})]
+
+#Number of interactions for each pathway pair where at least one gene meets the condition
+rows.crosstalk.all.erl <- sapply(pathway.crosstalk.egfr.all.erl,function(x) {nrow(x)})
+rows.crosstalk.all.erl.num <- unname(rows.crosstalk.all.erl)
+
+#For the 213 pathway pairs in pathway.crosstalk.egfr, this selects the cross pathway interactions where BOTH of the interacting genes have at least one significantly changed PTM
+pathway.crosstalk.egfr.all.erl.both <- lapply(pathway.crosstalk.egfr,function(x) {x[ which((x$source %in% gz.cf.all.erl.genes) & (x$target %in% gz.cf.all.erl.genes)),]})
+
+#Name the sets of interaction using the pair of pathways they come from
+names(pathway.crosstalk.egfr.all.erl.both) <- names(pathway.crosstalk.egfr)
+
+#Remove pathway pairs that have 0 interactions where both genes meet the condition
+pathway.crosstalk.egfr.all.erl.both <- pathway.crosstalk.egfr.all.erl.both[sapply(pathway.crosstalk.egfr.all.erl.both, function(x) {nrow(x)!= 0})]
+
+#Number of interactions for each pathway pair where both genes meet the condition
+rows.crosstalk.all.erl.both <- sapply(pathway.crosstalk.egfr.all.erl.both,function(x) {nrow(x)})
+rows.crosstalk.all.erl.both.num <- unname(rows.crosstalk.all.erl.both)
+
+#Add a column to the tables of cross-pathway interactions that indicates the pair of pathways. Then combine all of the tables into a single table
+pathway.crosstalk.egfr.pc9.erl <- lapply(seq_along(pathway.crosstalk.egfr.pc9.erl), function(x) {cbind(pathway.crosstalk.egfr.pc9.erl[[x]], Pathways = names(pathway.crosstalk.egfr.pc9.erl[x]))})
+
+pc9.erl.combined <- bind_rows(pathway.crosstalk.egfr.pc9.erl)
+row.names(pc9.erl.combined) <- NULL
+
+#We have chosen to analyze two pathway pairs in depth: EGF/EGFR signaling pathway*Transmembrane transport of small molecules and EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis; make a version of the table that only contains the interactions for these two pathway pairs; write to a file
+pc9.erl.combined.selected <- pc9.erl.combined[which(pc9.erl.combined$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules" | pc9.erl.combined$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis" ),]
+
+write.table(pc9.erl.combined.selected, file = paste(output_path, "pathway.crosstalk.egfr.pc9.erl.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Now same thing for pc9.erl.both
+pathway.crosstalk.egfr.pc9.erl.both <- lapply(seq_along(pathway.crosstalk.egfr.pc9.erl.both), function(x) {cbind(pathway.crosstalk.egfr.pc9.erl.both[[x]], Pathways = names(pathway.crosstalk.egfr.pc9.erl.both[x]))})
+
+pc9.erl.both.combined <- bind_rows(pathway.crosstalk.egfr.pc9.erl.both)
+row.names(pc9.erl.both.combined) <- NULL
+
+pc9.erl.both.combined.selected <- pc9.erl.both.combined[which(pc9.erl.both.combined$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules" | pc9.erl.both.combined$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis" ),]
+
+write.table(pc9.erl.both.combined.selected, file = paste(output_path, "pathway.crosstalk.egfr.pc9.erl.both.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Same thing for all.erl
+pathway.crosstalk.egfr.all.erl <- lapply(seq_along(pathway.crosstalk.egfr.all.erl), function(x) {cbind(pathway.crosstalk.egfr.all.erl[[x]], Pathways = names(pathway.crosstalk.egfr.all.erl[x]))})
+
+all.erl.combined <- bind_rows(pathway.crosstalk.egfr.all.erl)
+row.names(all.erl.combined) <- NULL
+
+all.erl.combined.selected <- all.erl.combined[which(all.erl.combined$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules" | all.erl.combined$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis" ),]
+
+write.table(all.erl.combined.selected, file = paste(output_path, "pathway.crosstalk.egfr.all.erl.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Now same thing for all.erl.both
+pathway.crosstalk.egfr.all.erl.both <- lapply(seq_along(pathway.crosstalk.egfr.all.erl.both), function(x) {cbind(pathway.crosstalk.egfr.all.erl.both[[x]], Pathways = names(pathway.crosstalk.egfr.all.erl.both[x]))})
+
+all.erl.both.combined <- bind_rows(pathway.crosstalk.egfr.all.erl.both)
+row.names(all.erl.both.combined) <- NULL
+
+all.erl.both.combined.selected <- all.erl.both.combined[which(all.erl.both.combined$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules" | all.erl.both.combined$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis" ),]
+
+write.table(all.erl.both.combined.selected, file = paste(output_path, "pathway.crosstalk.egfr.all.erl.both.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Next: make a list of the sig sites associated with the genes in these tables
+#Add a column with the gene name to sig.site.meds.list and remove the count_up and count_down columns
+gz.cf.minimal <- gz.cf[c("id", "Gene.Name")]
+sig.site.meds.list.gene <- lapply(sig.site.meds.list, function(x){ merge(gz.cf.minimal, x, by = "id") })
+sig.site.meds.list.gene <- lapply(sig.site.meds.list.gene, function(x){ subset(subset(x, select = -c(count_up, count_down))) })
+
+#Select the sig sites for the interacting genes for the selected pathways
+#pc9.erl
+pc9.erl.combined.selected.sig.sites <- sig.site.meds.list.gene[["pc9.erl"]][which((sig.site.meds.list.gene[["pc9.erl"]]$Gene.Name %in% pc9.erl.combined.selected$source) | (sig.site.meds.list.gene[["pc9.erl"]]$Gene.Name %in% pc9.erl.combined.selected$target)),]
+
+write.table(pc9.erl.combined.selected.sig.sites, file = paste(output_path, "pathway.crosstalk.egfr.pc9.erl.sig.sites.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#pc9.erl.both
+pc9.erl.both.combined.selected.sig.sites <- sig.site.meds.list.gene[["pc9.erl"]][which((sig.site.meds.list.gene[["pc9.erl"]]$Gene.Name %in% pc9.erl.both.combined.selected$source) | (sig.site.meds.list.gene[["pc9.erl"]]$Gene.Name %in% pc9.erl.both.combined.selected$target)),]
+
+write.table(pc9.erl.both.combined.selected.sig.sites, file = paste(output_path, "pathway.crosstalk.egfr.pc9.erl.both.sig.sites.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#all.erl
+all.erl.combined.selected.sig.sites <- sig.site.meds.list.gene[["all.erl"]][which((sig.site.meds.list.gene[["all.erl"]]$Gene.Name %in% all.erl.combined.selected$source) | (sig.site.meds.list.gene[["all.erl"]]$Gene.Name %in% all.erl.combined.selected$target)),]
+
+write.table(all.erl.combined.selected.sig.sites, file = paste(output_path, "pathway.crosstalk.egfr.all.erl.sig.sites.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#all.erl.both
+all.erl.both.combined.selected.sig.sites <- sig.site.meds.list.gene[["all.erl"]][which((sig.site.meds.list.gene[["all.erl"]]$Gene.Name %in% all.erl.both.combined.selected$source) | (sig.site.meds.list.gene[["all.erl"]]$Gene.Name %in% all.erl.both.combined.selected$target)),]
+
+write.table(all.erl.both.combined.selected.sig.sites, file = paste(output_path, "pathway.crosstalk.egfr.all.erl.both.sig.sites.txt", sep=""), sep = "\t", row.names = FALSE, quote = FALSE)
+
+#Note: the sig site lists for pc9.erl and pc9.erl.both are the same; the pc9.erl table has more pairs of interactions because it includes cases where one of the interacting partners does not have a sig site. This also means that all of the proteins with sig sites in pc9.erl interact with another protein with a sig site as well as possibly interacting with other (non-sig) proteins.
+
+#There is one protein--SLC9A1--with 2 sig sites that appears on the all.erl list but not the all.erl.both list. This is because the only protein SLC9A1 interacts with (in the selected pathways) is CDC42, which does not have a sig site in all.erl.
+
+```
+
+#Plot CCCN-CFN for cross-pathway interacting proteins
+
+```{r EGFR pathway networks}
+
+#Note: there are some sites that will appear as significantly changed in the networks that are not on the list of significantly changed sites because they were only observed in one experiment. To get on the list of sig changed sites, a site had to be observed in at least 2 experiments.
+
+#Format node data file
+#Shorten site IDs with multiple possibilities to just show the first one; this sometimes results in more than one row with the same ID; keep the first occurrence and remove later occurrences; save file for use in other scripts
+group_meds_all_formatted <- group_meds_all
+group_meds_all_formatted$id <- sub(";.*", "", group_meds_all_formatted$id)
+group_meds_all_formatted_no_dups <- group_meds_all_formatted[!duplicated(group_meds_all_formatted$id),]
+saveRDS(group_meds_all_formatted_no_dups, file = paste(data_path, "group_meds_all_formatted_no_dups.rds", sep="")) 
+
+
+
+#pc9.erl.both transport of small molecules
+#Make edgefile
+pc9.erl.both.sm <- pc9.erl.both.combined.selected[which(pc9.erl.both.combined.selected$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules"), c("source", "target", "Weight", "interaction")]
+pc9.erl.both.sm.graph <- graph.cfn.cccn2(pc9.erl.both.sm, nodefile = group_meds_all_formatted_no_dups)
+all.ratio.styles2(ratiocols = names(good_experiments))
+
+#pc9.erl.both glycolysis & gluconeogenesis
+#Make edgefile
+pc9.erl.both.gg <- pc9.erl.both.combined.selected[which(pc9.erl.both.combined.selected$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis"), c("source", "target", "Weight", "interaction")]
+pc9.erl.both.gg.graph <- graph.cfn.cccn2(pc9.erl.both.gg, nodefile = group_meds_all_formatted_no_dups)
+all.ratio.styles2(ratiocols = names(good_experiments))
+
+#all.erl.both transport of small molecules
+#Make edgefile
+all.erl.both.sm <- all.erl.both.combined.selected[which(all.erl.both.combined.selected$Pathways == "EGF/EGFR signaling pathway*Transmembrane transport of small molecules"), c("source", "target", "Weight", "interaction")]
+all.erl.both.sm.graph <- graph.cfn.cccn2(all.erl.both.sm, nodefile = group_meds_all_formatted_no_dups)
+all.ratio.styles2(ratiocols = names(good_experiments))
+
+#all.erl.both glycolysis & gluconeogenesis
+#Make edgefile
+all.erl.both.gg <- all.erl.both.combined.selected[which(all.erl.both.combined.selected$Pathways == "EGF/EGFR signaling pathway*Glycolysis and gluconeogenesis"), c("source", "target", "Weight", "interaction")]
+all.erl.both.gg.graph <- graph.cfn.cccn2(all.erl.both.gg, nodefile = group_meds_all_formatted_no_dups)
+all.ratio.styles2(ratiocols = names(good_experiments))
+
+```
+

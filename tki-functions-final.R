@@ -203,7 +203,7 @@ get_sig_experiments <- function(cluster, enrichment_data) {
 #The get.directions function takes a table of sites that were significantly changed in an experiment group that has columns
 #indicating the number of reps where the site was significantly up and the number of reps where the site was significantly down
 #Returns the sites with a value of 1 if the number of sig up reps is greater than the number of sig down reps and
-#a value of -1 otherwise.
+#a value of -1 otherwise. Also, if there are multiple names for a site separated by ";" only the first one is kept.
 get.directions <- function(sig_sites_df) {
   sig_sites_df <- transform(sig_sites_df, direction = ifelse(count_up > count_down, 1 , -1))
   sig_sites_df <- sig_sites_df[c("id", "direction")]
@@ -248,7 +248,6 @@ make.sig.site.heatmap <- function(heatmap.data, filepath, filename, image_width,
   sums_na <- rowMeans(heatmap.data.m, na.rm = TRUE) * rowSums(!is.na(heatmap.data.m))
   row_order <- order(-sums_na)
   heatmap.data.mo <- heatmap.data.m[row_order, ,drop = FALSE]
-  
   
   rbyheatcolors <- colorRampPalette(colors=c('#0000FF',  '#FFFF00'), bias=0.25, space="rgb", interpolate = "spline")
   # 100% blue to yellow
@@ -456,12 +455,12 @@ graph.cfn.cccn2 <- function(edgefile, nodefile = gz.cf.pruned, ld=FALSE, gz=TRUE
     cccn <- ld.cccnplus
     cccn$source <- sub(";.*", "", cccn$source)
     cccn$target <- sub(";.*", "", cccn$target)
-    nodefile <- nodefile[ld.cf$Gene.Name %in% genenames,]
+    cccn.cf <- nodefile[ld.cf$Gene.Name %in% genenames,]
   }
   if (only.cfn==TRUE) {
     cfn.cf <- cccn.cf[which(cccn.cf$Node.ID=="gene"),]
     gene.suid <- createNetworkFromDataFrames(cfn.cf, edgefile, title=paste("CFN", (getNetworkCount()+1)), collection = "Interactions")
-    setNodeMapping(cfn.cf)
+    setNodeMapping2(cfn.cf)
     setCorrEdgeAppearance(edgefile)     
   }
   if (only.cfn==FALSE) {
@@ -518,34 +517,8 @@ plot_shortest_paths_cfn <- function(drug_affected_sites, target, ratio_table, cf
   layoutNetwork("force-directed")  
 }
 
-########################
-# function to filter networks to include only selected nodes and those with edges to them
-
-filter.edges.0 <- function(nodenames, edge.file) {
-  nodenames <-as.character(nodenames)
-  a = as.character(edge.file[,1])
-  b = as.character(edge.file[,2])
-  edgefile.nodes <- unique(c(a,b))
-  # show pruned nodes (turned off)
-  # flub <- setdiff(edgefile.nodes, nodenames) 
-  # if (length(flub) >= 1) { 
-  # cat("\n","\t", "The following GM names do not match ","\n","\t", flub) }	
-  sel.edges <- edge.file[edge.file[,1] %in% nodenames & edge.file[,2] %in% nodenames,]
-  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
-}
-
-filter.edges.between <- function(nodes1, nodes2, edge.file, convert=TRUE) {
-  edge.file <- interaction.to.edgeType(edge.file)
-  sel.edges1 <- edge.file[edge.file$Gene.1 %in% nodes1 & edge.file$Gene.2%in% nodes2,]
-  sel.edges2 <- edge.file[edge.file$Gene.1 %in% nodes2 & edge.file$Gene.2%in% nodes1,]
-  sel.edges <- rbind(sel.edges1, sel.edges2)		
-  if (convert==TRUE) {sel.edges <- edgeType.to.interaction(sel.edges)}
-  if(dim(sel.edges)[1] == 0) {return(NA)} else return(sel.edges) 
-}
-
-
 ###############################################
-#Sets node shapes and border style
+#Sets node shapes and border style; same as setNodeMapping except withe extra print statements
 
 setNodeMapping2 <- function(cf) {
   print("start setBackgroundColorDefault")
@@ -608,35 +581,7 @@ setNodeMapping2 <- function(cf) {
     setNodeShapeBypass(cf[grep("TM", cf$Domains), 1], nodeshapes[2])} 
 }
 
-#########################################
-#Set edge colors and arrows
 
-edgeDprops.RCy32 <- function() {
-  setEdgeLineWidthDefault (3)
-  setEdgeColorDefault ( "#FFFFFF")  # white
-  setEdgeSelectionColorDefault (col2hex("chartreuse"))
-  edgecolors <- col2hex(c("red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "darkorange1"))
-  edgecolorsplus <- col2hex(c("deeppink", "red", "red", "red", "magenta", "violet", "purple",  "green", "green2", "green3",  "aquamarine2", "cyan", "turquoise2", "cyan2", "lightseagreen", "gold",  "blue", "yellow", "slategrey", "darkslategrey", "grey", "black", "orange", "orange2", "orangered2", "darkorange1"))
-  #  red; turquois; green; magenta; blue; violet; green;  bluegreen; black; gray; turquoiseblue; orange 
-  edgeTypes <- c("pp", "PHOSPHORYLATION", "controls-phosphorylation-of", "controls-expression-of", "controls-transport-of",  "controls-state-change-of", "Physical interactions", "BioPlex", "in-complex-with",  'experiments',  'database',   "Pathway", "Predicted", "Genetic interactions", "correlation", "negative correlation", "positive correlation",  'combined_score', "merged" , "intersect", "peptide", 'homology', "Shared protein domains", "ACETYLATION")
-  # 22 edgeTypes            
-  myarrows <- c ('Arrow', 'Arrow', 'Arrow','Arrow', 'Arrow', "Arrow", 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', 'None', "Arrow")
-  setEdgeTargetArrowMapping( 'interaction', edgeTypes, myarrows, default.shape='None')  
-  matchArrowColorToEdge('TRUE')
-  setEdgeColorMapping( 'interaction', edgeTypes, edgecolors, 'd', default.color="#FFFFFF")
-  # A grey background helps highlight some of the edges
-  setBackgroundColorDefault("#949494") # grey 58
-  edgevalues <- getTableColumns('edge')
-  if (length(edgevalues[grep("pp", edgevalues$interaction), 1])>0) {
-    setEdgeColorBypass(edgevalues[grep("pp", edgevalues$interaction), 1], col2hex("red"))}
-  if (length(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1])>0) {
-    setEdgeColorBypass(edgevalues[grep("PHOSPHORYLATION", edgevalues$interaction), 1], col2hex("red"))}
-  if (length(edgevalues[grep("phosphorylation", edgevalues$interaction), 1])>0) {
-    setEdgeColorBypass(edgevalues[grep("phosphorylation", edgevalues$interaction), 1], col2hex("red"))}
-  if (length(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1])>0) {
-    setEdgeColorBypass(edgevalues[grep("ACETYLATION", edgevalues$interaction), 1], col2hex("darkorange1"))}
-  
-}
 
 ############################
 #%w/o% operator: return elements of x not in y
@@ -708,59 +653,4 @@ setNodeColorToRatios2 <- function(plotcol){
   lockNodeDimensions('TRUE')
   setNodeSizeMapping (names(cf[plotcol]), size.control.points, node.sizes, 'c')
   setNodeSelectionColorDefault ( "#CC00FF") 
-}
-
-####################################
-#Function to examine all shortest paths between two sets of genes; now robust to gene names that are not in network.
-composite.shortest.paths <- function(genes1, genes2, network, exclude=NULL) {
-  if(grepl("Gene", names(network)[1])) {
-    network <- edgeType.to.interaction(network)
-  }
-  composit <- list()
-  int <- list()
-  ig.graph <- graph.data.frame(network, directed=FALSE)
-  netnodes <- vertex_attr(ig.graph)$name
-  # loop
-  for (i in 1:length(genes1)) {
-    if (!(genes1[i] %in% netnodes)) next
-    if(genes1[i] %in% exclude) next
-    for (j in 1:length(genes2)){
-      if(genes2[j] %in% exclude) next
-      if (!(genes2[j] %in% netnodes)) next
-      if (identical(genes1[i], genes2[j])) next
-      int[[j]] <- connectNodes.all.RCy3.exclude(c(genes1[i], genes2[j]), edgefile=network, ig.graph= ig.graph,  exclude=exclude)
-    }
-    composit[[i]] <- ldply(int)
-  }
-  result <- unique(ldply(composit))
-  return(result)
-}
-
-#####################
-connectNodes.all.RCy3.exclude <- function(nodepair, ig.graph=NULL, edgefile, newgraph=FALSE, exclude=NULL)	{
-  if (newgraph==TRUE) {
-    ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
-  if(length(exclude) > 0) {
-    for(i in 1:length(exclude)) {
-      if(exclude[i] %in% edgefile$source) {
-        edgefile <- edgefile[-which(edgefile$source==exclude[i]),]}
-      if(exclude[i] %in% edgefile$target) {
-        edgefile <- edgefile[-which(edgefile$target==exclude[i]),] }
-    }
-    ig.graph <- graph.data.frame(edgefile, directed=FALSE) }
-  sp <- all_shortest_paths(graph=ig.graph, from=nodepair[1], to=nodepair[2], mode="all")
-  path.nodeslist <-  unique(lapply(sp[[1]], names))
-  edges.list <- lapply(path.nodeslist, filter.edges.0, edge.file=edgefile)
-  path.edges <- unique(remove.autophos(ldply(edges.list)))
-  return(path.edges)
-}
-
-
-################
-# Remove auto-phosphorylation loops
-remove.autophos <- function(edgefile)	{
-  auto <- which (as.character(edgefile $Gene.1) == as.character(edgefile $Gene.2))
-  if (length(auto) > 0) {
-    newedgefile <- edgefile[-auto,] } else newedgefile <- edgefile
-    return (newedgefile)	
 }

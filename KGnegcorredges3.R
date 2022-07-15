@@ -204,7 +204,7 @@ gzallt.ave.ratios.df <- cbind(Gene.Name=gzallt.key$Gene.Name, gzallt.ave.ratios)
 #****>>>>
 gzalltgene.ave.ratios <- ddply(gzallt.ave.ratios.df, .(Gene.Name), function (x) numcolwise(log2(mean.na(2^x))) )
 # Error
-# Work around unknow error by doing this in steps
+# Work around unknown error by doing this in steps
 gzalltgene.ave.ratios.2 <- numcolwise(function(x) 2^x)(gzalltgene.ave.ratios)
 gzalltgene.ave.ratios.2$Gene.Name <- gzalltgene.ave.ratios$Gene.Name
 gzalltgene.ave.ratios.3 <- ddply(gzalltgene.ave.ratios.2, .(Gene.Name), numcolwise(mean.na) )
@@ -368,6 +368,9 @@ gzgene.cfn.netatts <- make.netatts(ig.network=gzalltgene.cfn.g, ig.unfiltered=co
 
 # >>>>>>>>>>>>>>>
 # CCCN node file
+# Examine clusters' ratio data: tencellratios.lim.log2.trimmed plus previous data
+gzdata.allt.ratios <- gzdata.allt[,names(gzdata.allt)[grep("atio",names(gzdata.allt))]]
+#
 gzallt.cf <- make.anynetcf(edge.df=gzallt.network, data.file=gzdata.allt[, -grep("atio",names(gzdata.allt))], geneatts=gzgene.cfn.netatts, ptmcccnatts=gzcccn.netatts, func.key=func.key, use=c("total", "median", "max"))
 gzallt.allcf1 <- make.anynetcf(edge.df=gzallt.network.all, data.file=gzdata.allt[, -grep("atio",names(gzdata.allt))], geneatts=gzgene.cfn.netatts, ptmcccnatts=gzcccn.netatts, func.key=func.key, use=c("total", "median", "max"))
 

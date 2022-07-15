@@ -3,8 +3,8 @@
 # 
 load(file="/Users/mark_grimes/Software\ Images/GZTenCellMatrices3.RData") # Laptop
 load(file="/Volumes/Terra_Byte/R_Archive_2/_LINCS/GZTenCellMatrices3.RData") # Office
-load(file=paste("_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
-load(file=paste("_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
+load(file=paste(comp_path, "Dropbox/_Work/R_/", "_LINCS/_KarenGuolin/", "TenCell.RData", sep=""))
+load(file=paste(comp_path, "Dropbox/_Work/R_/","_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
 #########################################################################################
   #   
 tencellpath <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/10celllines_short_mapped_shorten_with_Localization0.8andPEP0.05cutoff_05292019",  sep="")
