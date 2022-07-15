@@ -112,10 +112,29 @@ points(tpnn[which(tpnn$Weight.bp==0), "Weight.bp"]~tpnn[which(tpnn$Weight.bp==0)
 legend("topright", pt.cex=1.8, pch=20, col=c("green4", "red", "darkblue"), legend = c("Weights compared", "Weight bioplanet < 10%", "Weight bioplanet = 0"))
 # Weight.clust.vs.weight.bp2.pdf
 # Conclusions: 
-# 1. There is little correlation between the cluster evidence for pathway-pathway interactions and the Jaccard similarity that reflects number of genes in common between pathways (R-sqared ~ 0.02).
+# 1. There is little correlation between the cluster evidence for pathway-pathway interactions and the Jaccard similarity that reflects number of genes in common between pathways (R-squared ~ 0.02).
 # 2. The pathway interactions with the highest cluster evidence mostly have small Jaccard similarity
 # 3. Many small contributions add up to significant cluster pathway evidence. Discard filtering by individual clusters.
 # 4. Filter by both Weight.clust and pathway Jaccard similarity
+#-----------------------------------------------------------------------------------------------------------------
+# Karen's tpnn normalization
+tpnn.norm.file <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/Karen_tpnn_files/tpnn.num.genes.rds", sep="")
+tpnn.norm <- readRDS(tpnn.norm.file)
+hist(tpnn.norm$Weight.clust.path.size.norm.gz.cf, breaks=100, col="turquoise")
+head(tpnn.norm[order(tpnn.norm$Weight.clust.path.size.norm.gz.cf, decreasing=TRUE), c(1,2,5,16)], 40)
+tpnn.norm.no.bp <- tpnn.norm[which(tpnn.norm$Weight.bp==0),]
+head(tpnn.norm.no.bp[order(tpnn.norm.no.bp$Weight.clust.path.size.norm.gz.cf, decreasing=TRUE), c(1,2,5,16)], 40)
+
+plot(tpnn.norm$Weight.clust.path.size.norm.gz.cf ~ tpnn.norm$Weight.clust, ylab= "Normalized weight", xlab="Cluster evidence weight", pch=20, col=alpha(col2hex("green"), 0.25), log="xy", cex=1.8)
+# Top EGF/EGFR interactor after normalization
+for(i in 1:length(unlist(bioplanet["Prostaglandin biosynthesis and regulation"]))){
+  cat(i)
+  genefunc <- (func(unlist(bioplanet["Prostaglandin biosynthesis and regulation"])[[i]]))
+  print(genefunc)
+}
+# Or
+sapply(unlist(bioplanet["Prostaglandin biosynthesis and regulation"]), func)
+     
 # ---------------------------------------------------------------------------------------------------
 
 # Focus on cluster evidence but also graph bp edges
@@ -750,7 +769,9 @@ selectNodes(nodes=a, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
 # What affecgts SLC transporters?
 lookSLC <- gz.cf.pruned[grep("SLC", gz.cf.pruned$Gene.Name),]
-#
+##______________
+# Check out hexose transport shunt
+(bioplanet[grep("exose", names(bioplanet))])
 # Test with glycolysis and gluconeogenesis...
 # >>>>>>>>>>>>••••••••••••
 tryit2 <- get.pep.egdes.between.pathways(pathway1="Glycolysis and gluconeogenesis", pathway2 ="EGF/EGFR signaling pathway") #101 edges
@@ -897,6 +918,10 @@ ldtest.cf <- data.frame(id=names(V(ld.g)))
 tryit.graph <- createNetworkFromDataFrames(gz.cf, gz.edges, "Test Cy from igraph")
 # LOOK PTMs for high core networks of high core nodes from ld and gz networks
 # /Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/HighCoreNodes.rtf
+#gzallHighCoreNodes<-names(gzallCoreness\[gzallCoreness>10\])
+#gldhighCoreNodes<-names(gldcoreness\[gldcoreness>6\])
+#Next, with these cores let’s look at common vertices on high cores
+#common<-intersect(gzallHighCoreNodes,gldhighCoreNodes)
 corenodes <- c(
   "EGFR",      "PKM",       "ACTB",      "ACTN4",     "ACTR2",     "AHCY",     
   "CCT4",      "CLTC",      "DDX5",      "EEF1A1",    "EEF2",      "ENO1",     
@@ -929,7 +954,3 @@ selectNodes(ldhigestcore, by.col="id", preserve.current.selection = F)
 # For CCCN:
 selectNodes(ldhigestcore, by.col="Gene.Name", preserve.current.selection = F)
 # 
-#-----------------------------------------------------------------------------------------------------------------
-# Karen's tpnn normalization
-tpnn.norm.file <- paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/Karen_tpnn_files/tpnn.num.genes.rds", sep="")
-tpnn.norm <- 
