@@ -9,7 +9,8 @@
 localpath = getwd()	
 comp_path <- unlist(strsplit(localpath, "Dropbox"))[[1]]
 if(length(grep("Dropbox", comp_path))==0) { 
-  comp_path <- unlist(strsplit(localpath, "Documents"))[[1]]}
+  comp_path <- unlist(strsplit(localpath, "Documents"))[[1]]
+  }
 source(paste(comp_path, "/Dropbox/_Work/R_/MG_packages.R", sep=""))
 # load work
 load(file=paste(comp_path, "/Dropbox/_Work/R_/_LINCS/_KarenGuolin/", "GZ_PPI_Networks2.RData", sep=""))
@@ -356,6 +357,12 @@ selectNodes(extract.gene.names.RCy3(abc.cfn.net), by="id", preserve=F)
 selectNodes(c("ABCC1", "ABCC2", "ABCC3", "ABCC5"), by="id", preserve=F )
 selectFirstNeighbors()
 selectNodes(c("EGFR", "MET", "ALK"), by="id", preserve=T)
+# Examine ABC PTMs
+abcnodes <- c("ABCC1", "ABCC2", "ABCC3", "ABCC5")
+abc.cf <- gz.cf[gz.cf$Gene.Name %in% abcnodes,]
+# In EGFR transporters medians 3.cys
+selectNodes(abc.cf$id, by = "id", preserve=F)
+
 #_________________________________________
 # Interactions with EGF/EGFR signaling pathway
 # Choose Transmembrane transport of small molecules (druggable?)

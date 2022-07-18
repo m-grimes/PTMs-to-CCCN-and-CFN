@@ -160,6 +160,17 @@ names(ptms.by.drug) <- names(ptmchanges)
 commonpeps.p1 <- list.common(ptms.by.drug[phosnames], ptms.by.drug[phosnames], keeplength = 1)
 sapply(commonpeps.p1, length)
 sapply(ptms.by.drug[phosnames], length)
+sapply(ptms.by.drug, length) 
+# **** Sum for paper
+phossites <- sapply(ptms.by.drug[phosnames], length) 
+sum(phossites[2:5])
+# 4987
+acksites <- sapply(ptms.by.drug[acknames], length) 
+sum(acksites[2:5])
+# 3249
+ubsites <- sapply(ptms.by.drug[ubnames], length) 
+sum(ubsites[2:5])
+# 4452
 # Remove comparisons to same list
 dupes <- names(commonpeps.p1)[c(1, 7, 13, 19, 25)]
 commonpeps.p <- commonpeps.p1[names(commonpeps.p1) %w/o% dupes] 
@@ -307,8 +318,16 @@ write.table(all.drug.ub, file="AllDrugAffectedUbiquitination.txt", col.names=TRU
 all.drug.ptms <- rbind(all.drug.phos, all.drug.ac, all.drug.ub)
 write.table(all.drug.ptms , file="AllDrugAffectedPTMs.txt", col.names=TRUE, row.names=TRUE, quote=FALSE, sep="\t")
 
+# For supplemental information
+write.table(gzdata.allt , file="AlldataPTMs.txt", col.names=TRUE, row.names=TRUE, quote=FALSE, sep="\t")
+# Graph this?
 
-
+all.drug.genes <- extract.genes.from.peplist(rownames(all.drug.ptms))
+# open CCCN_CFN_Plus_Subs1.cys
+selectNodes(all.drug.ptms$Row.names, by="id", preserve=FALSE)
+selectFirstNeighbors()
+createSubnetwork(nodes = getSelectedNodes(), nodes.by.col = "id", subnetwork.name="PTMs affected by all drugs")
+# Interesting selection of more than 20 cliques!
 
 drugcols <- names(getptmdata)[4:8]
 twodrugs <- apply(getptmdata[,drugcols], 1, function(x) length(which(x)))
