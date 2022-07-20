@@ -328,6 +328,26 @@ selectNodes(all.drug.ptms$Row.names, by="id", preserve=FALSE)
 selectFirstNeighbors()
 createSubnetwork(nodes = getSelectedNodes(), nodes.by.col = "id", subnetwork.name="PTMs affected by all drugs")
 # Interesting selection of more than 20 cliques!
+# Intersection with core:
+corenodes <- c(
+  "EGFR",      "PKM",       "ACTB",      "ACTN4",     "ACTR2",     "AHCY",     
+  "CCT4",      "CLTC",      "DDX5",      "EEF1A1",    "EEF2",      "ENO1",     
+  "FASN",      "GAPDH",     "HNRNPA1",   "HNRNPA2B1", "HNRNPA3",   "HNRNPU",   
+  "HSP90AA1",  "HSP90AB1",  "HSPA1B",    "HSPA8",     "HSPD1",     "IQGAP1",   
+  "LMNA",      "MYH9",      "NCL",       "NPM1",      "PABPC1",    "PGK1",     
+  "PPIA",      "RPL4",      "RPL6",      "SET",       "SLC25A5",   "SRSF6",    
+  "SUMO2",     "TUBA1A",    "TUBA1B",    "TUBB",      "TAGLN2",    "YWHAE",    
+  "YWHAZ")
+intersect(all.drug.genes, corenodes)
+# "HNRNPA2B1" "FASN"      "GAPDH"     "HNRNPU"    "PPIA"      "ACTB" 
+intersect( all.drug.genes, bioplanet[["Glycolysis"]])
+# "ALDOA" "GAPDH" "GPI"  
+intersect( all.drug.genes, bioplanet[["Glycolysis and gluconeogenesis"]])
+# [1] "ALDOA" "DLD"   "GAPDH" "GPI"  
+intersect( all.drug.genes, bioplanet[["EGF/EGFR signaling pathway"]])
+# [1] "ERBB2"  "GAB1"   "INPPL1" "PTK6"   "PTPN11" "SHC1"  
+intersect( all.drug.genes, bioplanet[["Transmembrane transport of small molecules"]])
+# 1] "SLC20A2"
 
 drugcols <- names(getptmdata)[4:8]
 twodrugs <- apply(getptmdata[,drugcols], 1, function(x) length(which(x)))
@@ -445,8 +465,34 @@ dnp.lengths <- lapply(drug.neg.ptms, length)
 drug.neg.ptms  <- drug.neg.ptms [which(dnp.lengths > 0)]
 cat(capture.output(print(drug.neg.ptms), file="/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/drugaffectednegcorrPTMs.txt"))
 
-save(gzdata.allt.ratios, esp.gz.ratios, drugchangedratios, pick.drug.affected, drugaffected, drugaffectedgenes, drugsthataffectgenes, wikicommon, keggcommon, gzneg.edges, gzneg.ptms, drug.neg.ptms, afatcrizot.p1, afatdasat.p1, afaterlot.p1, crizerlot.p1, dasatcrizot.p1, dasaterlot.p1, afatcrizot.a1, afatdasat.a1, afaterlot.a1, crizerlot.a1, dasatcrizot.a1, dasaterlot.a1, afatcrizot.u1, afatdasat.u1, afaterlot.u1, crizerlot.u1, dasatcrizot.u1, dasaterlot.u1, file="/Users/_mark_/Dropbox/_Work/R_/_LINCS/_KarenGuolin/drug_effects.RData")
+load(paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/drug_effects.RData", sep=""))
 
+save(gzdata.allt.ratios, esp.gz.ratios, drugchangedratios, pick.drug.affected, drugaffected, drugaffectedgenes, drugsthataffectgenes, wikicommon, keggcommon, gzneg.edges, gzneg.ptms, drug.neg.ptms, afatcrizot.p1, afatdasat.p1, afaterlot.p1, crizerlot.p1, dasatcrizot.p1, dasaterlot.p1, afatcrizot.a1, afatdasat.a1, afaterlot.a1, crizerlot.a1, dasatcrizot.a1, dasaterlot.a1, afatcrizot.u1, afatdasat.u1, afaterlot.u1, crizerlot.u1, dasatcrizot.u1, dasaterlot.u1, all.drug.ac, all.drug.genes, all.drug.phos, all.drug.ptms, all.drug.ub, file=paste(comp_path, "Dropbox/_Work/R_/_LINCS/_KarenGuolin/drug_effects.RData", sep=""))
+
+#######################################################################################################################
+# Are any neg corr PTMs on same site?
+# Match numbers in third element.
+pep1.dual <- sapply(pepcorredges.dual.neg$Peptide.1, function (x) unlist(str_split(x, " ")))
+pep2.dual <- sapply(pepcorredges.dual.neg$Peptide.2, function (x) unlist(str_split(x, " ")))
+pep1.dual.aa <- unlist(lapply(pep1.dual, function (x) x[[3]]))
+pep2.dual.aa <- unlist(lapply(pep2.dual, function (x) x[[3]]))
+numcomm <- data.frame(PTM.1=pepcorredges.dual.neg$Peptide.1, PTM.2=pepcorredges.dual.neg$Peptide.2, pep1.dual.aa, pep2.dual.aa)
+numcomm$identical.aa <- mapply(identical, x=numcomm$pep1.dual.aa, y=numcomm$pep2.dual.aa)
+any(numcomm$identical.aa)  # T !
+dim(numcomm[numcomm$identical.aa,]) # 39
+dim(numcomm[which(numcomm$identical.aa==TRUE),]) # 39 both work
+samesites <- numcomm[numcomm$identical.aa,]
+samesites$Protein <- sapply(samesites$PTM.1, extract.genes.from.peplist)
+samesites <- samesites[,c(6,1:5)]
+# Save
+write.table(samesites , file="PTMs with common sites.txt", col.names=TRUE, row.names=TRUE, quote=FALSE, sep="\t")
+# Core?
+cat(intersect(corenodes, samesites$Protein), sep=", ")
+# PKM, ACTB, DDX5, EEF1A1, HNRNPA1, HNRNPU, HSPA8, MYH9, SET, YWHAZ  
+
+# Just to check
+cccn.pep1 <- sapply(pepcorredges.dual.neg$Peptide.1, function (x) unlist(str_split(x, " ")))gzallt.cccn.edges.plus
+  
 graph.clust6d.l(drugaffected$`130.57.111`)
 # 
 graph.clust6d.l(drugaffected$`130.141.111`)
