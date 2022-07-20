@@ -395,7 +395,12 @@ selectNodes(nodes=b, by.col="id", preserve.current.selection = F)
 RTKnodes <- getAllNodes()[(getAllNodes() %in% rtklist)]
 selectNodes(nodes=RTKnodes, by.col="id", preserve.current.selection = F)
 selectNodes(nodes=RTKnodes, by.col="id", preserve.current.selection = T)
-
+# >>
+# Graph entire CCCN/CFN in medians for export to NDEx
+cccn.cfn <- graph.cfn.cccn.medians.check (gzallt.cccnplus, ld=FALSE, gz=TRUE, only.cfn=FALSE)
+# note: this function does setNodeMapping; nodeDprops.RCy32; setCorrEdgeApperance; and FixEdgeDprops.Rcy32
+drug.medians.ratio.styles()
+# Save: KG_CFN_CCCN_plus_medians.cys
 # What are the edges *between* uniuqe pathway genes?
 look4 <- filter.edges.between( bioplanet[["Transmembrane transport of small molecules"]], bioplanet[["EGF/EGFR signaling pathway"]], edge.file=gzalltgene.physical.cfn.merged)
 # 13 edges
