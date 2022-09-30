@@ -217,12 +217,17 @@ setEdgeWidths.RCy32(tpnn.no.bp.hi, factor=2, log=T)
 # **** yFiles Organic layout with adjustments for figure
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---
-
-
-
-
-
-
+tpnn.no.bp.hi[grep("Glycolysis", tpnn.no.bp.hi$target),]
+tpnn.no.bp.hi[grep("Transmembrane", tpnn.no.bp.hi$target),]
+tpnn.no.bp.hi[grep("EGF/EGFR signaling pathway", tpnn.no.bp.hi$target),]
+tpnn.no.bp.hi[grep("EGF/EGFR signaling pathway", tpnn.no.bp.hi$source),] # G&g now ninth
+pcnn[grep("EGF/EGFR signaling pathway", pcnn$source) & grep("Glycolysis and gluconeogeneisis", tpnn$target),]
+dim(pcnn)[1]/100
+pcnn.100 <- pcnn[1:8527,]
+pcnn.100[grep("Glycolysis", pcnn.100$target),]
+# pcnn.100[grep("Glycolysis", pcnn.100$source),]
+# pcnn.100[grep("EGF/EGFR signaling pathway", pcnn.100$target),]
+pcnn.100[grep("EGF/EGFR signaling pathway", pcnn.100$source),]
 
 tpn <- total.pathway.net
 tpn.v.small <- tpn[tpn$Combined.Weight>10,] # 26
@@ -384,7 +389,11 @@ FixEdgeDprops.RCy32()
 #all.ratio.styles()
 drug.medians.ratio.styles()
 toggleGraphicsDetails()
-# Save median styles file in EGF transporters networks 3.cys (medians) and 4 (means)
+# Save median styles file in EGF transporters networks 3.cys (medians) and 4 (means)can
+# Common mutual friends in dasatanib-affected networks with EGFR/Transporters/Glycolysis
+commonfriends <- getSelectedNodes()
+# [1] "HSPA8"    "LCK"      "LYN"      "PKM"      "PTPN11"   "PXN"      "SLC25A5"  "UBB"      "TUBB4A"   "YWHAZ"    "ACTB"     "CRKL"    
+# [13] "CTTN"     "ENO1"     "FYN"      "HSP90AA1" "HSP90AB1"
 # look at CFN version
 selectNodes(nodes=extract.gene.names(egfr.transporters), by.col="id", preserve.current.selection = F)
 createSubnetwork(subnetwork.name="EGFR transporters composite shortest paths CFN")
@@ -975,6 +984,12 @@ corenodes <- c(
   "SUMO2",     "TUBA1A",    "TUBA1B",    "TUBB",      "TAGLN2",    "YWHAE",    
   "YWHAZ")
 # Plot the core networks with drug treatment attributes.
+# Common mutual friends in dasatanib-affected networks with EGFR/Transporters/Glycolysis
+commonfriends <- getSelectedNodes()
+# [1] "HSPA8"    "LCK"      "LYN"      "PKM"      "PTPN11"   "PXN"      "SLC25A5"  "UBB"      "TUBB4A"   "YWHAZ"    "ACTB"     "CRKL"    
+# [13] "CTTN"     "ENO1"     "FYN"      "HSP90AA1" "HSP90AB1"
+commonfriends[commonfriends %in% corenodes]
+# [1] "HSPA8"    "PKM"      "SLC25A5"  "YWHAZ"    "ACTB"     "ENO1"     "HSP90AA1" "HSP90AB1"
 core.cfn.gz <- filter.edges.0.RCy3(corenodes, gzalltgene.physical.cfn.merged)
 core.cfn.ld <- filter.edges.0.RCy3(corenodes, ldgene.physical.cfn.merged)
 # GZ data
